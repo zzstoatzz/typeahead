@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 720" role="img" aria-labelledby="route-title route-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="route-title">Two slots and the route</title>
+  <desc id="route-desc">The public Worker sends searches to the search transport, which follows a route record naming the current and previous slot. Slot A serves and slot B stands by; each runs a store process and a search engine and follows the relay, the PLC directory, the labeler, Bluesky and Worker policy on its own. A flip is one write to the route record, allowed only when the standby matches the serving slot.</desc>
+  <style>
+    svg { --fg: #1f2328; --muted: #59636e; --line: #8c959f; --panel: #f6f8fa; --accent: #0969da; --accent-soft: #ddf4ff; --bg: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      svg { --fg: #e6edf3; --muted: #9198a1; --line: #6e7681; --panel: #161b22; --accent: #4493f8; --accent-soft: #121d2f; --bg: #0d1117; }
+    }
+    .ground { fill: var(--bg); }
+    .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+    .core { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+    .slot { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .name { fill: var(--fg); font-size: 17px; font-weight: 600; }
+    .sub { fill: var(--muted); font-size: 14px; }
+    .body { fill: var(--fg); font-size: 15px; }
+    .note { fill: var(--muted); font-size: 14px; }
+    .wire { stroke: var(--line); stroke-width: 2; fill: none; }
+    .later { stroke: var(--line); stroke-width: 2; fill: none; stroke-dasharray: 5 5; }
+    .flow { stroke: var(--accent); stroke-width: 2.5; fill: none; }
+    .head { fill: var(--line); }
+    .flowhead { fill: var(--accent); }
+    .label { fill: var(--fg); font-size: 14px; }
+  </style>
+
+  <rect class="ground" width="600" height="720" rx="12"/>
+  <rect class="box" x="150" y="20" width="300" height="56" rx="8"/>
+  <text class="name" x="300.0" y="44" text-anchor="middle">Public Worker</text>
+  <text class="sub" x="300.0" y="64" text-anchor="middle">search requests</text>
+  <path class="wire" d="M200 76 V98"/>
+  <polygon class="head" points="200,108 193,96 207,96"/>
+  <rect class="core" x="50" y="110" width="300" height="70" rx="8"/>
+  <text class="name" x="200.0" y="134" text-anchor="middle">Search transport</text>
+  <text class="sub" x="200.0" y="154" text-anchor="middle">follows the route record</text>
+  <path class="wire" d="M350 145 H398"/>
+  <polygon class="head" points="410,145 396,138 396,152"/>
+  <rect class="box" x="410" y="102" width="170" height="86" rx="8"/>
+  <text class="name" x="495" y="128" text-anchor="middle">Route record</text>
+  <text class="sub" x="495" y="150" text-anchor="middle">current: slot A</text>
+  <text class="sub" x="495" y="170" text-anchor="middle">previous: slot B</text>
+  <path class="flow" d="M230 180 V284"/>
+  <polygon class="flowhead" points="230,294 223,282 237,282"/>
+  <text class="label" x="156" y="226">searches</text>
+  <path class="later" d="M300 180 V218 H520 V284"/>
+  <polygon class="head" points="520,294 513,282 527,282"/>
+  <text class="label" x="366" y="238">after a flip</text>
+  <rect class="slot" x="20" y="248" width="270" height="262" rx="12"/>
+  <text class="name" x="40" y="278">Slot A, serving</text>
+  <rect class="core" x="40" y="296" width="230" height="60" rx="8"/>
+  <text class="name" x="155.0" y="320" text-anchor="middle">Search engine</text>
+  <text class="sub" x="155.0" y="340" text-anchor="middle">answers searches</text>
+  <path class="flow" d="M155 396 V368"/>
+  <polygon class="flowhead" points="155,358 148,370 162,370"/>
+  <rect class="core" x="40" y="396" width="230" height="60" rx="8"/>
+  <text class="name" x="155.0" y="420" text-anchor="middle">Store process</text>
+  <text class="sub" x="155.0" y="440" text-anchor="middle">keeps the accounts</text>
+  <path class="wire" d="M155 550 V468"/>
+  <polygon class="head" points="155,458 148,470 162,470"/>
+  <rect class="slot" x="310" y="248" width="270" height="262" rx="12"/>
+  <text class="name" x="330" y="278">Slot B, standby</text>
+  <rect class="core" x="330" y="296" width="230" height="60" rx="8"/>
+  <text class="name" x="445.0" y="320" text-anchor="middle">Search engine</text>
+  <text class="sub" x="445.0" y="340" text-anchor="middle">answers searches</text>
+  <path class="flow" d="M445 396 V368"/>
+  <polygon class="flowhead" points="445,358 438,370 452,370"/>
+  <rect class="core" x="330" y="396" width="230" height="60" rx="8"/>
+  <text class="name" x="445.0" y="420" text-anchor="middle">Store process</text>
+  <text class="sub" x="445.0" y="440" text-anchor="middle">keeps the accounts</text>
+  <path class="wire" d="M445 550 V468"/>
+  <polygon class="head" points="445,458 438,470 452,470"/>
+  <rect class="box" x="20" y="550" width="560" height="60" rx="8"/>
+  <text class="name" x="300" y="576" text-anchor="middle">Relay, PLC directory, labeler, Bluesky, Worker policy</text>
+  <text class="sub" x="300" y="597" text-anchor="middle">each slot follows them on its own; the slots never talk to each other</text>
+  <text class="note" x="20" y="646">A flip is one write to the route record. It is allowed only when the</text>
+  <text class="note" x="20" y="668">standby reports the same build and policy as the serving slot,</text>
+  <text class="note" x="20" y="690">data less than 2 minutes behind, and an account count within 2%.</text>
+</svg>

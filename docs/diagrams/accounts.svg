@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 750" role="img" aria-labelledby="accounts-title accounts-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="accounts-title">How an account gets in</title>
+  <desc id="accounts-desc">An account event from the relay, an identity change from the PLC directory or an index request from the Worker starts the work. Inside a slot, the store creates or updates the record, verifies the handle, asks Bluesky for the profile, applies moderation policy, and the index bridge sends the account to the search engine, after which it is searchable.</desc>
+  <style>
+    svg { --fg: #1f2328; --muted: #59636e; --line: #8c959f; --panel: #f6f8fa; --accent: #0969da; --accent-soft: #ddf4ff; --bg: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      svg { --fg: #e6edf3; --muted: #9198a1; --line: #6e7681; --panel: #161b22; --accent: #4493f8; --accent-soft: #121d2f; --bg: #0d1117; }
+    }
+    .ground { fill: var(--bg); }
+    .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+    .core { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+    .slot { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .name { fill: var(--fg); font-size: 17px; font-weight: 600; }
+    .sub { fill: var(--muted); font-size: 14px; }
+    .body { fill: var(--fg); font-size: 15px; }
+    .note { fill: var(--muted); font-size: 14px; }
+    .wire { stroke: var(--line); stroke-width: 2; fill: none; }
+    .later { stroke: var(--line); stroke-width: 2; fill: none; stroke-dasharray: 5 5; }
+    .flow { stroke: var(--accent); stroke-width: 2.5; fill: none; }
+    .head { fill: var(--line); }
+    .flowhead { fill: var(--accent); }
+    .label { fill: var(--fg); font-size: 14px; }
+  </style>
+
+  <rect class="ground" width="600" height="750" rx="12"/>
+  <g>
+  <rect class="box" x="20" y="20" width="176" height="56" rx="8"/>
+  <text class="name" x="108.0" y="44" text-anchor="middle">Relay</text>
+  <text class="sub" x="108.0" y="64" text-anchor="middle">an account event</text>
+  <rect class="box" x="212" y="20" width="176" height="56" rx="8"/>
+  <text class="name" x="300.0" y="44" text-anchor="middle">PLC directory</text>
+  <text class="sub" x="300.0" y="64" text-anchor="middle">an identity change</text>
+  <rect class="box" x="404" y="20" width="176" height="56" rx="8"/>
+  <text class="name" x="492.0" y="44" text-anchor="middle">Worker</text>
+  <text class="sub" x="492.0" y="64" text-anchor="middle">an index request</text>
+  </g>
+  <path class="wire" d="M300 76 V144"/>
+  <polygon class="head" points="300,154 293,142 307,142"/>
+  <text class="label" x="314" y="108">any of these starts it</text>
+  <rect class="slot" x="20" y="130" width="560" height="600" rx="12"/>
+  <rect class="box" x="50" y="156" width="500" height="66" rx="8"/>
+  <text class="name" x="74" y="183">1  Record</text>
+  <text class="body" x="74" y="206">The store creates or updates the account's record.</text>
+  <path class="wire" d="M300 222 V236"/>
+  <polygon class="head" points="300,246 293,234 307,234"/>
+  <rect class="box" x="50" y="248" width="500" height="66" rx="8"/>
+  <text class="name" x="74" y="275">2  Handle</text>
+  <text class="body" x="74" y="298">Verifies the handle against the account's DID.</text>
+  <path class="wire" d="M300 314 V328"/>
+  <polygon class="head" points="300,338 293,326 307,326"/>
+  <rect class="box" x="50" y="340" width="500" height="66" rx="8"/>
+  <text class="name" x="74" y="367">3  Profile</text>
+  <text class="body" x="74" y="390">Asks Bluesky's AppView for name, avatar and counts.</text>
+  <path class="wire" d="M300 406 V420"/>
+  <polygon class="head" points="300,430 293,418 307,418"/>
+  <rect class="box" x="50" y="432" width="500" height="66" rx="8"/>
+  <text class="name" x="74" y="459">4  Policy</text>
+  <text class="body" x="74" y="482">Applies labels, domain blocks and overrides.</text>
+  <path class="wire" d="M300 498 V512"/>
+  <polygon class="head" points="300,522 293,510 307,510"/>
+  <rect class="box" x="50" y="524" width="500" height="66" rx="8"/>
+  <text class="name" x="74" y="551">5  Index</text>
+  <text class="body" x="74" y="574">The bridge sends the account to the search engine.</text>
+  <path class="flow" d="M300 590 V604"/>
+  <polygon class="flowhead" points="300,614 293,602 307,602"/>
+  <rect class="core" x="50" y="616" width="500" height="66" rx="8"/>
+  <text class="name" x="74" y="643">Searchable</text>
+  <text class="body" x="74" y="666">The search engine can now return the account.</text>
+  <text class="note" x="50" y="716">Each slot does all of this on its own, from the same sources.</text>
+</svg>

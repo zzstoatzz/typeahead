@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 750" role="img" aria-labelledby="search-title search-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="search-title">A search request</title>
+  <desc id="search-desc">An app sends a search to the public Worker, which checks parameters and rate limits and answers from its cache when it can. On a cache miss the search transport reads the route record to learn which slot is serving and sends the query to that slot's search engine, which matches handles and names by prefix, ranks them and returns profiles.</desc>
+  <style>
+    svg { --fg: #1f2328; --muted: #59636e; --line: #8c959f; --panel: #f6f8fa; --accent: #0969da; --accent-soft: #ddf4ff; --bg: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      svg { --fg: #e6edf3; --muted: #9198a1; --line: #6e7681; --panel: #161b22; --accent: #4493f8; --accent-soft: #121d2f; --bg: #0d1117; }
+    }
+    .ground { fill: var(--bg); }
+    .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+    .core { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+    .slot { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .name { fill: var(--fg); font-size: 17px; font-weight: 600; }
+    .sub { fill: var(--muted); font-size: 14px; }
+    .body { fill: var(--fg); font-size: 15px; }
+    .note { fill: var(--muted); font-size: 14px; }
+    .wire { stroke: var(--line); stroke-width: 2; fill: none; }
+    .later { stroke: var(--line); stroke-width: 2; fill: none; stroke-dasharray: 5 5; }
+    .flow { stroke: var(--accent); stroke-width: 2.5; fill: none; }
+    .head { fill: var(--line); }
+    .flowhead { fill: var(--accent); }
+    .label { fill: var(--fg); font-size: 14px; }
+  </style>
+
+  <rect class="ground" width="600" height="750" rx="12"/>
+  <rect class="box" x="150" y="20" width="300" height="56" rx="8"/>
+  <text class="name" x="300.0" y="44" text-anchor="middle">An app</text>
+  <text class="sub" x="300.0" y="64" text-anchor="middle">someone types in a search field</text>
+  <path class="wire" d="M300 76 V118"/>
+  <polygon class="head" points="300,128 293,116 307,116"/>
+  <text class="label" x="314" y="108">search for "nat"</text>
+  <rect class="core" x="50" y="130" width="500" height="126" rx="10"/>
+  <text class="name" x="74" y="162">Public Worker</text>
+  <text class="body" x="74" y="194">Checks the parameters and the rate limit.</text>
+  <text class="body" x="74" y="220">Answers from its cache if it saw the same query</text>
+  <text class="body" x="74" y="246">in the last 60 seconds.</text>
+  <path class="wire" d="M300 256 V308"/>
+  <polygon class="head" points="300,318 293,306 307,306"/>
+  <text class="label" x="314" y="292">on a cache miss</text>
+  <rect class="core" x="50" y="320" width="330" height="126" rx="10"/>
+  <text class="name" x="74" y="352">Search transport</text>
+  <text class="body" x="74" y="384">Reads the route record to learn</text>
+  <text class="body" x="74" y="410">which slot is serving.</text>
+  <text class="note" x="74" y="434">its copy is at most 1 second old</text>
+  <path class="wire" d="M380 383 H398"/>
+  <polygon class="head" points="410,383 396,376 396,390"/>
+  <rect class="box" x="410" y="340" width="170" height="86" rx="8"/>
+  <text class="name" x="495" y="366" text-anchor="middle">Route record</text>
+  <text class="sub" x="495" y="388" text-anchor="middle">serving slot,</text>
+  <text class="sub" x="495" y="408" text-anchor="middle">previous slot</text>
+  <path class="flow" d="M215 446 V522"/>
+  <polygon class="flowhead" points="215,532 208,520 222,520"/>
+  <text class="label" x="231" y="484">the query</text>
+  <rect class="slot" x="20" y="506" width="560" height="190" rx="12"/>
+  <rect class="core" x="50" y="534" width="500" height="118" rx="10"/>
+  <text class="name" x="74" y="566">Search engine</text>
+  <text class="body" x="74" y="598">Finds handles and names that start with the query.</text>
+  <text class="body" x="74" y="624">Ranks them, an exact handle first, and returns profiles.</text>
+  <text class="name" x="50" y="680">The serving slot</text>
+  <text class="note" x="20" y="728">The answer returns the same way, and the Worker caches it for 60 seconds.</text>
+</svg>

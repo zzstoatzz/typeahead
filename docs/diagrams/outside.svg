@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 762" role="img" aria-labelledby="outside-title outside-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="outside-title">What runs where</title>
+  <desc id="outside-desc">Cloudflare holds the public Worker, the search transport, the route record in R2, the control database in D1, statistics in D1 and KV, and the image renderer. Fly holds the two slots, each a store process and a search engine. The relay, the PLC directory, the labeler and the Bluesky AppView are run by others and only read.</desc>
+  <style>
+    svg { --fg: #1f2328; --muted: #59636e; --line: #8c959f; --panel: #f6f8fa; --accent: #0969da; --accent-soft: #ddf4ff; --bg: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      svg { --fg: #e6edf3; --muted: #9198a1; --line: #6e7681; --panel: #161b22; --accent: #4493f8; --accent-soft: #121d2f; --bg: #0d1117; }
+    }
+    .ground { fill: var(--bg); }
+    .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+    .core { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+    .slot { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .name { fill: var(--fg); font-size: 17px; font-weight: 600; }
+    .sub { fill: var(--muted); font-size: 14px; }
+    .body { fill: var(--fg); font-size: 15px; }
+    .note { fill: var(--muted); font-size: 14px; }
+    .wire { stroke: var(--line); stroke-width: 2; fill: none; }
+    .later { stroke: var(--line); stroke-width: 2; fill: none; stroke-dasharray: 5 5; }
+    .flow { stroke: var(--accent); stroke-width: 2.5; fill: none; }
+    .head { fill: var(--line); }
+    .flowhead { fill: var(--accent); }
+    .label { fill: var(--fg); font-size: 14px; }
+  </style>
+
+  <rect class="ground" width="600" height="762" rx="12"/>
+  <rect class="slot" x="20" y="20" width="560" height="326" rx="12"/>
+  <text class="name" x="40" y="52">Cloudflare</text>
+  <text class="note" x="140" y="52">everything except the accounts</text>
+  <rect class="box" x="40" y="72" width="250" height="68" rx="8"/>
+  <text class="name" x="165.0" y="96" text-anchor="middle">Public Worker</text>
+  <text class="sub" x="165.0" y="116" text-anchor="middle">API, pages, rate limits, cache</text>
+  <rect class="box" x="310" y="72" width="250" height="68" rx="8"/>
+  <text class="name" x="435.0" y="96" text-anchor="middle">Search transport</text>
+  <text class="sub" x="435.0" y="116" text-anchor="middle">sends searches to the serving slot</text>
+  <rect class="box" x="40" y="160" width="250" height="68" rx="8"/>
+  <text class="name" x="165.0" y="184" text-anchor="middle">Route record</text>
+  <text class="sub" x="165.0" y="204" text-anchor="middle">R2: which slot serves</text>
+  <rect class="box" x="310" y="160" width="250" height="68" rx="8"/>
+  <text class="name" x="435.0" y="184" text-anchor="middle">Control database</text>
+  <text class="sub" x="435.0" y="204" text-anchor="middle">D1: policy and index requests</text>
+  <rect class="box" x="40" y="248" width="250" height="68" rx="8"/>
+  <text class="name" x="165.0" y="272" text-anchor="middle">Statistics</text>
+  <text class="sub" x="165.0" y="292" text-anchor="middle">D1 and KV: request counts, history</text>
+  <rect class="box" x="310" y="248" width="250" height="68" rx="8"/>
+  <text class="name" x="435.0" y="272" text-anchor="middle">Image renderer</text>
+  <text class="sub" x="435.0" y="292" text-anchor="middle">share images and icons</text>
+  <rect class="slot" x="20" y="366" width="560" height="140" rx="12"/>
+  <text class="name" x="40" y="398">Fly</text>
+  <text class="note" x="76" y="398">the accounts and the search index, twice</text>
+  <rect class="core" x="40" y="418" width="250" height="68" rx="8"/>
+  <text class="name" x="165.0" y="442" text-anchor="middle">Slot A</text>
+  <text class="sub" x="165.0" y="462" text-anchor="middle">store process + search engine</text>
+  <rect class="core" x="310" y="418" width="250" height="68" rx="8"/>
+  <text class="name" x="435.0" y="442" text-anchor="middle">Slot B</text>
+  <text class="sub" x="435.0" y="462" text-anchor="middle">store process + search engine</text>
+  <rect class="slot" x="20" y="526" width="560" height="216" rx="12"/>
+  <text class="name" x="40" y="558">Run by others</text>
+  <text class="note" x="164" y="558">read by the slots, never written</text>
+  <rect class="box" x="40" y="578" width="250" height="60" rx="8"/>
+  <text class="name" x="165.0" y="602" text-anchor="middle">Relay</text>
+  <text class="sub" x="165.0" y="622" text-anchor="middle">account events</text>
+  <rect class="box" x="310" y="578" width="250" height="60" rx="8"/>
+  <text class="name" x="435.0" y="602" text-anchor="middle">PLC directory</text>
+  <text class="sub" x="435.0" y="622" text-anchor="middle">identity changes</text>
+  <rect class="box" x="40" y="654" width="250" height="60" rx="8"/>
+  <text class="name" x="165.0" y="678" text-anchor="middle">Labeler</text>
+  <text class="sub" x="165.0" y="698" text-anchor="middle">moderation labels</text>
+  <rect class="box" x="310" y="654" width="250" height="60" rx="8"/>
+  <text class="name" x="435.0" y="678" text-anchor="middle">Bluesky AppView</text>
+  <text class="sub" x="435.0" y="698" text-anchor="middle">profiles and counts</text>
+</svg>
