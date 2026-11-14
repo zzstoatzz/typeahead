@@ -9,8 +9,7 @@
 //!   sweep that brings stored actors in line is owed until it has finished,
 //!   across restarts), and between commits does the store's housekeeping:
 //!   stepped maintenance, domain sweeps, tombstone pruning, the label-expiry
-//!   pass, change-log trimming, the first-check pass and the health
-//!   snapshot. For
+//!   pass, change-log trimming and the health snapshot. For
 //!   `startup_seconds` after it opens the store it leaves out everything in
 //!   that list that scans a range, which is all of it but the maintenance
 //!   and the sweeps.
@@ -116,23 +115,9 @@ pub const Options = struct {
     retain_without_consumer: u64 = 1_000_000,
     /// Entries kept at most: a consumer further behind is told to resync.
     retain_at_most: u64 = 20_000_000,
-    /// The first-check pass: once in the life of a store, a refresh is
-    /// queued for every actor no profile source has answered for
-    /// (`Store.firstCheck`), at most `first_check_per_hour` of them. 0 turns
-    /// it off, which is the default: the role turns it on. A step examines
-    /// up to `first_check_scan` records, so the whole actor range is read
-    /// at no more than `first_check_scan * 3600 / first_check_seconds` an
-    /// hour, and queues nothing while `first_check_backlog` refresh entries
-    /// are due. `first_check_stamp` is the check time it looks for.
-    first_check_per_hour: u64 = 0,
-    first_check_stamp: u64 = 0,
-    first_check_seconds: u64 = 5,
-    first_check_scan: usize = 5000,
-    first_check_backlog: usize = 500,
     health_seconds: u64 = 60,
     /// How long after it opens the store the owner only commits and
-    /// maintains: pruning, the expiry pass, trimming, the first-check pass
-    /// and the health counts all wait this long, so a restart reaches its first
+    /// maintains: pruning, the expiry pass, trimming and the health counts all wait this long, so a restart reaches its first
     /// commits without a range scan in front of them. 0, the default,
     /// starts them on the first turn: the role sets it.
     startup_seconds: u64 = 0,
@@ -238,7 +223,6 @@ pub const Health = struct {
     refresh_due: u64 = 0,
     walks: std.EnumArray(change.WalkPool, Walk) = .initFill(.{}),
     tombstones: u64 = 0,
-    first_check: FirstCheck = .{},
     /// True when a count above stopped at `count_cap`.
     counts_capped: bool = false,
     maintenance: ?maintain.Stats = null,
@@ -246,23 +230,6 @@ pub const Health = struct {
 
     pub fn plc(self: *const Health) ?[]const u8 {
         return if (self.plc_cursor_len == 0) null else self.plc_cursor[0..self.plc_cursor_len];
-    }
-};
-
-/// Where the first-check pass stands.
-pub const FirstCheck = struct {
-    /// The check time the pass stored was made for.
-    stamp: u64 = 0,
-    started_at: u64 = 0,
-    /// 0 until the pass has reached the end of the actor range.
-    finished_at: u64 = 0,
-    examined: u64 = 0,
-    queued: u64 = 0,
-    did: [max_walk_did]u8 = undefined,
-    did_len: usize = 0,
-
-    pub fn position(self: *const FirstCheck) []const u8 {
-        return self.did[0..self.did_len];
     }
 };
 
@@ -324,12 +291,6 @@ pub const Owner = struct {
     next_prune: u64 = 0,
     next_expiry: u64 = 0,
     next_trim: u64 = 0,
-    next_first_check: u64 = 0,
-    first_check_finished: bool = false,
-    /// When the pass last took stock of what its rate allows, and what it
-    /// is owed since, in actors times 3600.
-    first_check_at: u64 = 0,
-    first_check_owed: u64 = 0,
     next_health: u64 = 0,
 
     health_lock: Io.Mutex = .init,
@@ -351,8 +312,6 @@ pub const Owner = struct {
         self.next_prune = first;
         self.next_expiry = first;
         self.next_trim = first;
-        self.next_first_check = first;
-        self.first_check_at = at;
         self.next_health = first;
         errdefer {
             self.dropSweeps();
@@ -575,10 +534,6 @@ pub const Owner = struct {
         if (at >= self.next_trim) {
             try self.trim();
             self.next_trim = at + self.options.trim_seconds;
-        }
-        if (self.options.first_check_per_hour > 0 and !self.first_check_finished and at >= self.next_first_check) {
-            try self.firstCheckStep(at);
-            self.next_first_check = at + self.options.first_check_seconds;
         }
         if (at >= self.next_health) {
             try self.refreshHealth(at);
@@ -854,23 +809,6 @@ pub const Owner = struct {
         _ = self.counters.hidden_refreshed.fetchAdd(changed, .monotonic);
     }
 
-    fn firstCheckStep(self: *Owner, at: u64) !void {
-        const o = &self.options;
-        // What the hourly rate allows since the last step, and never more
-        // than a minute of it, so a pass held back does not then burst.
-        self.first_check_owed = @min(self.first_check_owed +| o.first_check_per_hour *| (at -| self.first_check_at), o.first_check_per_hour *| 60);
-        self.first_check_at = at;
-        const limit = self.first_check_owed / 3600;
-        if (limit == 0) return;
-        const step = try self.store.firstCheck(at, .{ .stamp = o.first_check_stamp, .limit = limit, .scan = o.first_check_scan, .backlog_limit = o.first_check_backlog });
-        self.first_check_owed -= step.queued * 3600;
-        if (!step.finished) return;
-        self.first_check_finished = true;
-        _ = self.scratch.reset(.retain_capacity);
-        const state = try store_mod.read.firstCheckState(self.store.db(), self.scratch.allocator());
-        log.info("first-check pass finished at {d}: {d} actors examined, {d} checked at {d} and never fetched queued for a refresh", .{ state.finished_at, state.examined, state.queued, state.stamp });
-    }
-
     /// The position below which the change log may be dropped.
     fn trimTarget(self: *Owner) u64 {
         const next = self.store.next_change;
@@ -899,8 +837,7 @@ pub const Owner = struct {
     }
 
     /// What the snapshot takes from point reads and the engine's own
-    /// counters: cursors, walks, where the first-check pass stands, table
-    /// statistics.
+    /// counters: cursors, walks, table statistics.
     fn readState(self: *Owner, fresh: *Health) !void {
         _ = self.scratch.reset(.retain_capacity);
         fresh.cursors = try self.store.cursors(self.scratch.allocator());
@@ -926,10 +863,6 @@ pub const Owner = struct {
             }
             fresh.walks.set(pool, walk);
         }
-        const first_check = try store_mod.read.firstCheckState(self.store.db(), self.scratch.allocator());
-        fresh.first_check = .{ .stamp = first_check.stamp, .started_at = first_check.started_at, .finished_at = first_check.finished_at, .examined = first_check.examined, .queued = first_check.queued };
-        fresh.first_check.did_len = @min(first_check.position.len, max_walk_did);
-        @memcpy(fresh.first_check.did[0..fresh.first_check.did_len], first_check.position[0..fresh.first_check.did_len]);
         fresh.maintenance = self.store.stats();
     }
 

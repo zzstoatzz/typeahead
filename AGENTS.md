@@ -174,8 +174,8 @@ regression is pinned). Extend it, don't prune it.
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
   `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
 - The system before the store slots (a separate ingester, Turso, a twice-daily index
-  refresh) is gone: apps, data, code and recipes. What still carries its shape is
-  listed in [teardown](docs/teardown.md).
+  refresh) is gone: apps, data, code and recipes. What was removed is listed in
+  [teardown](docs/history/teardown.md).
 
 ## conventions
 

@@ -183,9 +183,6 @@ fn heartbeat(owner: *Owner) void {
             }
         }
     }
-    span.setAttribute("first_check_examined", health.first_check.examined);
-    span.setAttribute("first_check_queued", health.first_check.queued);
-    span.setAttribute("first_check_finished_at", health.first_check.finished_at);
     span.setAttribute("tombstones", health.tombstones);
     span.setAttribute("commits", c.commits.load(.monotonic));
     span.setAttribute("changes_applied", c.changes_applied.load(.monotonic));
@@ -414,8 +411,6 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
     const owner = Owner.open(allocator, io, Io.Dir.cwd(), config.store_dir, .{
         .on_fatal = exitOnStoreFailure,
         .on_heartbeat = heartbeat,
-        .first_check_per_hour = config.first_check_per_hour,
-        .first_check_stamp = config.first_check_stamp,
         .startup_seconds = options.startup_seconds,
     }) catch |err| {
         log.err("store open failed: {s}", .{@errorName(err)});

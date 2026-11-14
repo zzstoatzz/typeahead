@@ -27,8 +27,6 @@
 //! | `ENRICH_HANDLE_BACKLOG`  | no       | such a handle queues no identity work while this many identity entries are due, default 100; `0` queues none |
 //! | `ENRICH_APPVIEW_URL`     | no       | the appview asked for profiles, default `https://public.api.bsky.app` |
 //! | `ENRICH_BLACKSKY_URL`    | no       | the appview asked about accounts Bluesky took down, default `https://api.blacksky.community` |
-//! | `ENRICH_FIRST_CHECK_PER_HOUR` | no  | actors the first-check pass queues an hour at most, default 15000; `0` turns the pass off |
-//! | `ENRICH_FIRST_CHECK_STAMP` | no     | the check time the pass looks for, Unix seconds, default 0: actors a bundle load left unchecked. On a store whose load stamped every actor, the load time (`profile_checked_at` of any actor not refreshed since) |
 //! | `CORPUS_SCAN_SECONDS`    | no       | seconds between corpus counts, default 3600; `0` turns them off. The first is taken 300 s after the start |
 //! | `CONTROL_URL`            | no       | the Worker's origin, `https://…`; with `SLOT_CONTROL_SECRET` it turns the control loop on: this slot pulls moderation policy and indexing requests from `/slot/control/*` there (`control.zig`). Unset, or `STORE_OFFLINE`, the loop is off and policy is whatever the store holds |
 //! | `SLOT_CONTROL_SECRET`    | no       | bearer secret for those endpoints, at least 32 bytes, the same value the Worker holds. It reads and can change nothing; never the Worker's admin secret |
@@ -56,10 +54,6 @@ pub const Config = struct {
     /// Null when enrichment is off.
     enrich: ?enrich.Options = null,
     corpus_scan_seconds: u64 = 3600,
-    /// Actors the first-check pass queues an hour; 0 when it is off, as it
-    /// is whenever enrichment is. See `owner.Options.first_check_per_hour`.
-    first_check_per_hour: u64 = 0,
-    first_check_stamp: u64 = 0,
     control: Control = .off,
 };
 
@@ -69,8 +63,6 @@ pub const Control = union(enum) {
     misconfigured: []const u8,
     on: control.Options,
 };
-
-pub const first_check_per_hour = 15_000;
 
 pub const Index = struct {
     admin_url: []const u8,
@@ -128,8 +120,6 @@ pub fn load(getenv: Getenv) Error!Config {
     const enrich_off = if (getenv("ENRICH")) |text| std.mem.eql(u8, text, "0") else false;
     if (!config.offline and !enrich_off) {
         config.enrich = try enrichment(getenv);
-        config.first_check_per_hour = try whole(getenv, "ENRICH_FIRST_CHECK_PER_HOUR", first_check_per_hour);
-        config.first_check_stamp = try whole(getenv, "ENRICH_FIRST_CHECK_STAMP", 0);
     }
     if (getenv("CORPUS_SCAN_SECONDS")) |text| config.corpus_scan_seconds = std.fmt.parseInt(u64, text, 10) catch return error.InvalidCorpusScan;
     if (!config.offline) config.control = controlLoop(getenv);
@@ -286,14 +276,6 @@ test "enrichment is on with its defaults unless the role is offline or told othe
     try testing.expect((try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).enrich == null);
     try testing.expect((try load(fakeEnv(&.{ base, .{ "ENRICH", "0" } }))).enrich == null);
 
-    try testing.expectEqual(@as(u64, 15_000), (try load(fakeEnv(&.{base}))).first_check_per_hour);
-    try testing.expectEqual(@as(u64, 0), (try load(fakeEnv(&.{base}))).first_check_stamp);
-    try testing.expectEqual(@as(u64, 0), (try load(fakeEnv(&.{ base, .{ "ENRICH_FIRST_CHECK_PER_HOUR", "0" } }))).first_check_per_hour);
-    try testing.expectEqual(@as(u64, 0), (try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).first_check_per_hour);
-    try testing.expectEqual(@as(u64, 0), (try load(fakeEnv(&.{ base, .{ "ENRICH", "0" }, .{ "ENRICH_FIRST_CHECK_STAMP", "1794000000" } }))).first_check_per_hour);
-    const stamped = try load(fakeEnv(&.{ base, .{ "ENRICH_FIRST_CHECK_PER_HOUR", "40000" }, .{ "ENRICH_FIRST_CHECK_STAMP", "1794000000" } }));
-    try testing.expectEqual(@as(u64, 40_000), stamped.first_check_per_hour);
-    try testing.expectEqual(@as(u64, 1_794_000_000), stamped.first_check_stamp);
     const set = try load(fakeEnv(&.{
         base,                                                   .{ "ENRICH_REQUESTS_PER_SECOND", "0.25" }, .{ "ENRICH_JITTER", "0.5" },
         .{ "ENRICH_WALK_PER_HOUR", "800" },                     .{ "ENRICH_SWEEP_PER_HOUR", "0" },         .{ "ENRICH_LEASE_SECONDS", "600" },
@@ -364,7 +346,6 @@ test "enrichment settings that could not pace a loop are refused" {
         .{ "ENRICH_REQUESTS_PER_SECOND", "50" },             .{ "ENRICH_JITTER", "2" },                     .{ "ENRICH_WALK_PER_HOUR", "-5" },
         .{ "ENRICH_LEASE_SECONDS", "5" },                    .{ "ENRICH_BACKOFF_SECONDS", "0" },            .{ "ENRICH_BACKOFF_MAX_SECONDS", "10" },
         .{ "ENRICH_APPVIEW_URL", "http://appview.example" }, .{ "ENRICH_HANDLE_BACKLOG", "many" },          .{ "ENRICH_HANDLE_SETTLE_SECONDS", "-1" },
-        .{ "ENRICH_FIRST_CHECK_PER_HOUR", "fast" },          .{ "ENRICH_FIRST_CHECK_STAMP", "2026-11-11" },
     }) |pair| {
         const env = struct {
             var name: []const u8 = "";

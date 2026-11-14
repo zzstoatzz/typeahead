@@ -4,8 +4,6 @@
 - [Operating](operating.md): upgrade a slot, flip the route, roll back,
   moderation, index requests, statistics and what each alert means.
 - [Development](development.md): local setup, tests and deploy commands.
-- [Teardown](teardown.md): what is left over from the old system and has not
-  been deleted yet.
 - [Costs](../COSTS.md): what the running resources are and what they cost.
 - [Repository instructions](../AGENTS.md): rules for changing the system.
 

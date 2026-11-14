@@ -555,7 +555,6 @@ under `store` and `queues` are refreshed once a minute.
 | `enrichment` | the profile refresh loop: pacing, completed, retried, not found, rate-limited, and any pause in force |
 | `control` | the policy revision held, when the Worker last confirmed it, the last index request taken, failures by kind, and `age_seconds` |
 | `corpus` | the last count of accounts: live, with handles, with avatars, hidden |
-| `first_check` | a one-time pass that queues a first profile fetch for accounts no source has answered for; done when `finished_at` is set |
 
 For the first 30 seconds after the store opens, the counts read zero and
 `/store/*` answers 503. The account count first appears 300 seconds in.

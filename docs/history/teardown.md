@@ -2,8 +2,7 @@
 
 The system before the store slots had a separate ingester, a Turso database,
 a twice-daily index refresh and two Turso-fed search slots. Its apps, data,
-flows, credentials and code are removed. This page lists what was removed
-and what in the repository still carries the old system's shape.
+flows, credentials and code are removed. This page lists what was removed.
 
 ## Removed
 
@@ -22,20 +21,14 @@ and what in the repository still carries the old system's shape.
   Worker, their work pools and their credential blocks.
 - On HeavyPad: the typeahead worker and exporter units, and every
   `~/typeahead-*` directory.
+- Fly apps `typeahead-shadow-a` and `typeahead-shadow-b`, replaced by
+  `typeahead-slot-a` and `typeahead-slot-b` on volumes restored from a
+  snapshot.
 - The Logfire alerts for the ingester and the native engine.
 - Every remote branch except `main`.
 - In this repository: the Worker's Turso client, modes and retired endpoints'
   handlers; the ingester role; the refresh controller; the R2 bundle
   bootstrap; the comparison tooling and experiments; the finished one-time
-  passes (profile fill, handle repair); managed-slot support in the route
+  passes (profile fill, handle repair, first check); managed-slot support in the route
   tool; the Turso poller the engine's tests ran through; and the model of the
   old SQL the store was tested against.
-
-## Still shaped by the old system
-
-- **The first-check pass** (`first_check` in the store's `/health`) exists
-  because the stores were first loaded from a search bundle, which left
-  accounts no profile source had answered for. It is still running on both
-  slots. When `finished_at` is set on both, unset the
-  `ENRICH_FIRST_CHECK_STAMP` secret (`fly secrets unset --stage`) and remove
-  the pass from the store.

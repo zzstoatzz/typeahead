@@ -192,13 +192,6 @@ pub fn walkState(db: *Db, arena: std.mem.Allocator, which: keys.Cursor) !record.
     return record.WalkState.decode(try arena.dupe(u8, borrowed));
 }
 
-/// Where the first-check pass stands; the default before its first step.
-pub fn firstCheckState(db: *Db, arena: std.mem.Allocator) !record.FirstCheckState {
-    var buf: keys.Buf = undefined;
-    const borrowed = try db.get(keys.cursor(&buf, .first_check)) orelse return .{};
-    return record.FirstCheckState.decode(try arena.dupe(u8, borrowed));
-}
-
 pub const LabelRow = struct {
     source: []const u8,
     value: []const u8,
