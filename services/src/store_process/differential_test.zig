@@ -1090,7 +1090,7 @@ test "divergence hidden_recomputed_on_every_write: an override set before its ac
 
 test "every difference on the store's review list is a flag or an explained omission" {
     try testing.expectEqual(@as(usize, 9), std.meta.fieldNames(sql.Divergence).len);
-    try testing.expectEqual(@as(usize, 16), sql.unmodelled.len);
+    try testing.expectEqual(@as(usize, 15), sql.unmodelled.len);
     inline for (comptime std.meta.fieldNames(sql.Divergence)) |name| {
         try testing.expect(@field(sql.Divergence.store, name));
         try testing.expect(!@field(sql.Divergence.production, name));

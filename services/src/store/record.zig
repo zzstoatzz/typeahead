@@ -24,11 +24,9 @@ pub const label_format = 1;
 pub const queue_format = 1;
 pub const policy_format = 1;
 pub const walk_format = 1;
-pub const repair_format = 1;
 pub const first_check_format = 1;
 /// 1 was the pass that read the source in DID order, whose position was a
 /// DID; 2 reads it in stored order and keeps a row number.
-pub const profile_fill_format = 2;
 
 pub const Error = error{ CorruptRecord, UnsupportedRecordFormat };
 
@@ -331,44 +329,6 @@ pub const WalkState = struct {
     }
 };
 
-/// Where the one-time pass over the holders of a handle stands.
-pub const RepairState = struct {
-    /// 0 before the first step.
-    started_at: u64 = 0,
-    /// 0 until the pass has reached the end of the range.
-    finished_at: u64 = 0,
-    /// Holders the pass has looked at, and those it queued for identity
-    /// resolution; the rest were queued already.
-    examined: u64 = 0,
-    queued: u64 = 0,
-    /// The last DID examined.
-    position: []const u8 = "",
-
-    pub fn encode(self: RepairState, gpa: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
-        out.clearRetainingCapacity();
-        try out.append(gpa, repair_format);
-        try putInt(gpa, out, self.started_at);
-        try putInt(gpa, out, self.finished_at);
-        try putInt(gpa, out, self.examined);
-        try putInt(gpa, out, self.queued);
-        try putBytes(gpa, out, self.position);
-    }
-
-    pub fn decode(bytes: []const u8) Error!RepairState {
-        var in: Input = .{ .bytes = bytes };
-        if (try in.byte() != repair_format) return error.UnsupportedRecordFormat;
-        const state: RepairState = .{
-            .started_at = try in.int(),
-            .finished_at = try in.int(),
-            .examined = try in.int(),
-            .queued = try in.int(),
-            .position = try in.slice(),
-        };
-        try in.end();
-        return state;
-    }
-};
-
 /// Where the first-check pass over the actor range stands.
 pub const FirstCheckState = struct {
     /// The check time the pass looks for. A step asked for another one
@@ -404,50 +364,6 @@ pub const FirstCheckState = struct {
             .finished_at = try in.int(),
             .examined = try in.int(),
             .queued = try in.int(),
-            .position = try in.slice(),
-        };
-        try in.end();
-        return state;
-    }
-};
-
-/// Where the one-time copy of descriptions and banners from another store
-/// of profiles stands (`Store.profileFill`).
-pub const ProfileFillState = struct {
-    /// 0 before the first page.
-    started_at: u64 = 0,
-    /// 0 until the source has said its table ended.
-    finished_at: u64 = 0,
-    /// Pages applied, the rows they carried, and the actors that took a
-    /// description or a banner from one.
-    pages: u64 = 0,
-    rows: u64 = 0,
-    filled: u64 = 0,
-    /// The last DID the source read: where the next page is asked from.
-    position: []const u8 = "",
-
-    pub fn encode(self: ProfileFillState, gpa: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
-        out.clearRetainingCapacity();
-        try out.append(gpa, profile_fill_format);
-        try putInt(gpa, out, self.started_at);
-        try putInt(gpa, out, self.finished_at);
-        try putInt(gpa, out, self.pages);
-        try putInt(gpa, out, self.rows);
-        try putInt(gpa, out, self.filled);
-        try putBytes(gpa, out, self.position);
-    }
-
-    pub fn decode(bytes: []const u8) Error!ProfileFillState {
-        var in: Input = .{ .bytes = bytes };
-        const format = try in.byte();
-        if (format == 1) return .{};
-        if (format != profile_fill_format) return error.UnsupportedRecordFormat;
-        const state: ProfileFillState = .{
-            .started_at = try in.int(),
-            .finished_at = try in.int(),
-            .pages = try in.int(),
-            .rows = try in.int(),
-            .filled = try in.int(),
             .position = try in.slice(),
         };
         try in.end();
@@ -692,25 +608,11 @@ test "queue state, stored labels and policy entries round trip" {
     }
     try testing.expectError(error.UnsupportedRecordFormat, PolicyEntry.decode(&.{ policy_format + 1, 0, 0, 0 }));
 
-    const repair: RepairState = .{ .started_at = 1_794_000_000, .finished_at = 1_794_000_900, .examined = 70_000, .queued = 69_000, .position = "did:plc:abc" };
-    try repair.encode(gpa, &out);
-    try testing.expectEqualDeep(repair, try RepairState.decode(out.items));
-    try testing.expectError(error.CorruptRecord, RepairState.decode(out.items[0 .. out.items.len - 1]));
-    try testing.expectError(error.UnsupportedRecordFormat, RepairState.decode(&.{ repair_format + 1, 0, 0, 0, 0, 0 }));
-
     const first_check: FirstCheckState = .{ .stamp = 1_793_990_000, .started_at = 1_794_000_000, .finished_at = 1_794_013_200, .examined = 13_200_000, .queued = 70_000, .position = "did:plc:abc" };
     try first_check.encode(gpa, &out);
     try testing.expectEqualDeep(first_check, try FirstCheckState.decode(out.items));
     try testing.expectError(error.CorruptRecord, FirstCheckState.decode(out.items[0 .. out.items.len - 1]));
     try testing.expectError(error.UnsupportedRecordFormat, FirstCheckState.decode(&.{ first_check_format + 1, 0, 0, 0, 0, 0, 0 }));
-
-    const profile_fill: ProfileFillState = .{ .started_at = 1_794_500_000, .finished_at = 1_794_526_400, .pages = 26_400, .rows = 1_000_000, .filled = 900_000, .position = "1000000" };
-    try profile_fill.encode(gpa, &out);
-    try testing.expectEqualDeep(profile_fill, try ProfileFillState.decode(out.items));
-    // what the DID-ordered pass stored is a position this one cannot use
-    try testing.expectEqualDeep(ProfileFillState{}, try ProfileFillState.decode(&.{ 1, 9, 9, 9 }));
-    try testing.expectError(error.CorruptRecord, ProfileFillState.decode(out.items[0 .. out.items.len - 1]));
-    try testing.expectError(error.UnsupportedRecordFormat, ProfileFillState.decode(&.{ profile_fill_format + 1, 0, 0, 0, 0, 0, 0 }));
 
     for ([_]u64{ 0, 1, 1 << 40, std.math.maxInt(u64) }) |value| try testing.expectEqual(value, try decodeU64(&encodeU64(value)));
     try testing.expectError(error.CorruptRecord, decodeU64("1234567"));

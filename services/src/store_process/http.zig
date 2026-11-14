@@ -35,7 +35,6 @@ const owner_mod = @import("owner.zig");
 const corpus_mod = @import("corpus.zig");
 const enrich = @import("enrich.zig");
 const control = @import("control.zig");
-const profile_fill = @import("profile_fill.zig");
 const Bridge = @import("../bridge/root.zig").Bridge;
 const Owner = owner_mod.Owner;
 const Actor = store_mod.Actor;
@@ -182,9 +181,7 @@ pub const HealthBody = struct {
     /// count of live actors plus `live_delta` since that count.
     actors: struct { created: u64, gone: u64, reactivated: u64, pruned: u64, live_delta: i64 },
     housekeeping: struct { hidden_refreshed: u64, expiry_passes: u64, domain_sweeps: u64, changes_trimmed: u64 },
-    handle_repair: HandleRepairBody,
     first_check: FirstCheckBody,
-    profile_fill: ProfileFillBody,
     identity: struct { leased: u64, lease_failed: u64, verified: u64, unverified: u64, no_handle: u64, did_failed: u64, retried: u64, commit_failed: u64 },
     plc: struct { pages: u64, operations: u64, failed: u64 },
     labels: struct { frames: u64, adopted: u64, malformed: u64, ignored: u64, commits: u64, commit_failed: u64, cursor: i64, newest_cts: i64 },
@@ -287,89 +284,6 @@ pub fn controlBody(loop: *control.Controller) ControlBody {
     };
 }
 
-/// The pass, made once in the life of a store, that copies the descriptions
-/// and banners Turso holds into the actors here that have none
-/// (`profile_fill.zig`). It has run when `finished_at` is set, and never
-/// runs again for this store.
-pub const ProfileFillBody = struct {
-    /// `on` while this process runs the pass, `off` when it was not asked
-    /// for, or `misconfigured` when it was and cannot run: `problem` says
-    /// why. The progress below is the store's, whatever the state.
-    state: []const u8,
-    problem: ?[]const u8 = null,
-    /// True once the pass has reached the end of the Worker's table. The
-    /// counts below are as of `store.taken_at`; this is as of now.
-    finished: bool,
-    started_at: u64,
-    finished_at: u64,
-    /// Pages applied, the rows they carried (the Worker's with a
-    /// description or a banner), and the actors that took a field.
-    pages: u64,
-    rows: u64,
-    filled: u64,
-    /// The last DID the Worker read: where the next page is asked from.
-    /// The last row of the Worker's table the pass has read.
-    position: []const u8,
-    /// Rows of Turso's table one page reads, seconds between pages, and
-    /// the bridge lag above which no page is asked for.
-    page_size: ?usize = null,
-    step_seconds: ?u64 = null,
-    lag_limit: ?u64 = null,
-    /// The bridge's lag at the last step, the steps skipped for it since
-    /// the start, and when the last was.
-    bridge_lag: ?u64 = null,
-    deferred: ?u64 = null,
-    deferred_at: ?u64 = null,
-    /// Pages this process applied, and when the last was.
-    process_pages: ?u64 = null,
-    last_page_at: ?u64 = null,
-    failures: ?struct {
-        total: u64,
-        no_response: u64,
-        unauthorized: u64,
-        malformed: u64,
-        /// `none` when nothing has failed since the start.
-        last: []const u8,
-        last_status: u16,
-        last_at: u64,
-    } = null,
-};
-
-pub fn profileFillBody(ctx: *const Context, arena: Allocator, stored: owner_mod.ProfileFill) !ProfileFillBody {
-    var body: ProfileFillBody = .{
-        .state = if (ctx.profile_fill != null) "on" else if (ctx.profile_fill_problem != null) "misconfigured" else "off",
-        .problem = ctx.profile_fill_problem,
-        .finished = stored.finished_at != 0,
-        .started_at = stored.started_at,
-        .finished_at = stored.finished_at,
-        .pages = stored.pages,
-        .rows = stored.rows,
-        .filled = stored.filled,
-        .position = try arena.dupe(u8, stored.position()),
-    };
-    const loop = ctx.profile_fill orelse return body;
-    const r = loop.report();
-    body.finished = body.finished or r.finished;
-    body.page_size = r.page_size;
-    body.step_seconds = r.step_seconds;
-    body.lag_limit = r.lag_limit;
-    body.bridge_lag = r.bridge_lag;
-    body.deferred = r.deferred;
-    body.deferred_at = r.deferred_at;
-    body.process_pages = r.pages;
-    body.last_page_at = r.last_page_at;
-    body.failures = .{
-        .total = r.failures,
-        .no_response = r.unreachable_worker,
-        .unauthorized = r.unauthorized,
-        .malformed = r.malformed,
-        .last = @tagName(r.last_failure),
-        .last_status = r.last_failure_status,
-        .last_at = r.last_failure_at,
-    };
-    return body;
-}
-
 /// The pass, made once in the life of a store, that queues a refresh for
 /// every actor no profile source has answered for. It has run when
 /// `finished_at` is set.
@@ -393,29 +307,6 @@ pub const FirstCheckBody = struct {
     /// Actor records looked at so far, and the actors queued.
     examined: u64,
     queued: u64,
-    position_did: []const u8,
-};
-
-/// The pass, made once in the life of a store, that sends every live actor
-/// whose handle is `handle.invalid` back through identity resolution. It
-/// has run when `finished_at` is set; `remaining` is then 0.
-pub const HandleRepairBody = struct {
-    /// False when this process does not run the pass.
-    enabled: bool,
-    /// Holders one step looks at, seconds between steps, and the count of
-    /// due identity entries at which a step queues nothing.
-    per_step: u64,
-    step_seconds: u64,
-    backlog_limit: u64,
-    started_at: u64,
-    finished_at: u64,
-    /// Holders looked at so far, and those of them queued for resolution;
-    /// the rest already had an identity queue entry.
-    examined: u64,
-    queued: u64,
-    /// Holders not looked at yet, as of `store.taken_at`.
-    remaining: u64,
-    /// The last DID looked at.
     position_did: []const u8,
 };
 
@@ -634,9 +525,6 @@ pub const Context = struct {
     control: ?*control.Controller = null,
     /// Why the control loop is not running although it was asked for.
     control_problem: ?[]const u8 = null,
-    profile_fill: ?*profile_fill.Filler = null,
-    /// Why the profile fill is not running although it was asked for.
-    profile_fill_problem: ?[]const u8 = null,
 };
 
 pub const Response = struct {
@@ -733,18 +621,6 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .domain_sweeps = load(&c.domain_sweeps),
             .changes_trimmed = load(&c.changes_trimmed),
         },
-        .handle_repair = .{
-            .enabled = owner.options.repair_limit > 0,
-            .per_step = owner.options.repair_limit,
-            .step_seconds = owner.options.repair_seconds,
-            .backlog_limit = owner.options.repair_backlog,
-            .started_at = health.repair.started_at,
-            .finished_at = health.repair.finished_at,
-            .examined = health.repair.examined,
-            .queued = health.repair.queued,
-            .remaining = health.repair.remaining,
-            .position_did = try arena.dupe(u8, health.repair.position()),
-        },
         .first_check = .{
             .enabled = owner.options.first_check_per_hour > 0,
             .per_hour = owner.options.first_check_per_hour,
@@ -759,7 +635,6 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .queued = health.first_check.queued,
             .position_did = try arena.dupe(u8, health.first_check.position()),
         },
-        .profile_fill = try profileFillBody(ctx, arena, health.profile_fill),
         .identity = .{
             .leased = load(&identity.stats.leased),
             .lease_failed = load(&identity.stats.lease_failed),

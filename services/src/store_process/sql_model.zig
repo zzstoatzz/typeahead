@@ -95,7 +95,6 @@ pub const unmodelled = [_][2][]const u8{
     .{ "refresh is requested only for actors with a handle", "same in SQL: both of the cron's selectors and the backfill's require a handle" },
     .{ "zero counts and score keep the old value", "same in SQL: COALESCE(NULLIF(?, 0), column)" },
     .{ "labeler and PLC cursors never move backwards", "same in SQL: MAX() for the labeler, a string comparison for PLC" },
-    .{ "handle.invalid records are sent back through identity resolution once", "a repair of what an earlier build wrote, off in this test's owner; the owner's and the store's tests cover it" },
     .{ "handles over 253 bytes are rejected", "same bound as the Worker's schema, and the resolver's handle syntax check stops them first" },
 };
 

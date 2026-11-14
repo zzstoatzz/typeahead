@@ -71,7 +71,7 @@ pub const Buf = [max_key]u8;
 pub const Error = error{InvalidKeyPart};
 
 pub const Subject = enum(u8) { account = 'a', profile = 'p' };
-pub const Cursor = enum { relay, labeler, plc, bridge, next_change, change_floor, format, walk_quality, walk_rest, handle_repair, first_check, control_policy, control_requests, control_generation, profile_fill };
+pub const Cursor = enum { relay, labeler, plc, bridge, next_change, change_floor, format, walk_quality, walk_rest, first_check, control_policy, control_requests, control_generation };
 
 fn checked(part: []const u8, max: usize) Error![]const u8 {
     if (part.len == 0 or part.len > max or std.mem.indexOfScalar(u8, part, 0) != null) return error.InvalidKeyPart;

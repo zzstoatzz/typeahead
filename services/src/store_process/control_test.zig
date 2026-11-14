@@ -8,7 +8,6 @@ const store_harness = @import("../store/testing/harness.zig");
 const control = @import("control.zig");
 const http = @import("http.zig");
 const index_bridge = @import("index_bridge.zig");
-const profile_fill = @import("profile_fill.zig");
 const intake_mod = @import("intake.zig");
 const owner_mod = @import("owner.zig");
 const harness = @import("testing.zig");
@@ -1226,9 +1225,6 @@ pub const Stub = struct {
                 request.respond("", .{ .status = .not_modified, .keep_alive = false }) catch {};
             } else if (!std.mem.eql(u8, authorization, bearer)) {
                 request.respond("{\"error\":\"unauthorized\"}", .{ .status = .unauthorized, .keep_alive = false, .extra_headers = json }) catch {};
-            } else if (std.mem.startsWith(u8, target, profile_fill.path)) {
-                const body = if (std.mem.indexOf(u8, target, "after=&") != null) "{\"rows\":[{\"did\":\"" ++ alice ++ "\",\"description\":\"from turso\",\"banner\":\"\"}],\"next\":\"7\"}" else "{\"rows\":[],\"next\":null}";
-                request.respond(body, .{ .keep_alive = false, .extra_headers = json }) catch {};
             } else if (std.mem.startsWith(u8, target, control.requests_path)) {
                 const body = if (std.mem.indexOf(u8, target, "after=0&") != null) "{\"generation\":1,\"requests\":[{\"seq\":4,\"did\":\"" ++ alice ++ "\"}],\"more\":false}" else "{\"generation\":1,\"requests\":[],\"more\":false}";
                 request.respond(body, .{ .keep_alive = false, .extra_headers = json }) catch {};

@@ -20,8 +20,6 @@ test {
     _ = @import("store_process/corpus.zig");
     _ = @import("store_process/control.zig");
     _ = @import("store_process/control_test.zig");
-    _ = @import("store_process/profile_fill.zig");
-    _ = @import("store_process/profile_fill_test.zig");
     _ = @import("store_process/role_test.zig");
     _ = @import("identity_reuse_test.zig");
 }

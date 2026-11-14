@@ -7,11 +7,10 @@
 //!   single store commit (each submission's cursor in the same commit as its
 //!   changes, and a mark for every domain whose block they change, so the
 //!   sweep that brings stored actors in line is owed until it has finished,
-//!   across restarts, and a page of the profile fill with the position it
-//!   moves), and between commits does the store's housekeeping: stepped
-//!   maintenance, domain sweeps, tombstone pruning, the label-expiry pass,
-//!   change-log trimming, the handle repair, the first-check pass and the
-//!   health snapshot. For
+//!   across restarts), and between commits does the store's housekeeping:
+//!   stepped maintenance, domain sweeps, tombstone pruning, the label-expiry
+//!   pass, change-log trimming, the first-check pass and the health
+//!   snapshot. For
 //!   `startup_seconds` after it opens the store it leaves out everything in
 //!   that list that scans a range, which is all of it but the maintenance
 //!   and the sweeps.
@@ -117,16 +116,6 @@ pub const Options = struct {
     retain_without_consumer: u64 = 1_000_000,
     /// Entries kept at most: a consumer further behind is told to resync.
     retain_at_most: u64 = 20_000_000,
-    /// The handle repair: a pass, made once in the life of a store, that
-    /// sends every live actor whose handle is `handle.invalid` back through
-    /// identity resolution, because an earlier build wrote that handle on
-    /// the appview's word. A step looks at up to `repair_limit`
-    /// holders, fewer when more than `repair_backlog` identity entries
-    /// would be due. 0 turns it off, which is the default: the role turns
-    /// it on.
-    repair_limit: usize = 0,
-    repair_seconds: u64 = 5,
-    repair_backlog: usize = 100,
     /// The first-check pass: once in the life of a store, a refresh is
     /// queued for every actor no profile source has answered for
     /// (`Store.firstCheck`), at most `first_check_per_hour` of them. 0 turns
@@ -142,8 +131,8 @@ pub const Options = struct {
     first_check_backlog: usize = 500,
     health_seconds: u64 = 60,
     /// How long after it opens the store the owner only commits and
-    /// maintains: pruning, the expiry pass, trimming, the handle repair, the
-    /// first-check pass and the health counts all wait this long, so a restart reaches its first
+    /// maintains: pruning, the expiry pass, trimming, the first-check pass
+    /// and the health counts all wait this long, so a restart reaches its first
     /// commits without a range scan in front of them. 0, the default,
     /// starts them on the first turn: the role sets it.
     startup_seconds: u64 = 0,
@@ -178,10 +167,6 @@ pub const Submission = struct {
     refresh_jobs: []const change.RefreshJob = &.{},
     /// What this submission's `refresh_walk` changes did.
     walked: change.WalkTally = .initFill(.{}),
-    /// A page of the profile fill (`Store.profileFill`), applied after the
-    /// changes in the same commit, and what it did.
-    fill: ?Store.FillPage = null,
-    filled: Store.Filled = .{},
     summary: Summary = .{},
     waited: bool = false,
     failed: bool = false,
@@ -240,9 +225,8 @@ pub const Consumer = struct {
 /// Refreshed by the owner, so reading it never waits on the store.
 pub const Health = struct {
     /// 0 from a start until the owner's first refresh. Until then the
-    /// queue counts, `repair.remaining` and `disk` are zero: opening the
-    /// store reads the cursors, the walks, the repair's position and the
-    /// table statistics, and counts nothing.
+    /// queue counts and `disk` are zero: opening the store reads the
+    /// cursors, the walks and the table statistics, and counts nothing.
     taken_at: u64 = 0,
     cursors: store_mod.read.Cursors = .{},
     plc_cursor: [change.max_cursor_bytes]u8 = undefined,
@@ -254,9 +238,7 @@ pub const Health = struct {
     refresh_due: u64 = 0,
     walks: std.EnumArray(change.WalkPool, Walk) = .initFill(.{}),
     tombstones: u64 = 0,
-    repair: Repair = .{},
     first_check: FirstCheck = .{},
-    profile_fill: ProfileFill = .{},
     /// True when a count above stopped at `count_cap`.
     counts_capped: bool = false,
     maintenance: ?maintain.Stats = null,
@@ -264,23 +246,6 @@ pub const Health = struct {
 
     pub fn plc(self: *const Health) ?[]const u8 {
         return if (self.plc_cursor_len == 0) null else self.plc_cursor[0..self.plc_cursor_len];
-    }
-};
-
-/// Where the handle repair stands.
-pub const Repair = struct {
-    started_at: u64 = 0,
-    /// 0 until the pass has reached the end.
-    finished_at: u64 = 0,
-    examined: u64 = 0,
-    queued: u64 = 0,
-    /// Holders of `handle.invalid` the pass has yet to look at.
-    remaining: u64 = 0,
-    did: [max_walk_did]u8 = undefined,
-    did_len: usize = 0,
-
-    pub fn position(self: *const Repair) []const u8 {
-        return self.did[0..self.did_len];
     }
 };
 
@@ -297,22 +262,6 @@ pub const FirstCheck = struct {
     did_len: usize = 0,
 
     pub fn position(self: *const FirstCheck) []const u8 {
-        return self.did[0..self.did_len];
-    }
-};
-
-/// Where the profile fill stands.
-pub const ProfileFill = struct {
-    started_at: u64 = 0,
-    /// 0 until the source has said its table ended.
-    finished_at: u64 = 0,
-    pages: u64 = 0,
-    rows: u64 = 0,
-    filled: u64 = 0,
-    did: [max_walk_did]u8 = undefined,
-    did_len: usize = 0,
-
-    pub fn position(self: *const ProfileFill) []const u8 {
         return self.did[0..self.did_len];
     }
 };
@@ -375,8 +324,6 @@ pub const Owner = struct {
     next_prune: u64 = 0,
     next_expiry: u64 = 0,
     next_trim: u64 = 0,
-    next_repair: u64 = 0,
-    repair_finished: bool = false,
     next_first_check: u64 = 0,
     first_check_finished: bool = false,
     /// When the pass last took stock of what its rate allows, and what it
@@ -404,7 +351,6 @@ pub const Owner = struct {
         self.next_prune = first;
         self.next_expiry = first;
         self.next_trim = first;
-        self.next_repair = first;
         self.next_first_check = first;
         self.first_check_at = at;
         self.next_health = first;
@@ -630,10 +576,6 @@ pub const Owner = struct {
             try self.trim();
             self.next_trim = at + self.options.trim_seconds;
         }
-        if (self.options.repair_limit > 0 and !self.repair_finished and at >= self.next_repair) {
-            try self.repairStep(at);
-            self.next_repair = at + self.options.repair_seconds;
-        }
         if (self.options.first_check_per_hour > 0 and !self.first_check_finished and at >= self.next_first_check) {
             try self.firstCheckStep(at);
             self.next_first_check = at + self.options.first_check_seconds;
@@ -668,7 +610,6 @@ pub const Owner = struct {
             submission.summary = .{};
             submission.jobs = &.{};
             submission.refresh_jobs = &.{};
-            submission.filled = .{};
             const jobs_before = batch.leased().len;
             const refresh_before = batch.refreshLeased().len;
             var walked_before: change.WalkTally = undefined;
@@ -699,10 +640,6 @@ pub const Owner = struct {
                     .domain_unblocked => |name| try self.noteDomain(batch, name),
                     else => {},
                 }
-            }
-            if (submission.fill) |page| {
-                submission.filled = try batch.profileFill(page);
-                submission.summary.changed += @intCast(submission.filled.filled);
             }
             if (submission.cursor) |update| try batch.setCursor(update);
             const leased = batch.leased()[jobs_before..];
@@ -917,15 +854,6 @@ pub const Owner = struct {
         _ = self.counters.hidden_refreshed.fetchAdd(changed, .monotonic);
     }
 
-    fn repairStep(self: *Owner, at: u64) !void {
-        const step = try self.store.reverifyHandle(at, handle_policy.invalid_handle, self.options.repair_limit, self.options.repair_backlog);
-        if (!step.finished) return;
-        self.repair_finished = true;
-        _ = self.scratch.reset(.retain_capacity);
-        const state = try store_mod.read.repairState(self.store.db(), self.scratch.allocator());
-        log.info("handle repair finished at {d}: {d} holders of {s} examined, {d} queued for identity resolution", .{ state.finished_at, state.examined, handle_policy.invalid_handle, state.queued });
-    }
-
     fn firstCheckStep(self: *Owner, at: u64) !void {
         const o = &self.options;
         // What the hourly rate allows since the last step, and never more
@@ -971,8 +899,8 @@ pub const Owner = struct {
     }
 
     /// What the snapshot takes from point reads and the engine's own
-    /// counters: cursors, walks, where the repair, the first-check pass and
-    /// the profile fill stand, table statistics.
+    /// counters: cursors, walks, where the first-check pass stands, table
+    /// statistics.
     fn readState(self: *Owner, fresh: *Health) !void {
         _ = self.scratch.reset(.retain_capacity);
         fresh.cursors = try self.store.cursors(self.scratch.allocator());
@@ -998,23 +926,15 @@ pub const Owner = struct {
             }
             fresh.walks.set(pool, walk);
         }
-        const repair = try store_mod.read.repairState(self.store.db(), self.scratch.allocator());
-        fresh.repair = .{ .started_at = repair.started_at, .finished_at = repair.finished_at, .examined = repair.examined, .queued = repair.queued };
-        fresh.repair.did_len = @min(repair.position.len, max_walk_did);
-        @memcpy(fresh.repair.did[0..fresh.repair.did_len], repair.position[0..fresh.repair.did_len]);
         const first_check = try store_mod.read.firstCheckState(self.store.db(), self.scratch.allocator());
         fresh.first_check = .{ .stamp = first_check.stamp, .started_at = first_check.started_at, .finished_at = first_check.finished_at, .examined = first_check.examined, .queued = first_check.queued };
         fresh.first_check.did_len = @min(first_check.position.len, max_walk_did);
         @memcpy(fresh.first_check.did[0..fresh.first_check.did_len], first_check.position[0..fresh.first_check.did_len]);
-        const fill = try store_mod.read.profileFillState(self.store.db(), self.scratch.allocator());
-        fresh.profile_fill = .{ .started_at = fill.started_at, .finished_at = fill.finished_at, .pages = fill.pages, .rows = fill.rows, .filled = fill.filled };
-        fresh.profile_fill.did_len = @min(fill.position.len, max_walk_did);
-        @memcpy(fresh.profile_fill.did[0..fresh.profile_fill.did_len], fill.position[0..fresh.profile_fill.did_len]);
         fresh.maintenance = self.store.stats();
     }
 
-    /// What the snapshot has to scan for: the size of each queue, the
-    /// holders the repair has left, and the files on disk.
+    /// What the snapshot has to scan for: the size of each queue and the
+    /// files on disk.
     fn countState(self: *Owner, fresh: *Health, at: u64) !void {
         var buf: keys.Buf = undefined;
         const identity_bounds = keys.Prefix.identity.bounds();
@@ -1026,20 +946,6 @@ pub const Owner = struct {
         const refresh_start = self.store.timedStart(&start_buf, .refresh);
         fresh.refresh_pending = try self.countRange(refresh_start, &refresh_bounds[1], &fresh.counts_capped);
         fresh.refresh_due = try self.countRange(refresh_start, keys.timedBound(&buf, .refresh, at + 1), &fresh.counts_capped);
-        if (fresh.repair.finished_at == 0) {
-            const repair = try store_mod.read.repairState(self.store.db(), self.scratch.allocator());
-            var end_buf: keys.Buf = undefined;
-            const prefix = try keys.handlePrefix(&buf, handle_policy.invalid_handle);
-            var start: std.ArrayList(u8) = .empty;
-            try start.appendSlice(self.scratch.allocator(), prefix);
-            if (repair.position.len > 0) {
-                try start.appendSlice(self.scratch.allocator(), repair.position);
-                try start.append(self.scratch.allocator(), 0);
-            }
-            @memcpy(end_buf[0..prefix.len], prefix);
-            end_buf[prefix.len - 1] = 1;
-            fresh.repair.remaining = try self.countRange(start.items, end_buf[0..prefix.len], &fresh.counts_capped);
-        }
         const tombstone_bounds = keys.Prefix.tombstone.bounds();
         fresh.tombstones = try self.countRange(self.store.timedStart(&start_buf, .tombstone), &tombstone_bounds[1], &fresh.counts_capped);
         fresh.disk = self.store.diskUsage() catch .{};

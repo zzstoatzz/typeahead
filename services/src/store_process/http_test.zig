@@ -228,34 +228,3 @@ test "health reports how far the first-check pass has gone" {
     try testing.expectEqual(@as(u64, 2), body.first_check.queued);
 }
 
-test "health reports how far the handle repair has gone" {
-    const f = try Fixture.create(.{ .health_seconds = 0, .repair_limit = 2, .repair_seconds = 5, .repair_backlog = 40 });
-    defer f.destroy();
-    _ = try f.commit(&.{
-        .{ .profile = .{ .did = "did:plc:a", .handle = "handle.invalid" } },
-        .{ .profile = .{ .did = "did:plc:b", .handle = "handle.invalid" } },
-        .{ .profile = .{ .did = "did:plc:c", .handle = "handle.invalid" } },
-    }, null);
-    var surface = try Surface.open(f);
-    defer surface.close();
-    var body = try std.json.parseFromSliceLeaky(http.HealthBody, f.arena.allocator(), (try surface.get("/health", null)).body, .{ .ignore_unknown_fields = true });
-    try testing.expect(body.handle_repair.enabled);
-    try testing.expectEqual(@as(u64, 2), body.handle_repair.per_step);
-    try testing.expectEqual(@as(u64, 5), body.handle_repair.step_seconds);
-    try testing.expectEqual(@as(u64, 40), body.handle_repair.backlog_limit);
-    try testing.expectEqual(f.now(), body.handle_repair.started_at);
-    try testing.expectEqual(@as(u64, 0), body.handle_repair.finished_at);
-    try testing.expectEqual(@as(u64, 2), body.handle_repair.examined);
-    try testing.expectEqual(@as(u64, 2), body.handle_repair.queued);
-    try testing.expectEqual(@as(u64, 1), body.handle_repair.remaining);
-    try testing.expectEqualStrings("did:plc:b", body.handle_repair.position_did);
-    try testing.expectEqual(@as(u64, 2), body.queues.identity_due);
-
-    f.advance(5);
-    _ = f.owner.turn(0);
-    body = try std.json.parseFromSliceLeaky(http.HealthBody, f.arena.allocator(), (try surface.get("/health", null)).body, .{ .ignore_unknown_fields = true });
-    try testing.expectEqual(f.now(), body.handle_repair.finished_at);
-    try testing.expectEqual(@as(u64, 3), body.handle_repair.examined);
-    try testing.expectEqual(@as(u64, 3), body.handle_repair.queued);
-    try testing.expectEqual(@as(u64, 0), body.handle_repair.remaining);
-}

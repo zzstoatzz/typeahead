@@ -192,25 +192,11 @@ pub fn walkState(db: *Db, arena: std.mem.Allocator, which: keys.Cursor) !record.
     return record.WalkState.decode(try arena.dupe(u8, borrowed));
 }
 
-/// Where the handle repair stands; the default before its first step.
-pub fn repairState(db: *Db, arena: std.mem.Allocator) !record.RepairState {
-    var buf: keys.Buf = undefined;
-    const borrowed = try db.get(keys.cursor(&buf, .handle_repair)) orelse return .{};
-    return record.RepairState.decode(try arena.dupe(u8, borrowed));
-}
-
 /// Where the first-check pass stands; the default before its first step.
 pub fn firstCheckState(db: *Db, arena: std.mem.Allocator) !record.FirstCheckState {
     var buf: keys.Buf = undefined;
     const borrowed = try db.get(keys.cursor(&buf, .first_check)) orelse return .{};
     return record.FirstCheckState.decode(try arena.dupe(u8, borrowed));
-}
-
-/// Where the profile fill stands; the default before its first page.
-pub fn profileFillState(db: *Db, arena: std.mem.Allocator) !record.ProfileFillState {
-    var buf: keys.Buf = undefined;
-    const borrowed = try db.get(keys.cursor(&buf, .profile_fill)) orelse return .{};
-    return record.ProfileFillState.decode(try arena.dupe(u8, borrowed));
 }
 
 pub const LabelRow = struct {

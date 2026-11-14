@@ -30,82 +30,24 @@
 //! | `ENRICH_BLACKSKY_URL`    | no       | the appview asked about accounts Bluesky took down, default `https://api.blacksky.community` |
 //! | `ENRICH_FIRST_CHECK_PER_HOUR` | no  | actors the first-check pass queues an hour at most, default 15000; `0` turns the pass off |
 //! | `ENRICH_FIRST_CHECK_STAMP` | no     | the check time the pass looks for, Unix seconds, default 0: actors a bundle load left unchecked. On a store whose load stamped every actor, the load time (`profile_checked_at` of any actor not refreshed since) |
-//! | `HANDLE_REPAIR`          | no       | `0` turns the one-time re-verification of `handle.invalid` records off; it is on unless `STORE_OFFLINE` |
 //! | `CORPUS_SCAN_SECONDS`    | no       | seconds between corpus counts, default 3600; `0` turns them off. The first is taken 300 s after the start |
 //! | `CONTROL_URL`            | no       | the Worker's origin, `https://…`; with `SLOT_CONTROL_SECRET` it turns the control loop on: this slot pulls moderation policy and indexing requests from `/slot/control/*` there (`control.zig`). Unset, or `STORE_OFFLINE`, the loop is off and policy is whatever the store holds |
 //! | `SLOT_CONTROL_SECRET`    | no       | bearer secret for those endpoints, at least 32 bytes, the same value the Worker holds. It reads and can change nothing; never the Worker's admin secret |
 //! | `CONTROL_POLL_SECONDS`   | no       | seconds between polls, 5 to 3600, default 30; each rest is stretched by up to 20 % |
 //! | `CONTROL_REQUESTS_PER_POLL` | no    | indexing requests taken in one poll at most, 1 to 500, default 20: 2,400 an hour at the default interval |
 //! | `CONTROL_REQUEST_BACKLOG` | no      | no indexing request is taken while this many identity queue entries are due, default 100; `0` takes none. The requests wait at the Worker |
-//! | `PROFILE_FILL`           | no       | `1` runs the profile fill (`profile_fill.zig`): once in the life of this store, the descriptions and banners Turso holds are copied into the actors that have none, pulled from the Worker's `/slot/control/profile-fill` with the control loop's URL and secret. Finished, it does nothing; unset it then |
-//! | `PROFILE_FILL_PAGE`      | no       | rows of Turso's table one page reads, 1 to 1000, default 500   |
-//! | `PROFILE_FILL_STEP_SECONDS` | no    | seconds between pages, 0 to 3600, default 1 (0 asks for the next page as soon as one commits): 13.2 million rows are 26,400 pages, 7 h 20 min |
-//! | `PROFILE_FILL_LAG_LIMIT` | no       | no page is asked for while the index bridge is more than this many change-log entries behind, default 50000 |
 //!
-//! The control loop and the profile fill are the settings whose mistake
-//! does not stop the role: one of the loop's two required variables without
-//! the other, a URL that is
-//! not `https://`, a short secret or a poll interval out of range leaves the
-//! loop off, logged at the start and reported as `control.state` in
-//! `/health`; the fill asked for without the loop, or with a number out of
-//! range, is left off and reported as `profile_fill.state`. A slot that will not start stops feeding its index, which
-//! takes search down; a slot without the loop serves with the policy it has.
-//!
-//! Enrichment pacing, with the defaults, for one replica. Two replicas run
-//! this loop against the same appview, so the appview sees twice each rate.
-//!
-//! - Requests are at least 2 s apart (0.5 a second) and each gap is stretched
-//!   by 0 to 20 %, 2.2 s on average: 1,636 requests an hour, 39,273 a day.
-//!   Two replicas: at most 1 request a second, 3,273 an hour on average. The
-//!   HeavyPad backfill this replaces paced itself at 2 a second.
-//! - A request carries 25 actors, so a replica refreshes at most 40,909
-//!   actors an hour, 981,818 a day. A DID the appview does not return costs
-//!   one more request (the takedown probe) and up to three after that, which
-//!   comes out of the same budget.
-//! - The quality walk queues 20,000 ranked actors an hour, 480,000 a day:
-//!   25 times the cron's 800. A pool of N ranked actors is swept every
-//!   N / 20,000 hours: 2.1 hours for the 41,355 counted on 2026-08-16, 50
-//!   hours for a million. `/health` reports the period for the pool the last
-//!   corpus scan counted.
-//! - The rest walk queues 10,000 an hour, 240,000 a day, and only while the
-//!   queue is keeping up, so it yields to everything else. A pool of N is
-//!   swept every N / 10,000 hours: 55 days if all 13.2 million actors were
-//!   in it. A step examines at most 8 records for each actor it may queue,
-//!   so a pass also takes at least a full read of the actor range at 80,000
-//!   records an hour: 165 hours for 13.2 million.
-//! - That leaves 10,909 actors an hour, 261,818 a day, for refreshes that
-//!   profile and identity writes queue. New accounts arrive at about 2,900
-//!   an hour.
-//! - The first-check pass runs once in the life of a store and queues the
-//!   actors no profile source has answered for: live, with a handle, holding
-//!   no score, no count and no creation time, and last checked at
-//!   `ENRICH_FIRST_CHECK_STAMP`. It queues at most 15,000 an hour, 600
-//!   requests of the 1,636, and nothing while 500 refresh entries are due,
-//!   so it takes what the quality walk and the writes leave (20,909 an hour)
-//!   and the rest walk, which stops when a lease comes back full, waits for
-//!   it. N such actors take N / 15,000 hours: 36 minutes for 9,000, 4.7
-//!   hours for 70,000 (a day of new accounts), 67 hours for a million, 16.7
-//!   days for six million. Finding them is a read of the actor range, 5,000
-//!   records every five seconds: 3.7 hours for 13.2 million, which is the
-//!   least a pass takes however few it queues. A DID the appview does not
-//!   return costs a request of its own, as above, so a pool of accounts the
-//!   appview has dropped drains more slowly than that.
-//! - A profile whose handle differs from the stored one queues one identity
-//!   resolution, at most once per actor per `ENRICH_HANDLE_SETTLE_SECONDS`
-//!   and never while `ENRICH_HANDLE_BACKLOG` entries are due. So however
-//!   many of the 40,909 profiles an hour disagree, enrichment stops adding
-//!   to the identity queue once 100 entries are due; the rest are counted
-//!   as deferred and looked at again on their walk's next pass. An entry it
-//!   did add comes due again on each retry the resolver asks for.
-//!
-//! The role's one connection to the Worker is the control loop's, outbound
-//! and read-only.
+//! The control loop is the setting whose mistake does not stop the role: one
+//! of its two required variables without the other, a URL that is not
+//! `https://`, a short secret or a poll interval out of range leaves the loop
+//! off, logged at the start and reported as `control.state` in `/health`. A
+//! slot that will not start stops feeding its index, which takes search down;
+//! a slot without the loop serves with the policy it has.
 
 const std = @import("std");
 const ingest = @import("../ingest.zig");
 const enrich = @import("enrich.zig");
 const control = @import("control.zig");
-const profile_fill = @import("profile_fill.zig");
 
 pub const Config = struct {
     store_dir: []const u8,
@@ -116,22 +58,11 @@ pub const Config = struct {
     /// Null when enrichment is off.
     enrich: ?enrich.Options = null,
     corpus_scan_seconds: u64 = 3600,
-    /// Holders of `handle.invalid` one step of the handle repair looks at;
-    /// 0 when the repair is off. See `owner.Options.repair_limit`.
-    handle_repair_per_step: usize = 0,
     /// Actors the first-check pass queues an hour; 0 when it is off, as it
     /// is whenever enrichment is. See `owner.Options.first_check_per_hour`.
     first_check_per_hour: u64 = 0,
     first_check_stamp: u64 = 0,
     control: Control = .off,
-    profile_fill: ProfileFill = .off,
-};
-
-pub const ProfileFill = union(enum) {
-    off,
-    /// The pass was asked for and cannot run; the text says why.
-    misconfigured: []const u8,
-    on: profile_fill.Options,
 };
 
 pub const Control = union(enum) {
@@ -141,7 +72,6 @@ pub const Control = union(enum) {
     on: control.Options,
 };
 
-pub const handle_repair_per_step = 50;
 pub const first_check_per_hour = 15_000;
 
 pub const Index = struct {
@@ -207,34 +137,9 @@ pub fn load(getenv: Getenv) Error!Config {
         config.first_check_per_hour = try whole(getenv, "ENRICH_FIRST_CHECK_PER_HOUR", first_check_per_hour);
         config.first_check_stamp = try whole(getenv, "ENRICH_FIRST_CHECK_STAMP", 0);
     }
-    const repair_off = if (getenv("HANDLE_REPAIR")) |text| std.mem.eql(u8, text, "0") else false;
-    if (!config.offline and !repair_off) config.handle_repair_per_step = handle_repair_per_step;
     if (getenv("CORPUS_SCAN_SECONDS")) |text| config.corpus_scan_seconds = std.fmt.parseInt(u64, text, 10) catch return error.InvalidCorpusScan;
     if (!config.offline) config.control = controlLoop(getenv);
-    if (!config.offline) config.profile_fill = profileFill(getenv, config.control);
     return config;
-}
-
-fn profileFill(getenv: Getenv, loop: Control) ProfileFill {
-    if (!std.mem.eql(u8, getenv("PROFILE_FILL") orelse "", "1")) return .off;
-    var options: profile_fill.Options = switch (loop) {
-        .on => |on| .{ .url = on.url, .secret = on.secret },
-        .off, .misconfigured => return .{ .misconfigured = "PROFILE_FILL is set and the control loop is not on: it needs CONTROL_URL and SLOT_CONTROL_SECRET" },
-    };
-    if (getenv("PROFILE_FILL_PAGE")) |text| {
-        const size = std.fmt.parseInt(usize, text, 10) catch 0;
-        if (size < 1 or size > profile_fill.max_page_size) return .{ .misconfigured = "PROFILE_FILL_PAGE is not a number from 1 to 1000" };
-        options.page_size = size;
-    }
-    if (getenv("PROFILE_FILL_STEP_SECONDS")) |text| {
-        const seconds = std.fmt.parseInt(u64, text, 10) catch 3601;
-        if (seconds > 3600) return .{ .misconfigured = "PROFILE_FILL_STEP_SECONDS is not a number from 0 to 3600" };
-        options.step_seconds = seconds;
-    }
-    if (getenv("PROFILE_FILL_LAG_LIMIT")) |text| {
-        options.lag_limit = std.fmt.parseInt(u64, text, 10) catch return .{ .misconfigured = "PROFILE_FILL_LAG_LIMIT is not a number" };
-    }
-    return .{ .on = options };
 }
 
 fn controlLoop(getenv: Getenv) Control {
@@ -398,9 +303,6 @@ test "enrichment is on with its defaults unless the role is offline or told othe
     try testing.expectEqualStrings("https://api.blacksky.community", defaults.blacksky_url);
     try testing.expectEqual(@as(u64, 3600), (try load(fakeEnv(&.{base}))).corpus_scan_seconds);
 
-    try testing.expectEqual(@as(usize, 50), (try load(fakeEnv(&.{base}))).handle_repair_per_step);
-    try testing.expectEqual(@as(usize, 0), (try load(fakeEnv(&.{ base, .{ "HANDLE_REPAIR", "0" } }))).handle_repair_per_step);
-    try testing.expectEqual(@as(usize, 0), (try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).handle_repair_per_step);
     try testing.expect((try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).enrich == null);
     try testing.expect((try load(fakeEnv(&.{ base, .{ "ENRICH", "0" } }))).enrich == null);
 
@@ -473,45 +375,6 @@ test "a control loop that cannot run is left off and says why, and the role stil
     inline for ([_][]const u8{ "4", "3601", "30s", "", "-1" }) |bad| {
         try testing.expectEqualStrings("CONTROL_POLL_SECONDS is not a number from 5 to 3600", (try load(fakeEnv(&.{ base, url, secret, .{ "CONTROL_POLL_SECONDS", bad } }))).control.misconfigured);
     }
-}
-
-test "the profile fill runs only when asked for, with the control loop's origin and secret" {
-    const base = [2][]const u8{ "STORE_DIR", "/d" };
-    const secret = [2][]const u8{ "SLOT_CONTROL_SECRET", "0123456789abcdef0123456789abcdef" };
-    const url = [2][]const u8{ "CONTROL_URL", "https://typeahead.waow.tech/" };
-    const asked = [2][]const u8{ "PROFILE_FILL", "1" };
-    try testing.expect((try load(fakeEnv(&.{ base, url, secret }))).profile_fill == .off);
-    try testing.expect((try load(fakeEnv(&.{ base, url, secret, .{ "PROFILE_FILL", "0" } }))).profile_fill == .off);
-    try testing.expect((try load(fakeEnv(&.{ base, url, secret, .{ "PROFILE_FILL", "" } }))).profile_fill == .off);
-    try testing.expect((try load(fakeEnv(&.{ base, url, secret, asked, .{ "STORE_OFFLINE", "1" } }))).profile_fill == .off);
-
-    const on = (try load(fakeEnv(&.{ base, url, secret, asked }))).profile_fill.on;
-    try testing.expectEqualStrings("https://typeahead.waow.tech", on.url);
-    try testing.expectEqualStrings("0123456789abcdef0123456789abcdef", on.secret);
-    try testing.expectEqual(@as(usize, 500), on.page_size);
-    try testing.expectEqual(@as(u64, 1), on.step_seconds);
-    try testing.expectEqual(@as(u64, 50_000), on.lag_limit);
-    try testing.expectEqual(@as(u64, 30), on.failure_seconds);
-    const set = (try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_PAGE", "1000" }, .{ "PROFILE_FILL_STEP_SECONDS", "5" }, .{ "PROFILE_FILL_LAG_LIMIT", "0" } }))).profile_fill.on;
-    try testing.expectEqual(@as(usize, 1000), set.page_size);
-    try testing.expectEqual(@as(u64, 5), set.step_seconds);
-    try testing.expectEqual(@as(u64, 0), set.lag_limit);
-
-    // Asked for and unable to run: left off, with the reason, and the role
-    // still loads with its control loop as it was.
-    const needs_loop = "PROFILE_FILL is set and the control loop is not on: it needs CONTROL_URL and SLOT_CONTROL_SECRET";
-    try testing.expectEqualStrings(needs_loop, (try load(fakeEnv(&.{ base, asked }))).profile_fill.misconfigured);
-    try testing.expectEqualStrings(needs_loop, (try load(fakeEnv(&.{ base, url, asked }))).profile_fill.misconfigured);
-    try testing.expectEqualStrings(needs_loop, (try load(fakeEnv(&.{ base, url, asked, .{ "SLOT_CONTROL_SECRET", "short" } }))).profile_fill.misconfigured);
-    inline for ([_][]const u8{ "0", "1001", "many", "" }) |bad| {
-        const loaded = try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_PAGE", bad } }));
-        try testing.expectEqualStrings("PROFILE_FILL_PAGE is not a number from 1 to 1000", loaded.profile_fill.misconfigured);
-        try testing.expect(loaded.control == .on);
-    }
-    inline for ([_][]const u8{ "3601", "1s", "-1" }) |bad| {
-        try testing.expectEqualStrings("PROFILE_FILL_STEP_SECONDS is not a number from 0 to 3600", (try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_STEP_SECONDS", bad } }))).profile_fill.misconfigured);
-    }
-    try testing.expectEqualStrings("PROFILE_FILL_LAG_LIMIT is not a number", (try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_LAG_LIMIT", "-1" } }))).profile_fill.misconfigured);
 }
 
 test "enrichment settings that could not pace a loop are refused" {
