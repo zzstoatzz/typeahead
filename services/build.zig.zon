@@ -12,10 +12,6 @@
             .url = "https://tangled.org/zzstoatzz.io/logfire-zig/archive/v0.4.0.tar.gz",
             .hash = "logfire_zig-0.4.0-x2yDLrjUAADNUNN3H9j5x3OjGjhji3utK-kVwK2qXd1g",
         },
-        .zug = .{
-            .url = "https://tangled.org/zzstoatzz.io/zug/archive/v0.2.0-alpha.0.tar.gz",
-            .hash = "zug-0.2.0-alpha.0-h4vXbRCwAAD8MKVUlLYj7aw48U06VaznoVcikwfv2x42",
-        },
         .zkv = .{
             .url = "https://tangled.org/zzstoatzz.io/zkv/archive/v0.1.2.tar.gz",
             .hash = "zkv-0.1.2-2lSvYIBZBADjWqr81MvZTS3irVj817PexNielqQQ_0Cq",

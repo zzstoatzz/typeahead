@@ -14,11 +14,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const zug = b.dependency("zug", .{
-        .target = target,
-        .optimize = optimize,
-    });
-
     const poolio = b.dependency("poolio", .{
         .target = target,
         .optimize = optimize,
@@ -40,7 +35,6 @@ pub fn build(b: *std.Build) void {
     const role_imports: []const std.Build.Module.Import = &.{
         .{ .name = "zat", .module = zat.module("zat") },
         .{ .name = "logfire", .module = logfire.module("logfire") },
-        .{ .name = "zug", .module = zug.module("zug") },
         .{ .name = "poolio", .module = poolio.module("poolio") },
         .{ .name = "zkv", .module = zkv.module("zkv") },
     };
@@ -63,11 +57,11 @@ pub fn build(b: *std.Build) void {
     run_cmd.step.dependOn(b.getInstallStep());
     run_cmd.addPassthruArgs();
 
-    const run_step = b.step("run", "Run the ingester");
+    const run_step = b.step("run", "Run the store process");
     run_step.dependOn(&run_cmd.step);
 
-    // Unit tests for the shared normalizer sources (also linked into the
-    // Tantivy reader via services/tantivy-normalizer) and the Turso client.
+    // Unit tests for the shared normalizer sources, also linked into the
+    // Tantivy reader via services/tantivy-normalizer.
     const unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/test_units.zig"),
@@ -78,9 +72,9 @@ pub fn build(b: *std.Build) void {
     });
     const run_unit_tests = b.addRunArtifact(unit_tests);
 
-    // Ingest tests. Rooted at src/ingest.zig so the firehose decode path
-    // (collection allowlist, DAG-CBOR avatar CID rendering) is covered — both
-    // are new with the jetstream→relay cutover and both fail silently.
+    // Rooted at src/ingest.zig so the relay decode path (collection
+    // allowlist, DAG-CBOR avatar CID rendering) is covered: both fail
+    // silently. It also reaches the identity, PLC and label modules' tests.
     const ingest_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/ingest.zig"),
@@ -90,7 +84,6 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "zat", .module = zat.module("zat") },
                 .{ .name = "logfire", .module = logfire.module("logfire") },
-                .{ .name = "zug", .module = zug.module("zug") },
                 .{ .name = "poolio", .module = poolio.module("poolio") },
             },
         }),
