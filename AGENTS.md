@@ -197,8 +197,8 @@ regression is pinned). Extend it, don't prune it.
   unknown paths must collapse to `other`, never mint a new endpoint. Check `/stats?view=status`
   first when something smells.
   Statistics writers go through `recordStats`/`writeStats` (`src/stats-store.ts`) and
-  statistics reads go through `statsReadDb`. `STATS_MODE=read-d1` reads the `STATS_DB` D1
-  database and still writes Turso as well.
+  statistics reads go through `statsReadDb`. `STATS_MODE=d1-only` writes and reads the
+  `STATS_DB` D1 database and does not touch Turso.
 - moderation overrides, blocked domains and indexing requests have one source of truth, the
   `typeahead-control` D1 database, written only through `src/control-store.ts` (every policy
   write raises the revision in the same transaction). Store slots pull it; nothing pushes to a

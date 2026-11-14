@@ -412,7 +412,8 @@ The public Worker's settings are in `wrangler.jsonc`. `PROFILE_MODE` and
 `CORPUS_MODE` are `slot`: profiles, the reputation page and the account counts
 on `/stats` are read from the serving slot through the transport.
 `TURSO_ACTORS` is `off`: the endpoints the old ingester wrote through answer
-410. `STATS_MODE` is `read-d1`.
+410. `STATS_MODE` is `d1-only`: statistics are written to and read from D1,
+and Turso is not touched.
 
 ## Statistics
 
@@ -425,16 +426,15 @@ wrong.
 - The hourly cron writes the page's series to KV, records the account counts
   it reads from the serving slot, and once a day records how many accounts
   moderation hides. Each run logs `cron_done` with the time each step took.
-- Statistics are read from the `typeahead-stats` D1 database. Under
-  `STATS_MODE=read-d1` each statistic is also still written to Turso; a
-  failed write to either store is logged as `stats_write_failed` and does not
-  fail the request.
+- Statistics are written to and read from the `typeahead-stats` D1 database.
+  A failed write is logged as `stats_write_failed` and does not fail the
+  request.
 - Traffic sent with `X-Client: smoke-testing` stays in the totals and is left
   out of the app list.
 
 ```sh
 bunx wrangler d1 execute typeahead-stats --remote --command "SELECT datetime(bucket * 300, 'unixepoch') AS bucket_utc, sum(hits) AS answers FROM request_buckets GROUP BY bucket ORDER BY bucket DESC LIMIT 6"
-just stats-parity     # compares Turso's statistics with D1's; writes nothing
+just stats-parity     # compares Turso's statistics with D1's; they diverge from 2026-11-13, when Turso stopped being written
 ```
 
 Migrations are in `migrations/stats-d1`. Worker logs are in Cloudflare's

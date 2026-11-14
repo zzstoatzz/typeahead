@@ -14,13 +14,13 @@ Turso has not been approved for deletion.
 
 Take a final dump first and keep it somewhere that outlives the database.
 
-Two things still use it, so it cannot go before the code under
-[Turso in the Worker](#turso-in-the-worker) does:
+One thing still reads it, so it cannot go before the code under
+[Turso in the Worker](#turso-in-the-worker) does: `just deploy-worker` runs
+`just control-ready` first, which reads Turso's moderation rules.
 
-- Under `STATS_MODE=read-d1` the Worker still writes every statistic to Turso
-  as well as D1. `src/stats-store.ts` has no setting that writes D1 alone.
-- `just deploy-worker` runs `just control-ready` first, which reads Turso's
-  moderation rules.
+The Worker itself stopped using it on 2026-11-13: `STATS_MODE=d1-only` writes
+statistics to D1 alone, and `TURSO_ACTORS=off` had already stopped the account
+writes.
 
 Size and plan: not checked.
 
@@ -103,11 +103,6 @@ Whether any of it is still wanted: not checked.
 
 ## Work that remains
 
-The Worker still writes to Turso on every request. `STATS_MODE=read-d1` reads
-statistics from D1 and writes each one to Turso as well, and there is no
-setting that writes D1 alone. The Turso bill does not stop until a D1-only
-statistics mode ships.
-
 ### Evergreen's inventory
 
 `site/services.json` in the `evergreen` repository still lists the old
@@ -118,8 +113,7 @@ typeahead resources and none of the new ones.
 Remove once the owner is ready to let the database go. The Worker reads
 nothing from Turso for accounts and writes nothing to its account tables.
 
-- A statistics setting that writes D1 alone, then the Turso half of
-  `src/stats-store.ts`, `src/stats-migration/`, `scripts/stats-d1.ts`, the
+- The Turso half of `src/stats-store.ts` and the modes other than `d1-only`, `src/stats-migration/`, `scripts/stats-d1.ts`, the
   `statsMigrationRoute` call in `src/index.ts`, and the `stats-backfill` and
   `stats-parity` recipes.
 - `src/turso-policy-mirror.ts` and its calls. `mirrorRequestedActor`,
