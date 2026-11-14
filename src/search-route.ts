@@ -38,20 +38,6 @@ export function responseMatchesRoute(route: SearchRoute, response: Response): bo
   );
 }
 
-export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: string | null, candidate: z.input<typeof targetSchema>): Promise<boolean> {
-  const current = targetSchema.parse(candidate);
-  const before = await bucket.get(ROUTE_KEY);
-  if ((before?.etag ?? null) !== expectedEtag) return false;
-  const retained = before === null ? undefined : z.object({ current: z.unknown() }).parse(await before.json());
-  const previous = targetSchema.safeParse(retained?.current);
-  const options = expectedEtag === null
-    ? { onlyIf: { etagDoesNotMatch: "*" } }
-    : { onlyIf: { etagMatches: expectedEtag } };
-  const next = { version: 1, current, previous: previous.success ? previous.data : undefined };
-  const result = await bucket.put(ROUTE_KEY, JSON.stringify(next), options);
-  return result !== null;
-}
-
 export function allowedRoute(request: Request) {
   const path = new URL(request.url).pathname;
   return request.method === "GET"

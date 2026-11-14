@@ -23,7 +23,7 @@ if(u.pathname==='/__fixture/origin')return e.ORIGIN.fetch(new Request('https://f
 if(!${JSON.stringify(aliases)}.includes(u.pathname))return new Response('fixture path unavailable',{status:404});
 return handleSearch(r,{...e,STATS_DB:e.DB,SEARCH_CACHE_GENERATION:generation},c)}}`);
   await writeFile(transportEntry, `import transport from ${JSON.stringify(resolve("src/search-transport.ts"))};
-import {conditionalRouteUpdate,ROUTE_KEY} from ${JSON.stringify(resolve("src/search-route.ts"))};
+import {ROUTE_KEY} from ${JSON.stringify(resolve("src/search-route.ts"))};import {conditionalRouteUpdate} from ${JSON.stringify(resolve("scripts/snapshot_refresh/route-write-fixture.ts"))};
 export default{async fetch(r,e,c){if(new URL(r.url).pathname==='/__fixture/route'){
 if(r.method==='POST'){const ok=await conditionalRouteUpdate(e.SEARCH_CONTROL,r.headers.get('If-Match'),await r.json());return Response.json({ok},{status:ok?200:409})}
 const value=await e.SEARCH_CONTROL.get(ROUTE_KEY);return value?new Response(value.body,{headers:{ETag:value.etag}}):new Response(null,{status:404})}
