@@ -1,5 +1,5 @@
 # Build context is the repository root:
-#   docker build --platform linux/amd64 -f deploy/shadow-slot/Dockerfile -t typeahead-shadow-slot:local .
+#   docker build --platform linux/amd64 -f deploy/slot/Dockerfile -t typeahead-slot:local .
 # Every stage is linux/amd64. On an arm64 host the whole build runs emulated.
 
 FROM debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc AS zig
@@ -72,10 +72,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
 
 WORKDIR /app
-COPY --from=store /src/services/zig-out/bin/typeahead-ingester .
-COPY --from=store /src/services/zig-out-aes/bin/typeahead-ingester ./typeahead-ingester.aes
+COPY --from=store /src/services/zig-out/bin/typeahead-store .
+COPY --from=store /src/services/zig-out-aes/bin/typeahead-store ./typeahead-store.aes
 COPY --from=index /src/services/tantivy/target/release/typeahead-tantivy .
-COPY --chmod=0755 deploy/shadow-slot/supervise ./
+COPY --chmod=0755 deploy/slot/supervise ./
 
 EXPOSE 8080
 CMD ["/app/supervise"]

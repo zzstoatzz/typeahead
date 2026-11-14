@@ -86,7 +86,7 @@ store process and need none:
 - `services/Dockerfile`, `services/fly.toml`, `just deploy-ingest` and
   `just refresh-search`.
 - `deploy/tantivy-dev/` and `deploy/tantivy-dev-ui/`.
-- The refresh controller's side of `scripts/snapshot_refresh/`: the bundle
+- The refresh controller's side of `scripts/route/`: the bundle
   installer, the managed slot's guest program and image, the live route
   rehearsal and `just rehearse-route-live`; and `scripts/snapshot_compaction/`,
   which published the bundles.
@@ -94,7 +94,7 @@ store process and need none:
   (`src/search-route.ts`), and the refresh lease its route write honoured.
 - The ingest recovery and PDS repair scripts, the scripts that measured the
   native engine's SQLite overlay, `scripts/tests/turso_transport.py`,
-  `scripts/snapshot_refresh/test_search_accounting.mjs`, and the experiments
+  `scripts/route/test_search_accounting.mjs`, and the experiments
   `bounded-lookup-canary`, `recall-comparison` and `recall-scope`.
 
 ## Work that remains
@@ -125,7 +125,7 @@ None of these reads or writes Turso.
 
 ### What the old system left in the code
 
-- Managed-slot support in `scripts/snapshot_refresh/store_slot_route.py`:
+- Managed-slot support in `scripts/route/slot_route.py`:
   `MANAGED_ORIGINS`, the refresh lease it honours and the standby ledger a
   rollback reads. A stored record's `previous`, and the `prior_route` inside a
   stored admission, may still name a destroyed slot, and the tool refuses a
@@ -141,8 +141,8 @@ None of these reads or writes Turso.
 - The engine's Turso source policy and `cutover_source_ready` in
   `services/tantivy/`, which applied only to a slot the poller fed.
 - `conditionalRouteUpdate` in `src/search-route.ts`. Only the two loopback
-  tests in `scripts/snapshot_refresh/` call it; production's route is written
-  by `store_slot_route.py`.
+  tests in `scripts/route/` call it; production's route is written
+  by `slot_route.py`.
 - The profile fill in the store process (`profile_fill.zig`, `PROFILE_FILL*`),
   which copied Turso's descriptions and banners once. It is off on both
   slots and the Worker no longer serves its endpoint.
@@ -165,11 +165,11 @@ None of these reads or writes Turso.
   `fly secrets unset --stage` so nothing restarts.
 - Machine environment from past deploys, on both slots: `PROFILE_FILL=0`,
   `PROFILE_FILL_PAGE=1000`, `PROFILE_FILL_STEP_SECONDS=0` and
-  `INDEX_RESYNC_AFTER`. None is in `deploy/shadow-slot/fly.toml`, so the next
+  `INDEX_RESYNC_AFTER`. None is in `deploy/slot/fly.toml`, so the next
   plain deploy drops them.
 - `/data/compare` on slot A's volume, left by the comparison run before the
   cutover. It exists; its size was not measured.
-- `deploy/shadow-slot/bootstrap.md`, `sizing.md` and `validation.md` still
+- `deploy/slot/bootstrap.md`, `sizing.md` and `validation.md` still
   describe the slot as a shadow beside production, and `fly.toml` begins
   with "Not deployed".
 - The Fly app names still say `shadow`.
@@ -191,5 +191,5 @@ slot's own origin and require a clean one before a flip.
   coverage that are always `null`, and its alert text says "behind turso".
 - The cron's alert for the control database points at `docs/slot-control.md`,
   which is now `docs/history/slot-control.md`.
-- Nothing runs `store_slot_route.py standby` on a schedule, so a standby that
+- Nothing runs `slot_route.py standby` on a schedule, so a standby that
   stops being fit is found only when someone looks.

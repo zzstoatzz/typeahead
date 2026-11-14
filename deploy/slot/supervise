@@ -3,9 +3,9 @@
 # running. A process that exits on its own is started again in place while
 # the other is left alone: the index keeps answering searches through a store
 # restart, and the store keeps following the relay through an index restart.
-# The wait before a restart doubles from SHADOW_RESTART_MIN_S up to
-# SHADOW_RESTART_MAX_S and returns to the minimum once the process has stayed
-# up SHADOW_RESTART_STABLE_S. SIGTERM and SIGINT stop the store first and the
+# The wait before a restart doubles from SLOT_RESTART_MIN_S up to
+# SLOT_RESTART_MAX_S and returns to the minimum once the process has stayed
+# up SLOT_RESTART_STABLE_S. SIGTERM and SIGINT stop the store first and the
 # index after it, both with SIGTERM, because bash starts background commands
 # with SIGINT ignored; the script then exits 0 when both stop cleanly. It
 # exits on nothing else.
@@ -21,14 +21,14 @@ if ((BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1] < 502)); then
   exit 1
 fi
 
-data=${SHADOW_DATA:-/data}
-app=${SHADOW_APP:-/app}
-grace=${SHADOW_STOP_GRACE_S:-50}
-store_grace=${SHADOW_STORE_STOP_S:-30}
-restart_min=${SHADOW_RESTART_MIN_S:-1}
-restart_max=${SHADOW_RESTART_MAX_S:-30}
-restart_stable=${SHADOW_RESTART_STABLE_S:-300}
-tick=${SHADOW_TICK_S:-1}
+data=${SLOT_DATA:-/data}
+app=${SLOT_APP:-/app}
+grace=${SLOT_STOP_GRACE_S:-50}
+store_grace=${SLOT_STORE_STOP_S:-30}
+restart_min=${SLOT_RESTART_MIN_S:-1}
+restart_max=${SLOT_RESTART_MAX_S:-30}
+restart_stable=${SLOT_RESTART_STABLE_S:-300}
+tick=${SLOT_TICK_S:-1}
 store_port=${STORE_PORT:-8082}
 
 declare -A names=()       # pid of a running process -> store or index
@@ -71,17 +71,17 @@ merge=()
 # (docs/evals/collector-cpu-20261112). The second binary traps on a CPU
 # that lacks an instruction it was built with, so it runs only where the
 # kernel lists every one; anywhere else the first runs, as before.
-store_bin=$app/typeahead-ingester
-cpuinfo=${SHADOW_CPUINFO:-/proc/cpuinfo}
+store_bin=$app/typeahead-store
+cpuinfo=${SLOT_CPUINFO:-/proc/cpuinfo}
 aes_build_needs="cx16 lahf_lm popcnt pni ssse3 sse4_1 sse4_2 avx aes pclmulqdq"
-if [[ -x $app/typeahead-ingester.aes ]]; then
+if [[ -x $app/typeahead-store.aes ]]; then
   cpu_flags=" $(grep -m 1 '^flags' "$cpuinfo" 2>/dev/null | cut -d : -f 2) "
   cpu_lacks=""
   for flag in $aes_build_needs; do
     [[ $cpu_flags == *" $flag "* ]] || cpu_lacks+=" $flag"
   done
   if [[ -z $cpu_lacks ]]; then
-    store_bin=$app/typeahead-ingester.aes
+    store_bin=$app/typeahead-store.aes
     say "store binary: the build that uses the CPU's AES"
   else
     say "store binary: the baseline build; this CPU does not report$cpu_lacks"

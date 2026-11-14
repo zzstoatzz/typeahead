@@ -1,5 +1,5 @@
 *
-!deploy/shadow-slot/supervise
+!deploy/slot/supervise
 !services/build.zig
 !services/build.zig.zon
 !services/src

@@ -28,7 +28,7 @@ All of these only read.
 curl -sS https://typeahead.waow.tech/health/freshness
 curl -sS https://typeahead.waow.tech/health/control
 curl -sS https://typeahead-search-transport.n8-3e9.workers.dev/route
-./scripts/snapshot_refresh/store_slot_route.py standby
+./scripts/route/slot_route.py standby
 just index-status
 ```
 
@@ -71,13 +71,13 @@ the route, then deploy to the slot that was serving.
 1. Find the standby.
 
    ```sh
-   ./scripts/snapshot_refresh/store_slot_route.py standby
+   ./scripts/route/slot_route.py standby
    ```
 
 2. Deploy to it, from the repository root.
 
    ```sh
-   fly deploy . --config deploy/shadow-slot/fly.toml -a <standby app>
+   fly deploy . --config deploy/slot/fly.toml -a <standby app>
    ```
 
    The deploy restarts the machine. See [restarts](#restarts-and-warm-up).
@@ -92,7 +92,7 @@ the route, then deploy to the slot that was serving.
 4. Wait until the standby is fit with that hash.
 
    ```sh
-   ./scripts/snapshot_refresh/store_slot_route.py standby --binary-sha256 <hash>
+   ./scripts/route/slot_route.py standby --binary-sha256 <hash>
    ```
 
 5. Run a [latency round](#restarts-and-warm-up) against the standby's own
@@ -140,8 +140,8 @@ The write needs R2 credentials in the environment: `INDEX_R2_ENDPOINT`,
 `INDEX_R2_BUCKET`, `INDEX_R2_ACCESS_KEY_ID` and `INDEX_R2_SECRET_ACCESS_KEY`.
 
 ```sh
-./scripts/snapshot_refresh/store_slot_route.py cutover --origin https://<app>.fly.dev --binary-sha256 <hash>
-./scripts/snapshot_refresh/store_slot_route.py cutover --origin https://<app>.fly.dev --binary-sha256 <hash> --write
+./scripts/route/slot_route.py cutover --origin https://<app>.fly.dev --binary-sha256 <hash>
+./scripts/route/slot_route.py cutover --origin https://<app>.fly.dev --binary-sha256 <hash> --write
 ```
 
 The first command prints the plan and writes nothing. Read `route.current`
@@ -177,8 +177,8 @@ Afterwards run the checks under [look first](#look-first) and `just smoke`.
 ## Roll back
 
 ```sh
-./scripts/snapshot_refresh/store_slot_route.py rollback
-./scripts/snapshot_refresh/store_slot_route.py rollback --write
+./scripts/route/slot_route.py rollback
+./scripts/route/slot_route.py rollback --write
 ```
 
 The first prints the record it would restore. Read it before writing: a
@@ -205,7 +205,7 @@ healthy.
 
    ```sh
    curl -sS -o /dev/null -w '%{http_code}\n' https://<serving app>.fly.dev/ready
-   ./scripts/snapshot_refresh/store_slot_route.py standby
+   ./scripts/route/slot_route.py standby
    ```
 
    `standby` should print `"serving_healthy": false` and, for the other slot,
@@ -216,8 +216,8 @@ healthy.
 3. Flip with the override.
 
    ```sh
-   ./scripts/snapshot_refresh/store_slot_route.py cutover --origin https://<standby app>.fly.dev --binary-sha256 <hash> --serving-slot-unhealthy
-   ./scripts/snapshot_refresh/store_slot_route.py cutover --origin https://<standby app>.fly.dev --binary-sha256 <hash> --serving-slot-unhealthy --write
+   ./scripts/route/slot_route.py cutover --origin https://<standby app>.fly.dev --binary-sha256 <hash> --serving-slot-unhealthy
+   ./scripts/route/slot_route.py cutover --origin https://<standby app>.fly.dev --binary-sha256 <hash> --serving-slot-unhealthy --write
    ```
 
 The override is refused when the serving slot is in fact ready. Every check on
@@ -274,7 +274,7 @@ In the last three cases, [fail over](#fail-over) if the slot is serving.
 
 ## Resize
 
-Machine size is the `[[vm]]` block in `deploy/shadow-slot/fly.toml`, and
+Machine size is the `[[vm]]` block in `deploy/slot/fly.toml`, and
 every `fly deploy` applies it. To resize without a deploy:
 
 ```sh
@@ -543,4 +543,4 @@ For the first 30 seconds after the store opens, the counts read zero and
 A `control` block whose `state` is `misconfigured` means the slot has no
 usable `SLOT_CONTROL_SECRET`. The slot serves with the policy it has.
 Settings are listed in `services/src/store_process/config.zig` and
-`deploy/shadow-slot/README.md`.
+`deploy/slot/README.md`.

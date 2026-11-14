@@ -1,7 +1,7 @@
 .{
-    .name = .typeahead_ingester,
+    .name = .typeahead_store,
     .version = "0.0.1",
-    .fingerprint = 0xc3959a06c9697d7c,
+    .fingerprint = 0xf74483bd17ea701c,
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .zat = .{

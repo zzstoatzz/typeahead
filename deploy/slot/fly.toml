@@ -1,5 +1,5 @@
 # Not deployed. See README.md for what has to exist first.
-# Deploy from the repository root: fly deploy . --config deploy/shadow-slot/fly.toml
+# Deploy from the repository root: fly deploy . --config deploy/slot/fly.toml
 
 app = 'typeahead-shadow-a'
 primary_region = 'ewr'

@@ -14,12 +14,12 @@ the whole record the cutover replaced, taken from the admission stored for the
 routed slot, so that record's own `previous` comes back with it and a second
 rollback undoes the cutover before.
 
-    store_slot_route.py check    --origin URL --binary-sha256 HEX   reads only public endpoints
-    store_slot_route.py cutover  --origin URL --binary-sha256 HEX   prints the plan
-    store_slot_route.py cutover  --origin URL --binary-sha256 HEX --write
-    store_slot_route.py rollback                                    prints the plan
-    store_slot_route.py rollback --write
-    store_slot_route.py standby  [--binary-sha256 HEX]              reads only public endpoints
+    slot_route.py check    --origin URL --binary-sha256 HEX   reads only public endpoints
+    slot_route.py cutover  --origin URL --binary-sha256 HEX   prints the plan
+    slot_route.py cutover  --origin URL --binary-sha256 HEX --write
+    slot_route.py rollback                                    prints the plan
+    slot_route.py rollback --write
+    slot_route.py standby  [--binary-sha256 HEX]              reads only public endpoints
 
 `standby` says whether the store slot that is not serving could take the route
 now, and exits 1 when it could not.

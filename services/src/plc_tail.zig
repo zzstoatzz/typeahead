@@ -24,7 +24,7 @@ const log = std.log.scoped(.plc_tail);
 
 pub const PAGE_SIZE = 1000;
 const EXPORT_URL = "https://plc.directory/export";
-pub const USER_AGENT = "typeahead.waow.tech/ingester (+https://tangled.org/zzstoatzz.io/typeahead)";
+pub const USER_AGENT = "typeahead.waow.tech/store (+https://tangled.org/zzstoatzz.io/typeahead)";
 /// plc.directory allows 500 requests per 5 minutes; catch-up stays well under.
 pub const CATCHUP_POLL_SECS = 2;
 pub const IDLE_POLL_SECS = 30;

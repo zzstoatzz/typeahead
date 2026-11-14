@@ -5,7 +5,7 @@ const log_route = @import("log_route.zig");
 const fatal = @import("fatal.zig");
 const store_role = @import("store_process/role.zig");
 
-const log = std.log.scoped(.ingester);
+const log = std.log.scoped(.store_role);
 
 // override debug_io with a real threaded implementation so Io.Mutex,
 // io.sleep, and network ops work concurrently across threads.

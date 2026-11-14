@@ -86,7 +86,7 @@ One slot serves and the other stands by; the route record in R2
 
 - Deploy, restart, resize or resync the standby only. To change the serving
   slot, flip the route to a fit standby first.
-- Change the route only with `scripts/snapshot_refresh/store_slot_route.py`.
+- Change the route only with `scripts/route/slot_route.py`.
   Its admission and conditional write are the safety; never write the record
   by hand.
 - Nothing pushes into a slot. A slot follows the relay, the PLC directory and
@@ -102,7 +102,7 @@ One slot serves and the other stands by; the route record in R2
 
 Before any serving or capacity experiment, check the live route, that the
 serving slot is healthy and that the standby is fit
-(`store_slot_route.py standby`), not just that machines are started. In an
+(`slot_route.py standby`), not just that machines are started. In an
 outage, restore unscoped search first, with a failover or the
 `EMERGENCY_PROXY_BSKY` switch, and diagnose afterwards. Recovery tests must
 include an unavailable serving slot. Automatic fallback to Bluesky and PDS
@@ -168,7 +168,7 @@ regression is pinned). Extend it, don't prune it.
 - `just deploy-image-renderer` deploys the private PNG renderer, then validates
   fresh public images. Keep `workers-og` and its Wasm imports exclusive to that
   Worker. Deploy the renderer before introducing its public service binding.
-- A slot image is deployed with `fly deploy . --config deploy/shadow-slot/fly.toml -a <standby app>`,
+- A slot image is deployed with `fly deploy . --config deploy/slot/fly.toml -a <standby app>`,
   standby first, then a route flip, then the other slot:
   [operating](docs/operating.md#upgrade-the-slots).
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +

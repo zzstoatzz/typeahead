@@ -35,7 +35,7 @@ just test-services            # Zig unit tests: store, index bridge, control loo
 just --no-dotenv test-tantivy # the search engine against built binaries
 just --no-dotenv test-bridge  # store to search engine, against a real local engine
 just test-supervise           # the slot's supervisor against stand-in processes
-just test-store-route         # the route tool against an in-memory bucket
+just test-route         # the route tool against an in-memory bucket
 ```
 
 Changes to matching or ranking also need `just --no-dotenv test-tantivy`,
@@ -44,10 +44,10 @@ which CI runs on main.
 The store process is the binary in `services/`, started with `MODE=store`
 (`MODE=store-bootstrap` loads a new store). A bare `zig build run` sets no
 mode and exits. The slot image is
-built from `deploy/shadow-slot/Dockerfile`:
+built from `deploy/slot/Dockerfile`:
 
 ```sh
-docker build --platform linux/amd64 -f deploy/shadow-slot/Dockerfile -t typeahead-shadow-slot:local .
+docker build --platform linux/amd64 -f deploy/slot/Dockerfile -t typeahead-slot:local .
 ```
 
 ## Deploying
@@ -56,7 +56,7 @@ docker build --platform linux/amd64 -f deploy/shadow-slot/Dockerfile -t typeahea
 just deploy-worker            # public Worker, then smoke
 just deploy-search-transport  # transport, then smoke
 just deploy-image-renderer    # renderer, then image smoke
-fly deploy . --config deploy/shadow-slot/fly.toml -a <standby app>
+fly deploy . --config deploy/slot/fly.toml -a <standby app>
 ```
 
 Push first. Deploys are run by hand; CI builds and tests only. A slot image

@@ -1,7 +1,7 @@
 """The slot supervisor, run for real against stand-in processes.
 
 Each test starts `supervise` under bash 5.2 or newer, the image's being 5.2,
-with `SHADOW_APP` pointing at a directory where both binaries are one shell
+with `SLOT_APP` pointing at a directory where both binaries are one shell
 script. The script records its starts and signals in a file and follows a
 plan, one line per start, that says when to exit. Nothing here uses the
 network or the real binaries.
@@ -20,7 +20,7 @@ from pathlib import Path
 SUPERVISE = Path(__file__).with_name("supervise")
 
 STUB = r"""#!/bin/sh
-case ${0##*/} in typeahead-ingester*) role=store ;; *) role=index ;; esac
+case ${0##*/} in typeahead-store*) role=store ;; *) role=index ;; esac
 note() { echo "$1 $role $$" >> "$STUB_DIR/events"; }
 plan=$STUB_DIR/$role.plan
 step=
@@ -102,12 +102,12 @@ class Slot:
         (self.root / "data").mkdir()
         app = self.root / "app"
         app.mkdir()
-        for binary in ("typeahead-ingester", "typeahead-tantivy"):
+        for binary in ("typeahead-store", "typeahead-tantivy"):
             (app / binary).write_text(STUB)
             (app / binary).chmod(stat.S_IRWXU)
         if cpu_flags is not None:
-            (app / "typeahead-ingester.aes").write_text(STUB)
-            (app / "typeahead-ingester.aes").chmod(stat.S_IRWXU)
+            (app / "typeahead-store.aes").write_text(STUB)
+            (app / "typeahead-store.aes").chmod(stat.S_IRWXU)
             (self.root / "cpuinfo").write_text(f"processor\t: 0\nflags\t\t: {cpu_flags}\n\nprocessor\t: 1\nflags\t\t: {cpu_flags}\n")
         self.events_path = self.root / "events"
         self.events_path.touch()
@@ -116,16 +116,16 @@ class Slot:
         self.output_path = self.root / "output"
         environment = {
             "PATH": os.environ["PATH"],
-            "SHADOW_DATA": str(self.root / "data"),
-            "SHADOW_APP": str(app),
-            "SHADOW_CPUINFO": str(self.root / "cpuinfo"),
+            "SLOT_DATA": str(self.root / "data"),
+            "SLOT_APP": str(app),
+            "SLOT_CPUINFO": str(self.root / "cpuinfo"),
             "STUB_DIR": str(self.root),
-            "SHADOW_RESTART_MIN_S": "1",
-            "SHADOW_RESTART_MAX_S": "4",
-            "SHADOW_RESTART_STABLE_S": "300",
-            "SHADOW_STOP_GRACE_S": "20",
-            "SHADOW_STORE_STOP_S": "10",
-            "SHADOW_TICK_S": "0.1",
+            "SLOT_RESTART_MIN_S": "1",
+            "SLOT_RESTART_MAX_S": "4",
+            "SLOT_RESTART_STABLE_S": "300",
+            "SLOT_STOP_GRACE_S": "20",
+            "SLOT_STORE_STOP_S": "10",
+            "SLOT_TICK_S": "0.1",
         }
         environment.update({name: str(value) for name, value in settings.items()})
         with self.output_path.open("w") as output:
@@ -233,7 +233,7 @@ class SuperviseTest(unittest.TestCase):
     def test_the_wait_returns_to_the_minimum_once_a_process_has_stayed_up(self) -> None:
         # the supervisor counts whole seconds and a loaded machine starts a
         # process slowly, so "stayed up" is set well above an immediate exit
-        slot = Slot(self, plans={"store": ["exit 1", "exit 1", "exit-after 6"]}, SHADOW_RESTART_STABLE_S=5)
+        slot = Slot(self, plans={"store": ["exit 1", "exit 1", "exit-after 6"]}, SLOT_RESTART_STABLE_S=5)
         slot.wait_for("start", "store", 4, timeout=40)
         self.assertEqual([1, 2, 1], slot.restart_delays("store"))
         self.assertIn("store stopped on its own, 2 time(s) without staying up 5s", slot.output())
@@ -298,7 +298,7 @@ class SuperviseTest(unittest.TestCase):
         self.assertEqual(5, slot.exit_status())
 
     def test_a_store_that_ignores_sigterm_does_not_hold_the_index_and_is_killed_at_the_deadline(self) -> None:
-        slot = Slot(self, plans={"store": ["ignore-term"]}, SHADOW_STORE_STOP_S=1, SHADOW_STOP_GRACE_S=3)
+        slot = Slot(self, plans={"store": ["ignore-term"]}, SLOT_STORE_STOP_S=1, SLOT_STOP_GRACE_S=3)
         (store,) = slot.wait_for("start", "store")
         (index,) = slot.wait_for("start", "index")
         slot.signal(signal.SIGTERM)
@@ -313,7 +313,7 @@ class SuperviseTest(unittest.TestCase):
         self.assertIn("[supervisor] store still running 3s after the stop was requested, sending SIGKILL", slot.output())
 
     def test_a_stop_while_the_store_waits_to_restart_does_not_start_it(self) -> None:
-        slot = Slot(self, plans={"store": ["exit 1"]}, SHADOW_RESTART_MIN_S=30, SHADOW_RESTART_MAX_S=30)
+        slot = Slot(self, plans={"store": ["exit 1"]}, SLOT_RESTART_MIN_S=30, SLOT_RESTART_MAX_S=30)
         (index,) = slot.wait_for("start", "index")
         deadline = time.monotonic() + 10
         while not slot.restart_delays("store") and time.monotonic() < deadline:
@@ -329,7 +329,7 @@ class SuperviseTest(unittest.TestCase):
         slot = Slot(self, cpu_flags=needed, plans={"store": ["exit 3"]})
         slot.wait_for("start", "store", 2)
         slot.wait_for("start", "index")
-        slot.expect("[store] binary typeahead-ingester.aes\n", 2)
+        slot.expect("[store] binary typeahead-store.aes\n", 2)
         slot.expect("[supervisor] store binary: the build that uses the CPU's AES\n")
         slot.expect("[index] binary typeahead-tantivy\n")
         self.stop(slot)
@@ -339,7 +339,7 @@ class SuperviseTest(unittest.TestCase):
             slot = Slot(self, cpu_flags=flags)
             slot.wait_for("start", "store")
             slot.wait_for("start", "index")
-            slot.expect("[store] binary typeahead-ingester\n")
+            slot.expect("[store] binary typeahead-store\n")
             slot.expect(f"[supervisor] store binary: the baseline build; this CPU does not report{named}\n")
             slot.expect("[index] binary typeahead-tantivy\n")
             self.stop(slot)
@@ -348,7 +348,7 @@ class SuperviseTest(unittest.TestCase):
         slot = Slot(self)
         slot.wait_for("start", "store")
         slot.wait_for("start", "index")
-        slot.expect("[store] binary typeahead-ingester\n")
+        slot.expect("[store] binary typeahead-store\n")
         slot.expect("[index] binary typeahead-tantivy\n")
         self.assertNotIn("store binary:", slot.output())
         self.stop(slot)

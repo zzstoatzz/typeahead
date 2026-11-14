@@ -41,11 +41,11 @@ test "flush progress and zat connection chatter stay on stderr" {
     }
 }
 
-test "warnings, errors and the ingester's own records still ship" {
+test "warnings, errors and the role's own records still ship" {
     comptime {
         std.debug.assert(shipped(.err, .zat));
         std.debug.assert(shipped(.warn, .zat));
-        std.debug.assert(shipped(.info, .ingester));
+        std.debug.assert(shipped(.info, .store_role));
         std.debug.assert(shipped(.warn, .identity));
         std.debug.assert(shipped(.err, .default));
     }

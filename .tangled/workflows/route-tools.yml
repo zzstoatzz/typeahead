@@ -10,4 +10,4 @@ steps:
     command: |
       set -eu
       python3 -W error::ResourceWarning -m unittest scripts.test_smoke_failures
-      python3 -W error -m unittest scripts/snapshot_refresh/test_store_slot_route.py
+      python3 -W error -m unittest scripts/route/test_slot_route.py
