@@ -1,11 +1,9 @@
-import { createClient } from "@libsql/client";
 import { Miniflare } from "miniflare";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
-import { d1Db, tursoDb } from "./db";
+import { d1Db } from "./db";
 
 const MIGRATIONS = new URL("../migrations/control-d1/", import.meta.url).pathname;
-const TURSO_SCHEMA = new URL("../docs/ops/turso-schema-20261110.sql", import.meta.url).pathname;
 
 /** The generation the fixture gives its database, in place of the random one
  *  the migration seeded, so tests can state whole answers. */
@@ -26,19 +24,4 @@ export async function controlStore() {
   const seeded = await d1.prepare("SELECT value FROM control_meta WHERE name = 'generation'").first<{ value: number }>();
   await d1.prepare("UPDATE control_meta SET value = ?1 WHERE name = 'generation'").bind(GENERATION).run();
   return { d1, control: d1Db(d1), seededGeneration: seeded?.value ?? null, dispose: () => mf.dispose() };
-}
-
-/** An in-memory libSQL standing in for Turso, holding production's `actors`,
- *  `mod_overrides` and `blocked_domains` tables as the schema dump defines
- *  them. */
-export async function tursoPolicyTables() {
-  const dump = await Bun.file(TURSO_SCHEMA).text();
-  const tables = ["actors", "mod_overrides", "blocked_domains"].map((name) => {
-    const statement = dump.split(";\n").find((candidate) => candidate.startsWith(`CREATE TABLE ${name} (`));
-    if (statement === undefined) throw new Error(`the Turso schema dump has no ${name} table`);
-    return statement;
-  });
-  const client = createClient({ url: "file::memory:" });
-  await client.executeMultiple(tables.join(";\n") + ";");
-  return { turso: tursoDb(client), dispose: () => client.close() };
 }

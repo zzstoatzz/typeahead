@@ -44,8 +44,7 @@ test("full Worker times cache hits, validation failures, rate denial and preflig
   if (!built.success) throw new Error(built.logs.join("\n"));
   const mf = new Miniflare({ modules: true, script: await built.outputs[0].text(),
     compatibilityDate: "2024-12-01", compatibilityFlags: ["nodejs_compat"],
-    bindings: { TURSO_URL: server.url.toString(), TURSO_AUTH_TOKEN: "fixture",
-      SEARCH_BACKEND_URL: server.url.toString().replace(/\/$/, "") },
+    bindings: { SEARCH_BACKEND_URL: server.url.toString().replace(/\/$/, "") },
     ratelimits: { RATE_LIMITER: { simple: { limit: 3, period: 60 } } } });
   try {
     const request = (suffix = "?q=fixture&limit=5") => mf.dispatchFetch(

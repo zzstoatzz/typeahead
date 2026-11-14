@@ -66,7 +66,7 @@ export function unblockDomain(control: SqlDb, domain: string): Promise<void> {
   return changePolicy(control, control.prepare("DELETE FROM blocked_domains WHERE domain = ?1").bind(domain));
 }
 
-/** The admin listings keep the field name Turso's tables gave them. */
+/** The admin listings name the time `created_at`, as their callers read it. */
 export async function listOverrides(control: SqlDb): Promise<{ did: string; action: string; reason: string; created_at: number }[]> {
   const { results } = await control.prepare(
     "SELECT did, action, reason, updated_at AS created_at FROM mod_overrides ORDER BY updated_at DESC, did",

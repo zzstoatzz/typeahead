@@ -1,18 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { createClient } from "@libsql/client";
 import { Miniflare } from "miniflare";
-import { d1Db, getDb, rowsAs, tursoDb } from "./db";
-
-// @libsql/client puts a promise-limit(20) inside every client. Share one client
-// across requests and that limiter is shared too: a slot stranded by a canceled
-// request is gone for the isolate's life, and a request queued behind another
-// request's I/O is what Cloudflare answers with 1101 "will never generate a
-// response". Each call must get its own client so no request can wait on another.
-test("getDb hands every caller its own client", async () => {
-  const env: any = { TURSO_URL: "https://example.turso.io", TURSO_AUTH_TOKEN: "t" };
-  const [a, b] = await Promise.all([getDb(env), getDb(env)]);
-  expect(a).not.toBe(b);
-});
+import { d1Db, rowsAs } from "./db";
 
 async function localD1() {
   const mf = new Miniflare({
@@ -96,11 +84,11 @@ describe("d1Db against a local D1", () => {
 
   test("batch refuses a statement prepared by another database", async () => {
     const { db, dispose } = await localD1();
-    const client = createClient({ url: "file::memory:" });
+    const other = await localD1();
     try {
-      await expect(db.batch([tursoDb(client).prepare("SELECT 1")])).rejects.toThrow("prepared by another database");
+      await expect(db.batch([other.db.prepare("SELECT 1")])).rejects.toThrow("prepared by another database");
     } finally {
-      client.close();
+      await other.dispose();
       await dispose();
     }
   });

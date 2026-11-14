@@ -28,7 +28,6 @@ test("public image routes preserve streamed responses and failures without bundl
   const mf = new Miniflare({ workers: [
     { name: "public", modules: true, script: await built.outputs[0].text(),
       compatibilityDate: "2024-12-01", compatibilityFlags: ["nodejs_compat"],
-      bindings: { TURSO_URL: server.url.toString(), TURSO_AUTH_TOKEN: "fixture" },
       serviceBindings: { IMAGE_RENDERER: "images" } },
     { name: "images", modules: true, script: `export default {fetch(request) {
       const url = new URL(request.url);

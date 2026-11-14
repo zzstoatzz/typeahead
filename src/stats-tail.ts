@@ -3,7 +3,7 @@ import { TRAFFIC_SOURCE_WHERE } from "./metrics";
 
 /** The cron writes /stats data to KV once an hour, so its newest buckets are up
  *  to an hour old. The page reads every bucket from the top of the hour the KV
- *  copy was written onward straight from Turso and swaps it in: at most two
+ *  copy was written onward straight from the store and swaps it in: at most two
  *  hours of 5-minute buckets, each read a primary-key range on `bucket`/`hour`,
  *  so a short window such as the last hour is current rather than the hour
  *  before. Starting on an hour boundary lets the hourly series swap whole

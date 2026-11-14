@@ -8,8 +8,6 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   SLOT_CONTROL_SECRET?: string;
   RATE_LIMITER: RateLimit;
   RATE_LIMITER_STRICT: RateLimit;
-  TURSO_URL: string;
-  TURSO_AUTH_TOKEN: string;
   SEARCH_BACKEND_URL?: string;
   SEARCH_TRANSPORT?: Fetcher;
   SEARCH_CACHE_GENERATION?: string;
