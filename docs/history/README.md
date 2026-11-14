@@ -10,6 +10,17 @@ them were true on their dates only. For the system as it runs, start at the
 Each line gives a document or a set of evidence files, what it was, and the
 date it was first committed at its earlier path. Loose receipt files are listed as one set.
 
+## the system before the store slots
+
+- [architecture.md](architecture.md): architecture of the Turso-backed system: ingester, Turso, offline index builds, Tantivy slots fed from Turso. 2026-03-18, last revised November 2026.
+- [operations.md](operations.md): operations guide for that system, with the rollout notes for statistics in D1, slot control and Turso retirement. 2026-05-26, last revised 2026-11-12.
+- [discovery-and-identity.md](discovery-and-identity.md): how the ingester discovered accounts and resolved handles through Turso's identity queue. 2026-07-28.
+- [costs-through-20261024.md](costs-through-20261024.md): the cost record and its changelog, formerly `COSTS.md`. 2026-06-17 to 2026-10-24.
+- [index-bridge.md](index-bridge.md): design and protocol of the index bridge, written before anything ran it. 2026-11-10.
+- [slot-control.md](slot-control.md): design and rollout of the control database that carries policy and index requests to slots. 2026-11-12.
+- [turso-retirement.md](turso-retirement.md): inventory, parity checks and rollout order for moving the Worker's reads off Turso. 2026-11-12.
+- [ops/store-slot-operations.md](ops/store-slot-operations.md): the first route runbook for store slots, written while slot B was being loaded. 2026-11-12.
+
 ## designs, plans and research
 
 - [collection-discovery.md](collection-discovery.md): collection discovery: retiring the hardcoded allowlist. 2026-08-18.
