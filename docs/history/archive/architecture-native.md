@@ -1,16 +1,16 @@
 > Archived historical record. This is not a current deployment runbook.
-> See [current architecture](../architecture.md) and [operations](../operations.md).
+> See [current architecture](../../architecture.md) and [operations](../../operations.md).
 
 # Historical native architecture
 
 This describes the retained native engine before the Tantivy cutover.
-For current behavior, see [architecture.md](../architecture.md).
+For current behavior, see [architecture.md](../../architecture.md).
 
 # architecture
 
 Serving path updated against live services October 25, 2026. Historical
 illustrations below predate the compact and private transport releases; the
-[README diagram](../../README.md#how-it-works) shows the current runtime roles.
+[README diagram](../../../README.md#how-it-works) shows the current runtime roles.
 
 `typeahead.waow.tech` provides independent actor search for atproto. The canonical
 `tech.waow.typeahead.searchActors` endpoint and the

@@ -80,13 +80,13 @@ deployment in my-prefect-server. Prepare and admit snapshots only on the inactiv
 managed Fly slot with independent storage. Never download, verify, resize or restart
 the serving slot for a trial or refresh. Its slot pointer stays fixed while serving.
 Promote only a qualified backend through the conditional R2 routing update; retain
-the previous backend for rollback. Follow [the refresh runbook](docs/plans/automatic-snapshot-refresh.md).
+the previous backend for rollback. Follow [the refresh runbook](docs/history/plans/automatic-snapshot-refresh.md).
 
 ## production continuity during experiments
 
 Before any serving, snapshot or capacity experiment, read the
-[October 31 outage retrospective and preflight](docs/retros/2026-10-31-search-expiry-outage.md) and the
-[November 2 follow-up](docs/retros/2026-11-02-tantivy-slot-expired-again.md).
+[October 31 outage retrospective and preflight](docs/history/retros/2026-10-31-search-expiry-outage.md) and the
+[November 2 follow-up](docs/history/retros/2026-11-02-tantivy-slot-expired-again.md).
 Check live coverage expiry and the last successful refresh, not just readiness or
 an enabled schedule. Account for inactive-slot occupancy. In an outage, restore
 unscoped search with the documented Bluesky switch before lengthy diagnosis.
@@ -152,8 +152,8 @@ regression is pinned). Extend it, don't prune it.
   Worker. Deploy the renderer before introducing its public service binding.
 - `just deploy-ingest` deploys the Zig ingester (`MODE=ingester`, the only
   role deployed; `MODE=store` is the embedded-store role, built and tested
-  locally only, see `docs/plans/embedded-store-service.md`). Search backends are not Fly-deployed from this repo: Tantivy slot
-  releases follow the [refresh runbook](docs/plans/automatic-snapshot-refresh.md),
+  locally only, see `docs/history/plans/embedded-store-service.md`). Search backends are not Fly-deployed from this repo: Tantivy slot
+  releases follow the [refresh runbook](docs/history/plans/automatic-snapshot-refresh.md),
   including inactive installation, admission, qualification and guarded routing.
 - **Index builds are not a Fly deploy.** The cloud
   `typeahead-index` deployment in `my-prefect-server` reads Turso, publishes
@@ -167,7 +167,7 @@ regression is pinned). Extend it, don't prune it.
   operations repository's configured Prefect wrapper; it does not deploy the
   current checkout. Main-branch CI never invokes it.
 - PDS backlog repair and freshness work must run in cloud infrastructure, never HeavyPad.
-  The retired PLC home job must not be restored. See [repair contracts](docs/pds-identity-repair.md).
+  The retired PLC home job must not be restored. See [repair contracts](docs/history/pds-identity-repair.md).
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
   `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
 
@@ -235,7 +235,7 @@ unchanged. Scope keys, old-PDS suppression during identity migration, cache keys
 and fail-closed fallback behavior must be tested together. Snapshot metadata
 `pds_scope_version=1` advertises support; the Worker also requires the search
 response's `X-Typeahead-Pds` acknowledgment. Production Tantivy supports every
-recorded canonical host. See `docs/evals/pds-scope.md` for
+recorded canonical host. See `docs/history/evals/pds-scope.md` for
 isolated evaluation commands and rollout order. No full-corpus capacity claim
 may be inferred from synthetic fixture timings.
 

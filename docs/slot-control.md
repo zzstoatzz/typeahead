@@ -7,7 +7,7 @@ serves `/slot/control/*`, and no slot runs the control loop. The
 
 Search has been answered by store slots since 2026-11-11: Fly apps that follow
 the relay themselves and keep the corpus in a store on their own disk
-([plan](plans/embedded-store-service.md)). They never read Turso. Two things an
+([plan](history/plans/embedded-store-service.md)). They never read Turso. Two things an
 operator or a user asks the Worker for were still written only to Turso, so
 since the cutover neither has reached search:
 

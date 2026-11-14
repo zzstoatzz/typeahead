@@ -12,8 +12,8 @@ The same native builder, SQLite library, loopback evaluation HTTP server, packed
 profiles, data and diagnostic endpoint are used for all three variants. Runtime
 patches are applied only to disposable copies of committed source. Repository
 runtime source is unchanged. The scripts retain source/patch hashes and build
-logs. [Preparation](../../../experiments/recall-comparison/prepare.py),
-[orchestrator](../../../experiments/recall-comparison/run.py).
+logs. [Preparation](../../../../experiments/recall-comparison/prepare.py),
+[orchestrator](../../../../experiments/recall-comparison/run.py).
 
 - Baseline: current tiered per-prefix caps, 16-byte prefixes and merge/hydrate 50.
 - Refill200: same stored membership; merge up to 200 and hydrate in 50-entry
@@ -84,7 +84,7 @@ process-cold only; the host's file cache is not evicted.
 ## Static alternative controls
 
 [Authoritative results](static-plan-controls-3/results.json),
-[script](../../../experiments/recall-comparison/alternatives.py).
+[script](../../../../experiments/recall-comparison/alternatives.py).
 These are Python drivers over native SQLite FTS5 and resident Python integer
 arrays, **not** equivalent native HTTP implementations or mutable engine trials.
 Their seed excludes non-ASCII actors before filling to the stated size, so

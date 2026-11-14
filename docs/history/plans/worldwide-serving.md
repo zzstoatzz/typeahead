@@ -85,7 +85,7 @@ Placement is per Worker script, so each cell needs its own deployment of the
 same script, configured with its cell id and placement, and its own authority
 named by cell and created by that cell's transport. The object stays where it
 was first created; check `coloCode` in the `durableObjectsInvocationsAdaptiveGroups`
-dataset after the first request (see [architecture](../architecture.md)).
+dataset after the first request (see [architecture](../../architecture.md)).
 `/route`, `/health`, `/ready` and `/index/status` should accept a cell so
 operators and the controller can address a specific backend.
 

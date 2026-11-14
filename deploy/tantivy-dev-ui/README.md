@@ -48,6 +48,6 @@ match, unsupported preferences return 503, malformed scope returns 400, and
 production/preview HTML remains byte-identical. This does not qualify the older
 backend's preference semantics or the undeployed expiry-v4 candidate.
 
-The [managed-slot smoke](../../docs/evals/tantivy-dev-20261028/checkpoint-public-smoke.json)
+The [managed-slot smoke](../../docs/history/evals/tantivy-dev-20261028/checkpoint-public-smoke.json)
 records the October 30 switch to qualified slot A: 53 read-only requests passed,
 including production-identical homepage bytes, both aliases and PDS scopes.

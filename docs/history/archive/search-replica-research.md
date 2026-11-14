@@ -1,5 +1,5 @@
 > Archived historical record. This is not a current deployment runbook.
-> See [current architecture](../architecture.md) and [operations](../operations.md).
+> See [current architecture](../../architecture.md) and [operations](../../operations.md).
 
 # research: does the search box need the Turso replica?
 

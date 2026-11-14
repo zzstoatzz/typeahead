@@ -81,7 +81,7 @@ are admitted; an extra sentinel row rejects incomplete coverage. The Rust backen
 must evaluate the shared canonical policy before accepting candidates, including
 show overrides and expired labels. Default `--policy-mode off` preserves the
 source-observation rollout until that backend is qualified. See
-[the moderation contract](../../docs/evals/tantivy-dev-20261028/moderation-policy.md).
+[the moderation contract](../../docs/history/evals/tantivy-dev-20261028/moderation-policy.md).
 
 Timestamp mode remains available explicitly for legacy diagnostics and cannot
 write after observation-mode migration.
@@ -97,7 +97,7 @@ python3 services/tantivy-input/test_rust.py --policy-checks --receipt /tmp/polic
 ```
 
 Tests use temporary synthetic SQLite sources, loopback HTTP and the compiled
-Rust service. See [the observation contract](../../docs/evals/tantivy-dev-20261028/source-observations.md)
+Rust service. See [the observation contract](../../docs/history/evals/tantivy-dev-20261028/source-observations.md)
 for ordering, retry and qualification boundaries. Local source changes are not a
 deployment receipt.
 
@@ -111,7 +111,7 @@ version while advancing the source revision/cursor and exact request receipt.
 Counts, activity and every other Actor field remain real payload changes. The
 adapter must not infer latest source time from a stored document timestamp or
 claim that replayed unchanged profiles establish missing expiry coverage. See
-[the write experiment](../../docs/evals/tantivy-dev-20261028/source-version-only.md).
+[the write experiment](../../docs/history/evals/tantivy-dev-20261028/source-version-only.md).
 
 ## Archive PDS fallback pilot
 
@@ -121,7 +121,7 @@ version 1), fills only empty source PDS values, and preserves source identity,
 moderation, versions and deletion behavior. Without that context, behavior is
 unchanged. It is not enabled by the production CLI or slot supervisor yet.
 
-The [cloud pilot](../../docs/ops/archive-pds-join-pilot-20261030/README.md)
+The [cloud pilot](../../docs/history/ops/archive-pds-join-pilot-20261030/README.md)
 measured the import/storage cost and verified profile updates, migration,
 deletion and restart against a real isolated Rust index. A production release
 must bundle and bind the mapping to the build, catch-up and runtime adapters;

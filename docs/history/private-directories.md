@@ -19,7 +19,7 @@ surfaced two gaps:
    `/.well-known/atproto-did`, and answers `resolveHandle`, but exposes no
    `com.atproto.sync.subscribeRepos`. The relay never carries these accounts,
    so the ingester never learns they exist. [discovery and
-   identity](discovery-and-identity.md) records this as a measurable host
+   identity](../discovery-and-identity.md) records this as a measurable host
    property.
 
 2. **Membership is private on purpose.** `org.getMembers`, `getAdmins` and

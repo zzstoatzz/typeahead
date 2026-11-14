@@ -131,7 +131,7 @@ This smoke therefore failed its preference gate. An empty filtered result
 does not establish filter recall, and these four sequential requests are not
 a performance benchmark. The candidate must pass these semantics on its actual
 deployed public path before the dev site can supply release evidence. The
-[deployed preview guard](../../deploy/tantivy-dev-ui/scope-verification.json) now
+[deployed preview guard](../../../deploy/tantivy-dev-ui/scope-verification.json) now
 rejects those unsupported preferences with 503 using the shared public scope
 contract; malformed scope returns 400. Both aliases and byte-identical production
 HTML remain verified. This removes silent fallback, not the backend capability gap.

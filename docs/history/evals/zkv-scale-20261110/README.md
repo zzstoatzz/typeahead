@@ -4,7 +4,7 @@ One run of the [zkv-scale harness](https://tangled.org/zzstoatzz.io/typeahead/bl
 
 On this evidence, yes for a local directory store. Size, memory, read latency, steady-state writes and a concurrent full scan were all comfortable. Two things need design attention: bulk loads outrun compaction, and a full compaction briefly doubles the disk used.
 
-[Raw result lines](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/evals/zkv-scale-20261110/results.jsonl) hold every figure below.
+[Raw result lines](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/evals/zkv-scale-20261110/results.jsonl) hold every figure below.
 
 ## Run
 

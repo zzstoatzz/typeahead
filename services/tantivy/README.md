@@ -58,7 +58,7 @@ segment. These options do not change the serving writer. Finalization merges
 disjoint groups concurrently when needed to reach the segment bound. The
 `import_indexed` and `import_merge_finished` events separate indexing and final
 merge timings. Multiple segments require search qualification on the same input
-before changing production settings. See the [isolated performance evaluation](../../docs/evals/refresh-performance-20261105/README.md).
+before changing production settings. See the [isolated performance evaluation](../../docs/history/evals/refresh-performance-20261105/README.md).
 
 Input is a JSONL stream; production seeds come from the controller's verified
 SQLite checkpoint stream:
@@ -333,7 +333,7 @@ observations that differ only in version retain the stored document/version and
 count as replayed while advancing durable observation metadata. That stored
 version can remain a coarse seed or last projection timestamp; it does not order
 source observations. All other validated Actor fields remain part of equality.
-See [the paired write experiment](../../docs/evals/tantivy-dev-20261028/source-version-only.md).
+See [the paired write experiment](../../docs/history/evals/tantivy-dev-20261028/source-version-only.md).
  Source
 Unix seconds remain evidence rather than an invented total order.
 
@@ -408,7 +408,7 @@ K eligible profiles per exact/preference bucket across all segments. Default
 eligibility before acceptance, and both use exact mathematical f32 base-plus-boost
 comparison. Debug fields distinguish scorer setup, rank-head reads, document
 visits, hydrated profiles and unique segments; they are not disk/posting counters.
-See [the synthetic work comparison](../../docs/evals/tantivy-dev-20261028/rank-merge.md).
+See [the synthetic work comparison](../../docs/history/evals/tantivy-dev-20261028/rank-merge.md).
 No full-corpus speed claim follows from those fixtures.
 
 Successful public responses include `X-Typeahead-Engine`, `X-Typeahead-Build`,

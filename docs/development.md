@@ -41,7 +41,7 @@ Public Worker deployments minify the bundle and upload source maps so production
 stack traces can refer to the original source. Inspect the emitted bundle with
 `bunx wrangler deploy --dry-run --outdir /tmp/typeahead-worker-build`.
 
-Backend refresh uses the [isolated refresh controller](plans/automatic-snapshot-refresh.md).
+Backend refresh uses the [isolated refresh controller](history/plans/automatic-snapshot-refresh.md).
 Prefect deployment and schedule ownership live in
 [my-prefect-server](https://tangled.org/zzstoatzz.io/my-prefect-server).
 Check smoke and benchmark targets before running them; some default to production.

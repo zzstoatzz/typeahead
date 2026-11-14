@@ -78,7 +78,7 @@ in Chicago, five hours behind UTC.
 ### 1. Connection admission can block the accepting thread
 
 The deployed server creates a threaded I/O runtime with `async_limit=8`
-([main.zig](../../services/src/main.zig)). Each accepted connection is handed to
+([main.zig](../../../services/src/main.zig)). Each accepted connection is handed to
 `tasks.async`. Once the asynchronous budget is exhausted, the task can run inline
 on the accepting thread. The connection handler may then wait for headers, execute
 a slow search, or otherwise block admission of subsequent connections.
@@ -130,7 +130,7 @@ the evidence. Sync overlapped the event; overlap alone does not prove contention
 
 For an unscoped request, with unreachable fallback disabled, the public Worker
 catches backend errors, logs `search_backend_unreachable`, and returns
-`json({actors: []})` ([search.ts](../../src/handlers/search.ts)). The response is
+`json({actors: []})` ([search.ts](../../../src/handlers/search.ts)). The response is
 not cached, but it has status 200. A client cannot distinguish an unavailable
 engine from a genuine zero-match search using that response.
 
@@ -145,7 +145,7 @@ unavailability, so the two public paths have inconsistent failure semantics.
 `measureFreshness` treats an unavailable health response as `ok=false`, then sets
 `stale=true`. It also leaves lag, snapshot identity and search-probe state unknown.
 `notifyFreshnessChange` labels the message “serving is stale” and renders a null
-probe state as `FAILING` ([freshness.ts](../../src/handlers/freshness.ts)).
+probe state as `FAILING` ([freshness.ts](../../../src/handlers/freshness.ts)).
 
 The alert correctly exposed failed serving access. Its wording asserted more about
 data freshness and the probe result than the measurement established. This was

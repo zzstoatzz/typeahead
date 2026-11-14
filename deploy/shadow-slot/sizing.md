@@ -1,6 +1,6 @@
 # Shadow slot sizing
 
-Figures are from the [2026-11-10 zkv measurement](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/evals/zkv-scale-20261110/README.md) unless noted: store 9.4 GB settled and 18.6 GB at the peak of a full compaction, 10.0 GB at the peak of the bulk load, Tantivy index 4.9 GB, bundle 6.4 GB, 60 MB of resident metadata per store handle at fence stride 32. They come from one run on local NVMe, not from a Fly volume.
+Figures are from the [2026-11-10 zkv measurement](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/evals/zkv-scale-20261110/README.md) unless noted: store 9.4 GB settled and 18.6 GB at the peak of a full compaction, 10.0 GB at the peak of the bulk load, Tantivy index 4.9 GB, bundle 6.4 GB, 60 MB of resident metadata per store handle at fence stride 32. They come from one run on local NVMe, not from a Fly volume.
 
 ## Volume: 40 GB
 
@@ -51,7 +51,7 @@ For comparison, a production slot by the same arithmetic is 2 × 2.19 + 0.5 × 6
 
 ## Measured on the machine, 2026-11-11
 
-The sections above are arithmetic from other measurements. This one is what `typeahead-shadow-a` did while the search-latency gate of the [shadow comparison](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md) was being met. The runs, their per-query timings and the store's state around each are in [docs/evals/shadow-latency-20261111](https://tangled.org/zzstoatzz.io/typeahead/tree/main/docs/evals/shadow-latency-20261111).
+The sections above are arithmetic from other measurements. This one is what `typeahead-shadow-a` did while the search-latency gate of the [shadow comparison](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md) was being met. The runs, their per-query timings and the store's state around each are in [docs/history/evals/shadow-latency-20261111](https://tangled.org/zzstoatzz.io/typeahead/tree/main/docs/history/evals/shadow-latency-20261111).
 
 ### Four shared CPUs are a quarter of one CPU
 

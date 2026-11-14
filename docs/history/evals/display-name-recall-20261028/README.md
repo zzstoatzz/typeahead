@@ -14,7 +14,7 @@ estimate**. The generator, unmodified native builder, real SQLite files, native
 loopback HTTP handler and serializer are exercised. The names, DIDs and oracle
 answers are synthetic, including a matching display name whose handle is
 unrelated to the query. See [results](native-fixture-6/results.json) and
-[generator](../../../experiments/recall-scope/run.py).
+[generator](../../../../experiments/recall-scope/run.py).
 
 | Boundary | Reproduction | Consequence |
 | --- | --- | --- |

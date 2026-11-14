@@ -18,7 +18,7 @@ score conversion. Requests/replies are owned JSON buffers through `ta_plan`;
 `ta_result_free` releases each result. Host static/dynamic builds and Linux
 x86_64-gnu static cross-compilation succeed with Zig0.17.0. The Rust backend can
 compile the static adapter in its own target workspace/container. Full ABI and
-operation details are in [the adapter README](../../../services/tantivy-normalizer/README.md).
+operation details are in [the adapter README](../../../../services/tantivy-normalizer/README.md).
 
 ## Correctness improvements and intentional policies
 
@@ -77,7 +77,7 @@ rejected, mixed-script partial matches,64-codepoint CJK emission, strict PDS
 inputs, f32 ties and nonfinite values, and output/input bounds. They do not merely
 compare two index implementations sharing the same wrong prefix plan.
 
-[Source hashes and receipts](../../../services/tantivy-normalizer/verification.json)
+[Source hashes and receipts](../../../../services/tantivy-normalizer/verification.json)
 record the adapter and canonical inputs. No credentials, cloud resources or
 production data were touched by this task. Existing root README edits were
 preserved; no production behavior changed, so this task does not update them.

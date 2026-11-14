@@ -9,7 +9,7 @@ stopped since September 6; no public requests depended on it.
 
 The volume held a restored, frozen evaluation fixture and disposable write-test
 copies, not primary production data. Evaluation results, artifact hashes,
-comparator source and pilot reports remain committed in `docs/evals/` and
+comparator source and pilot reports remain committed in `docs/history/evals/` and
 `experiments/bounded-lookup-canary/`. The exact on-volume fixture and runtime state were not archived.
 
 The bounded lookup shipped September 9. A September 28 read-only `bs` probe
@@ -128,12 +128,12 @@ zig build eval-lookup -Doptimize=ReleaseSafe -Dtarget=x86_64-linux-gnu
 `compare.py` and `limit_exec.py` supervise it. `server.py` is the canonical
 HTTP/control implementation; `server-v2.py` is its deployed copy on the volume.
 The normal service build does not install the standalone evaluator. Deployed
-file hashes were checked against the [tested artifacts](../../docs/evals/canary-artifacts.json).
+file hashes were checked against the [tested artifacts](../../docs/history/evals/canary-artifacts.json).
 
 ## Evidence and remaining promotion gates
 
-[Full evaluation](../../docs/evals/bounded-overlay.md) and
-[measurements](../../docs/evals/full-overlay-summary.json):
+[Full evaluation](../../docs/history/evals/bounded-overlay.md) and
+[measurements](../../docs/history/evals/full-overlay-summary.json):
 
 - All 36 full-data query cases match, on both plain and indexed copies.
 - The fixed comparator passes 108 comparisons concurrent with actor writes.
@@ -159,9 +159,9 @@ not establish those gates.
 
 ## Initial live result
 
-The [ten-minute pilot](../../docs/evals/live-shadow-pilot.json) observed 42
+The [ten-minute pilot](../../docs/history/evals/live-shadow-pilot.json) observed 42
 eligible sampled searches, admitted 18 under its pacing limit, and passed all
-18. An [earlier interrupted pilot](../../docs/evals/live-shadow-interrupted.json)
+18. An [earlier interrupted pilot](../../docs/history/evals/live-shadow-interrupted.json)
 passed two live samples and verified interrupt cleanup. Including the private
 `bs` smoke check, the server ended with 21 accepted / 21 passed / zero failed,
 admission paused and no child running. The isolated machine was then stopped.
@@ -169,7 +169,7 @@ This is an initial safety/parity result, not statistical proof of all queries.
 
 During the pilot, production checks showed P95 around 23–24 ms, only HTTP 200
 responses in the measured windows, no throttling or ingest backpressure, and
-passing freshness. The [canary resource check](../../docs/evals/canary-resources.json)
+passing freshness. The [canary resource check](../../docs/history/evals/canary-resources.json)
 showed no throttling, about 1.7 GiB memory available, and 14.3 GiB disk available.
 Artifact hashes matched the deployed files. The local tail and private proxy
 were shut down after the run; no recurring job was installed.

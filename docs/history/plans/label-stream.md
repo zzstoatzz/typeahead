@@ -22,7 +22,7 @@ behind: a 245-day sweep, a cursor that never advanced, counts frozen by a skip
 predicate, enrichment sized below arrivals, a wall kill in 120 of 140 runs.
 A sample has no coverage measure, so "behind" looks like "done". Labels have
 a change feed; use it, with a cursor committed after its effects and a measured
-lag, as the [identity queue](../discovery-and-identity.md) does. The one-time
+lag, as the [identity queue](../../discovery-and-identity.md) does. The one-time
 reconciliation below is a bounded walk with a known end, not a recurring sample.
 
 ## Agreed policy

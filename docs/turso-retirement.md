@@ -15,7 +15,7 @@ stopped.
 
 Statistics (requests, traffic, the `snapshots` table, `/source-icon`'s
 known-source check) leave Turso separately, under `STATS_MODE` on the
-`stats-d1-read` branch ([plan](plans/stats-off-turso.md)). Moderation policy and
+`stats-d1-read` branch ([plan](history/plans/stats-off-turso.md)). Moderation policy and
 indexing requests already have their source of truth in the control database
 ([slot control](slot-control.md)).
 
@@ -33,7 +33,7 @@ port; **D1**; or **delete**, with what shows nothing else needs it.
 | `/stats` "hidden by policy", "invalid identity" | daily: every hidden `actors` row, `mod_overrides`, `blocked_domains`, two handle counts | cron | slot: `/corpus`, counted by the index | `CORPUS_MODE` |
 | Turso policy mirror (`src/turso-policy-mirror.ts`) | after the control write, the admin override and domain-block handlers write `mod_overrides`, `blocked_domains` and `actors.hidden`, with rowid-window backfills; `DELETE /admin/mod-override` reads the row to answer `hidden` | operator | delete: only the Turso-fed slots read these. The `hidden` in the delete answer comes from the slot's copy of the account | `TURSO_ACTORS` |
 | `/request-indexing` | upserts the requested actor; reads policy from Turso when the control database fails | public users (homepage button) | delete: the request is already logged in the control database and slots index from their own sources | `TURSO_ACTORS` |
-| `POST /admin/delete` | deletes `actors` rows, writes `tombstones` | the old ingester (`services/src/ingest.zig`); `scripts/backfill-plc.py` (the retired PLC job), `scripts/reconcile-inactive-recovery.py`; an operator, per [private directories](private-directories.md) | delete: a slot removes an account when the relay reports it gone. The operator's remedy for an account that should not be listed is a `hide` override and a domain block, both in the control database | `TURSO_ACTORS` (410) |
+| `POST /admin/delete` | deletes `actors` rows, writes `tombstones` | the old ingester (`services/src/ingest.zig`); `scripts/backfill-plc.py` (the retired PLC job), `scripts/reconcile-inactive-recovery.py`; an operator, per [private directories](history/private-directories.md) | delete: a slot removes an account when the relay reports it gone. The operator's remedy for an account that should not be listed is a `hide` override and a domain block, both in the control database | `TURSO_ACTORS` (410) |
 | `POST /admin/enrich-profiles` | upserts appview profiles into `actors` | `scripts/prioritized-enrich.py` (`just enrich-plan --apply`), `scripts/refresh-recovery-profiles.py`, `scripts/reconcile-ingest-recovery.py`, and the reputation page's on-view refresh | delete: the store role refreshes profiles itself (`services/src/store_process/enrich.zig`) | `TURSO_ACTORS` (410) |
 | `POST /admin/ingest` | inserts and updates `actors`, enqueues `identity_queue` | the old ingester; `scripts/backfill-plc.py`, `scripts/reconcile-ingest-recovery.py` | delete | `TURSO_ACTORS` (410) |
 | `/admin/identity/lease`, `/complete`, `/plc`, `/status` | leases and settles `identity_queue`, writes `actors` identity | the old ingester | delete | `TURSO_ACTORS` (410) |
@@ -193,7 +193,7 @@ says. A store bootstrapped afresh starts its own pass.
   for bridge lag adds a second, so this is the least a pass takes.
 - 13.2 million rows read from Turso for one slot, 26.4 million for both; twice
   that if Turso counts the index entry and the row separately. The plan allows
-  100,000 million a month ([usage](turso-usage-analytics.md)).
+  100,000 million a month ([usage](history/turso-usage-analytics.md)).
 - One change-log entry and one index document rewrite for each actor filled.
   A page can fill up to 500, so the lag limit is what keeps the pass from
   outrunning the bridge; how many actors Turso holds a description or a banner
@@ -511,7 +511,7 @@ Below, `<standby>` is the store slot the transport's `/route` does not name and
     names the caller that is still running; and two readings of
     `turso db inspect typeahead --queries` a day apart show no growth for any
     statement on `actors` (the figures are totals for the billing period; see
-    [turso usage analytics](turso-usage-analytics.md)). Rollback: remove the
+    [turso usage analytics](history/turso-usage-analytics.md)). Rollback: remove the
     variable and deploy. Policy changes made in between are in the control
     database and not in Turso; `just control-check` lists them, and they are
     re-made through the admin endpoints if the Turso-fed slots are to be used

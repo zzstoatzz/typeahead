@@ -167,7 +167,7 @@ boundary, cached restart fails without another artifact download, ordinary polls
 do not renew coverage, and an actual remote full round does. No cloud release or
 full-corpus source qualification is inferred from these local fixtures.
 
-The [checkpoint slot image receipt](../../../scripts/snapshot_refresh/tantivy-slot-checkpoint-image.json)
+The [checkpoint slot image receipt](../../../../scripts/snapshot_refresh/tantivy-slot-checkpoint-image.json)
 records a Python-only image publication with the unchanged D1 ELF. All nine
 installed-module tests pass in an isolated Linux container at two CPUs/1 GiB,
 no swap and network disabled. Actual reader status confirms ordinary polling

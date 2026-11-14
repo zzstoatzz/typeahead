@@ -165,7 +165,7 @@ refresh integration and long-term merge behavior remain separate cutover gates;
 no success here authorizes production routing changes.
 
 See [topology.md](topology.md) for all machine roles and data/control paths,
-[plan.md](plan.md) for qualification scope, [resources.json](../../../deploy/tantivy-dev/resources.json)
-for owned dev resources, [build-receipt.json](../../../deploy/tantivy-dev/build-receipt.json)
+[plan.md](plan.md) for qualification scope, [resources.json](../../../../deploy/tantivy-dev/resources.json)
+for owned dev resources, [build-receipt.json](../../../../deploy/tantivy-dev/build-receipt.json)
 for the pinned image, and [protected-latest.json](protected-latest.json) for the
 latest production/rollback/ingester and route comparison.

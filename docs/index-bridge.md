@@ -1,6 +1,6 @@
 # Index bridge
 
-Status: built and tested locally on 2026-11-10 (issue 42). Nothing runs it yet. It is step 3 of the [embedded-store plan](plans/embedded-store-service.md): the code that pushes the store's changes into the Tantivy server on the same machine, replacing the Turso poller in `services/tantivy-input/`.
+Status: built and tested locally on 2026-11-10 (issue 42). Nothing runs it yet. It is step 3 of the [embedded-store plan](history/plans/embedded-store-service.md): the code that pushes the store's changes into the Tantivy server on the same machine, replacing the Turso poller in `services/tantivy-input/`.
 
 The code is `services/src/bridge/`: `source.zig` is the interface the store side implements, `wire.zig` is the client for the server's private endpoints, `Bridge.zig` is the loop.
 

@@ -233,7 +233,7 @@ The same captured slice also passes 139/139 tests under Zig **ReleaseSafe**, the
 mode used by the production Dockerfile. Its indexed run measures `bs` full lookup
 1166.811 ms versus bounded lookup 1.475 ms; all 12 ordered public-response
 comparisons pass. The full-data canary preparation is tracked in
-[the canary runbook](../../experiments/bounded-lookup-canary/README.md); the restored evaluation machine
+[the canary runbook](../../../experiments/bounded-lookup-canary/README.md); the restored evaluation machine
 has no traffic routing and is not a deployed search canary.
 
 ## Full restored overlay — September 6, 2026 UTC
@@ -290,7 +290,7 @@ The additional storage fits existing disk space. The measured write overhead
 supports a limited shadow canary; it does not justify increasing bulk enrichment
 or running index creation on production's serving connection. Full measurements
 are in [the summary](full-overlay-summary.json). Concurrent-write parity and
-exposure/rollback gates remain tracked in [the runbook](../../experiments/bounded-lookup-canary/README.md).
+exposure/rollback gates remain tracked in [the runbook](../../../experiments/bounded-lookup-canary/README.md).
 
 ### Concurrent-update gate
 
@@ -322,7 +322,7 @@ No public response used the candidate. Queries were replayed on the same frozen
 fixture for both implementations; this does not test live freshness or sync
 catch-up. Samples include edge-cache hits, and baseline-first timing is biased
 by page warming. See [raw metrics](live-shadow-pilot.json) and the
-[runbook](../../experiments/bounded-lookup-canary/README.md) for limits, rollback and remaining gates.
+[runbook](../../../experiments/bounded-lookup-canary/README.md) for limits, rollback and remaining gates.
 
 ## Ranking-index implementation — October 9
 

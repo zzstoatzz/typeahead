@@ -5,7 +5,7 @@ repairs the selective handle-recall failure with either index. The FST makes
 one-edit lookup substantially cheaper in this layout, but neither prototype
 qualifies the storage/performance issue's release target.**
 
-The code is in [experiments/handle-sidecar](../../../experiments/handle-sidecar/README.md).
+The code is in [experiments/handle-sidecar](../../../../experiments/handle-sidecar/README.md).
 The [raw result archive](results.tgz) is 519,009 bytes, SHA-256
 `29c518549a4276b880bd7f762ffc101806f727753027f9dc834449a3064f7318`.
 Small manifests and derived summaries are alongside this document.

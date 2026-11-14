@@ -135,7 +135,7 @@ Estimated write statements to Turso from statistics: 135,000 request rows,
 day, about 208,000 a day or 6.2 million a month. Each is its own HTTP round
 trip. The last committed plan-level figure is 45.2 million rows written across
 the whole database in one billing period
-([Turso usage analytics](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/turso-usage-analytics.md));
+([Turso usage analytics](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/turso-usage-analytics.md));
 the two are not from the same period and should not be divided.
 
 "Ten times" below means 1.35 million answers a day. Whether volume goes that
@@ -556,7 +556,7 @@ and 4 KV reads; `/source-icon` at most one D1 read.
 A realistic cutover is five backfill runs and twenty parity runs: about 31
 million rows read on each store. That is 0.1% of D1's monthly allowance and
 0.03% of the 100 billion in Turso's plan
-([usage](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/turso-usage-analytics.md)).
+([usage](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/turso-usage-analytics.md)).
 Comparing 2,000 rows a side takes 1.75 ms of JavaScript (measured under bun).
 
 Two shapes were considered and left:

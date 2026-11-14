@@ -90,4 +90,4 @@ the last test builds both tools in a temporary directory and fetches zkv and the
 
 ## results
 
-the [2026-11-10 run](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/evals/zkv-scale-20261110/README.md) loaded 13,214,296 actors: 9.4 GB settled, commits at 2 to 3 ms, cold reads under 200 µs at p99, and a full reader scan in about 11 s while the writer kept going. bulk loads stalled on compaction and a full compaction briefly doubled the disk used.
+the [2026-11-10 run](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/evals/zkv-scale-20261110/README.md) loaded 13,214,296 actors: 9.4 GB settled, commits at 2 to 3 ms, cold reads under 200 µs at p99, and a full reader scan in about 11 s while the writer kept going. bulk loads stalled on compaction and a full compaction briefly doubled the disk used.

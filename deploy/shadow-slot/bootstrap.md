@@ -19,7 +19,7 @@ Everything happens on the machine. The bundle goes from R2 to the volume and nev
 
 With `--index-only` the script skips steps 5 and 6 and records `store_loaded: false`. That is enough to serve the bundle's index from the shadow, and nothing more.
 
-The store load in step 5 is what the [zkv measurement](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/evals/zkv-scale-20261110/README.md) did: its actor extraction tool prints every stored actor from the index as one JSON line, and its loader commits them with backpressure against compaction. That run took 17.5 minutes for the load and 90 seconds to settle on a 4-vCPU machine with local NVMe. Both tools are experiment code and neither is in the image.
+The store load in step 5 is what the [zkv measurement](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/evals/zkv-scale-20261110/README.md) did: its actor extraction tool prints every stored actor from the index as one JSON line, and its loader commits them with backpressure against compaction. That run took 17.5 minutes for the load and 90 seconds to settle on a 4-vCPU machine with local NVMe. Both tools are experiment code and neither is in the image.
 
 ## R2 credentials
 

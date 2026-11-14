@@ -20,8 +20,8 @@ The [deleted-document hash probe](checkpoint-live-deleted-document-hash.json) th
 matched all eight stored hashes against the entire canonical `Actor` representation:
 `deleted:true`, empty profile/PDS fields, empty labels/associated, zero score/counts,
 `hidden:false`, and version0. SHA256 uses the exact compact UTF-8 serialization and
-field declaration order in [Actor](../../../services/tantivy/src/actor.rs) and
-[the source-state digest](../../../services/tantivy/src/engine/source.rs).
+field declaration order in [Actor](../../../../services/tantivy/src/actor.rs) and
+[the source-state digest](../../../../services/tantivy/src/engine/source.rs).
 The candidate version set was bounded to0, snapshot floor, current source actor
 version and tombstone timestamp. A mismatch would have remained inconclusive.
 

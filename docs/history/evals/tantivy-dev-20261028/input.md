@@ -10,7 +10,7 @@ leases, data download/fork, deployment, disk budget and teardown.
 The local branch now defaults to source-owned observations, with independent
 observation revisions and bounded identity reconciliation. See
 [source-observations.md](source-observations.md) and
-[the source-adapter README](../../../services/tantivy-input/README.md).
+[the source-adapter README](../../../../services/tantivy-input/README.md).
 The timestamp replay and retained-tombstone sections below describe the preceding
 policy; their deployment receipts do not qualify this successor's runtime or
 full-corpus sweep SLO.

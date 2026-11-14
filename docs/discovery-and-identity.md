@@ -46,7 +46,7 @@ spaces hosts (point-to-point sync, no relay) will make it common. Membership
 on such a host is often private on purpose, so bulk-indexing it into the
 public corpus is not the answer either. Decision 2026-09-18: typeahead stays
 the public-context service and private completion belongs to the org host —
-see [private directories](private-directories.md).
+see [private directories](history/private-directories.md).
 
 ## identity: batch, always
 
@@ -63,7 +63,7 @@ Resolving one DID per HTTP request does not work at corpus scale.
    mapping accompanies the index and is used by live reconciliation, so profile
    updates do not erase the joined value. Nonempty source PDS and deletions win.
    Coverage is partial; this is not fresh DID resolution. Production has not
-   enabled the join. See [coverage and verification](pds-identity-repair.md).
+   enabled the join. See [coverage and verification](history/pds-identity-repair.md).
    The bulk live-database repair is stopped; the old home PLC job remains removed.
 
 ## identity: handle changes are the live consumer's job
@@ -171,7 +171,7 @@ Authenticated ingest accepts handle updates only with the verifier marker, or
 the explicit `handle.invalid` sentinel. Manual indexing checks the authority DID
 document and reverse handle resolution before writing. Existing invalid claims
 are contained at the response boundary while offline repair is pending. See the
-[repair record](ops/identity-repair-20261028/README.md).
+[repair record](history/ops/identity-repair-20261028/README.md).
 
 Writes use one statement per batch via `json_each`, not one statement per row.
 Each row change fires the `actors_au` trigger and rewrites FTS5, which is the

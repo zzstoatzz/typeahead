@@ -1,5 +1,5 @@
 > Archived historical record. This is not a current deployment runbook.
-> See [current architecture](../architecture.md) and [operations](../operations.md).
+> See [current architecture](../../architecture.md) and [operations](../../operations.md).
 
 # Native snapshot conversion
 
