@@ -49,7 +49,7 @@ check: typecheck lint test test-store-route test-supervise test-smoke
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
     bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run
 
-# run the zig unit tests for the ingester and the shared normalizer sources
+# run the zig unit tests for the store process and the shared normalizer sources
 test-services:
     cd services && zig build test --summary all
 
@@ -178,14 +178,6 @@ deploy-search-transport url="https://typeahead.waow.tech": lint
 # deploy the worker WITHOUT the post-deploy smoke gate (escape hatch)
 deploy-worker-only: control-ready lint
     npx wrangler deploy
-
-# deploy the ingest service (relay subscribeRepos -> worker admin ingest)
-deploy-ingest:
-    mkdir -p services/.shared && cp src/identity-quarantine.json services/.shared/
-    cd services && fly deploy -c fly.toml
-
-refresh-search ops_repo=(env_var("HOME") / "tangled.org/zzstoatzz.io/my-prefect-server"):
-    just --justfile "{{ops_repo}}/justfile" prefect --no-prompt deployment run typeahead-index/typeahead-index -p snapshot_format=compact -p automatic_refresh=true
 
 # ─── benchmarking & health ───────────────────────────────────────────────
 # How to assess performance. Four layers, run from here. See AGENTS.md

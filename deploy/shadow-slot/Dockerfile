@@ -25,7 +25,7 @@ FROM zig AS store
 WORKDIR /src/services
 COPY services/build.zig services/build.zig.zon ./
 COPY services/src ./src
-# the vendored tarballs seed the package cache, as in services/Dockerfile;
+# the vendored tarballs seed the package cache, so the build fetches nothing;
 # refresh them with scripts/vendor-zig-deps.py after a dep bump
 COPY services/.zig-pkg-vendor /root/.cache/zig/p/
 # the handle quarantine list the store role embeds; services/build.zig reads
@@ -78,7 +78,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     rclone \
     && rm -rf /var/lib/apt/lists/* \
-    # prefer IPv4 over IPv6 for outbound connections, as the ingester image does
+    # prefer IPv4 over IPv6 for outbound connections
     && echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
 
 WORKDIR /app

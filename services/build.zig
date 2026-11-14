@@ -25,12 +25,8 @@ pub fn build(b: *std.Build) void {
     });
 
     // The handle quarantine list is the Worker's own data file, so the two
-    // cannot drift. An image build whose context holds only services/ passes
-    // the path it copied the file to.
-    const quarantine: std.Build.LazyPath = if (b.option([]const u8, "identity-quarantine", "path to src/identity-quarantine.json")) |path|
-        .{ .cwd_relative = path }
-    else
-        b.path("../src/identity-quarantine.json");
+    // cannot drift.
+    const quarantine = b.path("../src/identity-quarantine.json");
 
     const role_imports: []const std.Build.Module.Import = &.{
         .{ .name = "zat", .module = zat.module("zat") },
