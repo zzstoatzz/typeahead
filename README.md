@@ -22,15 +22,6 @@ building an app? the [API docs](https://typeahead.waow.tech/docs) cover search,
 profile lookups and the Bluesky-compatible search endpoint.
 [llms.txt](https://typeahead.waow.tech/llms.txt) has a text version.
 
-## how it works
-
-typeahead follows account changes across the network and keeps a searchable
-index, so each search doesn’t have to visit individual hosting servers. fresh
-copies of the index are built and checked separately from the one answering
-searches. see the [architecture and diagram](docs/architecture.md).
-the public Worker's bundle is minified, and image rendering runs in a separate
-Worker so its dependencies stay off the search startup path.
-
 ## develop
 
 install [Bun](https://bun.sh/) and [just](https://just.systems/), then:
@@ -41,10 +32,12 @@ bunx wrangler dev    # start the local API and website
 just check           # check types, lint, tests and deployment builds
 ```
 
-see [development](docs/development.md) for service prerequisites, engine tests
-and deployment commands. local services need runtime configuration and credentials.
+see [development](docs/development.md) for the Zig and Rust services, their
+tests and the deploy commands. local services need runtime configuration and
+credentials.
 
 ## docs
 
-[docs/](docs/README.md) covers the design, operations and evaluations.
-repository workflows are in [AGENTS.md](AGENTS.md).
+[docs/](docs/README.md) has [how it works](docs/how-it-works.md) in five
+pictures and how to operate it. repository workflows are in
+[AGENTS.md](AGENTS.md).

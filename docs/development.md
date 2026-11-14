@@ -1,7 +1,10 @@
 # Development
 
-The public API and website run on a Cloudflare Worker. Install [Bun](https://bun.sh/)
-and [just](https://just.systems/) to work on them:
+## The Workers
+
+The public API and website, the search transport and the image renderer are
+Cloudflare Workers in `src/`. Install [Bun](https://bun.sh/) and
+[just](https://just.systems/):
 
 ```sh
 bun install
@@ -9,40 +12,71 @@ bunx wrangler dev
 just check
 ```
 
-For preview cards and PNG icons locally, run
-`bunx wrangler dev -c deploy/image-renderer/wrangler.jsonc --port 8788`
-in another terminal. Wrangler connects the public Worker's `IMAGE_RENDERER`
-binding to this local renderer. The renderer needs no Turso or admin credentials.
+`just check` is what CI runs: type-check, lint, `bun test`, the route tool's
+tests, the slot supervisor's tests, the smoke suite's own tests, and a dry-run
+build of all three Workers. It needs `python3`, `jq` and bash 5.2 or newer
+(on macOS, `brew install bash`). It contacts nothing remote.
 
-The ingester and the shared normalizer sources require Zig 0.17.0; offline
-tooling uses Python. The Tantivy search backend also requires Rust/Cargo and a C
-compiler. The ingester needs runtime credentials and an explicit `MODE=ingester`;
-a bare `zig build run` does not configure one.
+For preview cards and PNG icons locally, run the renderer in another terminal.
+Wrangler connects the public Worker's `IMAGE_RENDERER` binding to it.
 
 ```sh
-just test-services           # ingester, normalizer, store and index bridge unit tests
-just --no-dotenv test-tantivy # isolated engine, source and recovery checks
-just --no-dotenv test-bridge  # index bridge, and a policy change from the control loop to search, against a real local Tantivy server
+bunx wrangler dev -c deploy/image-renderer/wrangler.jsonc --port 8788
 ```
 
-## Deployment
+## The slot's programs
+
+A slot runs a store process written in Zig (`services/src/`) and a search
+engine written in Rust on Tantivy (`services/tantivy/`). They need Zig 0.17.0,
+Rust with Cargo, a C compiler and Python.
 
 ```sh
-just deploy-worker     # production Worker, followed by smoke checks
-just deploy-image-renderer # private renderer, followed by image smoke checks
-just deploy-ingest     # production ingester
+just test-services            # Zig unit tests: store, index bridge, control loop, normalizer
+just --no-dotenv test-tantivy # the search engine against built binaries
+just --no-dotenv test-bridge  # store to search engine, against a real local engine
+just test-supervise           # the slot's supervisor against stand-in processes
+just test-store-route         # the route tool against an in-memory bucket
 ```
 
-Deploy the image renderer before a public Worker release that introduces its
-service binding. `just smoke-images` validates fresh PNGs and cache headers at
-the public URLs. `just check` and CI build all three Workers.
+Changes to matching or ranking also need `just --no-dotenv test-tantivy`,
+which CI runs on main.
 
-Public Worker deployments minify the bundle and upload source maps so production
-stack traces can refer to the original source. Inspect the emitted bundle with
-`bunx wrangler deploy --dry-run --outdir /tmp/typeahead-worker-build`.
+The store process is one role of the binary in `services/`, chosen with
+`MODE=store`. A bare `zig build run` sets no role and exits. The slot image is
+built from `deploy/shadow-slot/Dockerfile`:
 
-Backend refresh uses the [isolated refresh controller](history/plans/automatic-snapshot-refresh.md).
-Prefect deployment and schedule ownership live in
-[my-prefect-server](https://tangled.org/zzstoatzz.io/my-prefect-server).
-Check smoke and benchmark targets before running them; some default to production.
-See [operations](operations.md) and [repository workflows](../AGENTS.md).
+```sh
+docker build --platform linux/amd64 -f deploy/shadow-slot/Dockerfile -t typeahead-shadow-slot:local .
+```
+
+## Deploying
+
+```sh
+just deploy-worker            # public Worker, then smoke
+just deploy-search-transport  # transport, then smoke
+just deploy-image-renderer    # renderer, then image smoke
+fly deploy . --config deploy/shadow-slot/fly.toml -a <standby app>
+```
+
+Push first. Deploys are run by hand; CI builds and tests only. A slot image
+goes to the standby first and reaches the serving slot only after a flip:
+[operating](operating.md#upgrade-the-slots) has the steps.
+
+## Checking production
+
+These read production and default to it. Check the target before running a
+benchmark; do not load-test the serving slot.
+
+```sh
+just smoke          # response shape, ranking position, moderation, admin API
+just index-status   # build, account count and versions on the serving slot
+just bench          # edge latency beside Bluesky for the same queries
+just bench-ranking  # ranking against Bluesky as the oracle
+```
+
+[Repository instructions](../AGENTS.md) say which of these a change needs.
+
+## The pictures
+
+`docs/diagrams/build.py` writes the five SVG files in `docs/diagrams/`. Edit
+the script and run it; do not edit the SVG files.
