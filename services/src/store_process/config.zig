@@ -13,7 +13,7 @@
 //! | `ADMIN_SECRET`           | no       | bearer secret of the co-located index's admin listener; set, the index bridge runs |
 //! | `INDEX_ADMIN_URL`        | no       | that listener, a loopback URL; default `http://127.0.0.1:8081` |
 //! | `INDEX_SOURCE_ID`        | no       | names this store to the index; default `$FLY_APP_NAME-store`, change it when the store is rebuilt |
-//! | `INDEX_ADOPT_CURSOR`     | no       | `1` takes over an index whose cursor something else wrote (a bundle's), by a full resync |
+//! | `INDEX_ADOPT_CURSOR`     | no       | `1` takes over an index whose cursor another store wrote (a volume restored from the other slot's snapshot), by a full resync |
 //! | `INDEX_PUSH_INTERVAL_MS` | no       | rest between pushes to the index while the bridge keeps up, 100 to 30000, default 1000; each push is an index commit, and a change waits at most this long to be read |
 //! | `INDEX_RESYNC_AFTER`     | no       | Unix seconds. The bridge rewrites every document in the index once, in a full resync round, unless the last completed round started at or after this time. Set it when an image changes what a document holds; a restart neither repeats the round nor loses it |
 //! | `ENRICH`                 | no       | `0` turns profile enrichment off; it is on unless `STORE_OFFLINE` |

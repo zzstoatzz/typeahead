@@ -376,8 +376,8 @@ fn document(self: *Bridge, batch: *Batch, did: []const u8, version: u64) !void {
     }
     var entry: wire.Entry = .{ .did = did, .version = version, .record = null };
     if (try self.store.actor(arena, did)) |actor| {
-        // The index refuses a live actor without a handle; the Turso adapter
-        // sends the same record as a deletion.
+        // The index refuses a live actor without a handle, so such a record
+        // is sent as a deletion.
         if (actor.status == .live and actor.handle.len > 0) {
             if (wire.rejection(arena, actor)) |reason| {
                 batch.rejected += 1;

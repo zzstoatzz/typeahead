@@ -508,7 +508,7 @@ test "a cursor from another controller is refused unless adoption is configured"
     rig.init();
     defer rig.deinit();
     try rig.seed(2);
-    rig.server.cursor = "{\"schema_version\":1,\"source_policy\":\"turso-authoritative-observations-v2\",\"through\":100}";
+    rig.server.cursor = "{\"schema_version\":1,\"source_policy\":\"some-other-policy\",\"through\":100}";
     rig.server.revision = 5;
 
     var bridge = rig.bridge(rig.config());

@@ -559,7 +559,7 @@ test "cursors written by another controller are not adopted" {
     const arena = arena_state.allocator();
 
     try testing.expect(parseCursor(arena, "null") == null);
-    try testing.expect(parseCursor(arena, "{\"schema_version\":1,\"source_policy\":\"turso-authoritative-observations-v2\",\"through\":5}") == null);
+    try testing.expect(parseCursor(arena, "{\"schema_version\":1,\"source_policy\":\"some-other-policy\",\"through\":5}") == null);
     const other = try std.mem.replaceOwned(u8, arena, try encodeCursor(arena, testCursor()), source_policy, "store-change-log-v9");
     try testing.expect(parseCursor(arena, other) == null);
 }

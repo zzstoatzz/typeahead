@@ -13,8 +13,8 @@
 //! stale for as long as the owner was stalled or catching up. A position
 //! the queue had no room for is kept and offered again at the next step,
 //! and the trim sees it at once either way. `policy` is always a
-//! snapshot of the store's overrides and blocked domains: an index built
-//! from a bundle has policy enabled and stops serving without a fresh one.
+//! snapshot of the store's overrides and blocked domains: the index stops
+//! serving without a fresh one.
 
 const std = @import("std");
 const bridge = @import("../bridge/root.zig");

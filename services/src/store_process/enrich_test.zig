@@ -250,7 +250,7 @@ test "a burst of due entries never exceeds the configured request rate" {
     try testing.expectEqual(@as(usize, 0), try rig.queued());
 }
 
-test "a DID the appview leaves out goes to Blacksky, then its PDS, in the cron's order" {
+test "a DID the appview leaves out goes to Blacksky, then its PDS" {
     const rig = try Rig.create(quiet);
     defer rig.destroy();
     const a = rig.f.arena.allocator();
