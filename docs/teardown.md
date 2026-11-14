@@ -33,10 +33,6 @@ and what in the repository still carries the old system's shape.
 
 ## Still shaped by the old system
 
-- **Names Fly holds.** The apps are `typeahead-slot-a` and `-b` and their
-  volumes `slot_data`, from when a slot ran beside the old system as its
-  shadow. Fly cannot rename either; new apps on volumes restored from
-  snapshots replace them.
 - **The first-check pass** (`first_check` in the store's `/health`) exists
   because the stores were first loaded from a search bundle, which left
   accounts no profile source had answered for. It is still running on both

@@ -7,8 +7,6 @@ const targetSchema = z.object({
   origin: z.enum([
     "https://typeahead-slot-a.fly.dev",
     "https://typeahead-slot-b.fly.dev",
-    "https://typeahead-shadow-a.fly.dev",
-    "https://typeahead-shadow-b.fly.dev",
   ]),
   build_id: z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/)),
   format: z.literal("tantivy-0.27-f32-did-expiry-v4"),

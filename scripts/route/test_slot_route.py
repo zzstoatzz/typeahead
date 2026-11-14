@@ -14,7 +14,6 @@ import slot_route as route
 NOW = 1794386900
 SLOT_A = 'https://typeahead-slot-a.fly.dev'
 SLOT_B = 'https://typeahead-slot-b.fly.dev'
-route.STORE_ORIGINS = (SLOT_A, SLOT_B)
 DESTROYED = 'https://typeahead-tantivy-a.fly.dev'
 BINARY = '4' * 64
 RULES = '3' * 64

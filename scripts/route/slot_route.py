@@ -49,10 +49,7 @@ ADMISSION_PREFIX = 'control/store-slot-admissions/'
 TRANSPORT = 'https://typeahead-search-transport.n8-3e9.workers.dev'
 FORMAT = 'tantivy-0.27-f32-did-expiry-v4'
 STORE_POLICY = 'store-change-log-v1'
-STORE_ORIGINS = (
-    'https://typeahead-slot-a.fly.dev', 'https://typeahead-slot-b.fly.dev',
-    'https://typeahead-shadow-a.fly.dev', 'https://typeahead-shadow-b.fly.dev',
-)
+STORE_ORIGINS = ('https://typeahead-slot-a.fly.dev', 'https://typeahead-slot-b.fly.dev')
 BUILD = re.compile(r'b[0-9]{10}-[A-Za-z0-9_-]+')
 DIGEST = re.compile(r'[a-f0-9]{64}')
 STRATEGIES = ('per-segment', 'global-merge')

@@ -100,9 +100,12 @@ the route, then deploy to the slot that was serving.
 7. Deploy the same image to the other slot and wait for `standby` to report it
    fit.
 
-An image that changes `src/moderation.ts` reports a new moderation rules hash,
-which can never equal the serving slot's. Name the new hash in every route
-command for that upgrade, and the candidate must report exactly it:
+An image that changes `src/moderation.ts` reports a new moderation rules hash.
+On its first start the index process reads every document once to count label
+coverage under the new rules, about five minutes during which it answers 503
+and takes no writes. The new hash can never equal the serving slot's, so name
+it in every route command for that upgrade, and the candidate must report
+exactly it:
 
 ```sh
 jq -r .canonical_source_sha256 src/moderation-regexes.json
@@ -309,8 +312,8 @@ fly volumes extend <volume id> -s <GB> -a <app>
 
 Fly snapshots each slot's volume daily and keeps two days of them. A slot
 whose volume is lost or damaged is rebuilt from a snapshot, its own or the
-other slot's: both hold the same accounts and index. This has not been
-exercised yet; treat the first run as a rehearsal on the standby.
+other slot's: both hold the same accounts and index. Both slots were built
+this way on 2026-11-14, from one snapshot.
 
 ```sh
 fly volumes snapshots list <volume id>
@@ -320,7 +323,10 @@ fly volumes create slot_data --snapshot-id <snapshot id> -s 40 -r ewr -a <app>
 Then destroy the slot's machine and [deploy](#upgrade-the-slots) to that app,
 which creates a machine on the new volume. A volume restored from the other
 slot's snapshot carries that slot's index cursor; `INDEX_ADOPT_CURSOR=1` in
-`fly.toml` makes the bridge take the index over with one full resync round. The store resumes from the cursors
+`fly.toml` makes the bridge take the index over with one full resync round: 44 and 55
+minutes on a machine resized to `performance-4x` with 8 GB for the round
+(`fly machine update <machine> --vm-size performance-4x --vm-memory 8192`, and
+back to `shared-cpu-4x` with 2048 after). The store resumes from the cursors
 in the snapshot, so a snapshot older than the relay keeps events for leaves a
 gap that the PLC directory and the scheduled refresh close over time; prefer
 the newest snapshot. Wait for `standby` to report the slot fit and for a
