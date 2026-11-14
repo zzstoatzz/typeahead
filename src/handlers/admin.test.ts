@@ -1,34 +1,8 @@
 import { expect, test } from "bun:test";
-import { handleEnrichProfiles } from "./admin";
 import { extractProfileFields } from "../utils";
 import { BSKY_MOD_DID } from "../moderation";
 
-// Minimal stub: getOverrides + getBlockedDomains call .all<…>(), and we want
-// the validation paths to return BEFORE any DB use, so the stub is no-op.
-const stubDb: any = {
-  prepare: () => ({
-    bind: (..._args: any[]) => ({
-      all: async () => ({ results: [] }),
-      run: async () => ({ meta: { changes: 0 } }),
-      first: async () => null,
-    }),
-    all: async () => ({ results: [] }),
-    run: async () => ({ meta: { changes: 0 } }),
-    first: async () => null,
-  }),
-  batch: async () => [],
-};
-const stubEnv: any = { ADMIN_SECRET: "test-secret" };
-
-function postReq(body: any, auth = "Bearer test-secret") {
-  return new Request("https://x/admin/enrich-profiles", {
-    method: "POST",
-    headers: { Authorization: auth, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-// ─── extractProfileFields: the canonical writer used by the endpoint ─────
+// ─── extractProfileFields: how an appview profile is read ─────
 
 test("extractProfileFields: populated profile writes counts + qualityScore", () => {
   // Paul Frazee shape from bsky's getProfiles — 308k followers should give a
@@ -127,43 +101,4 @@ test("extractProfileFields: per-DID show override beats domain-block + labels", 
   };
   const f = extractProfileFields(labeled, "show", true);
   expect(f.hidden).toBe(0);
-});
-
-// ─── handleEnrichProfiles: body validation + auth ────────────────────────
-
-test("handleEnrichProfiles: missing/wrong Bearer → 401", async () => {
-  const res = await handleEnrichProfiles(postReq({ dids: ["did:plc:abc"] }, "Bearer wrong"), stubDb, stubEnv);
-  expect(res.status).toBe(401);
-});
-
-test("handleEnrichProfiles: body.dids not an array → 400", async () => {
-  const res = await handleEnrichProfiles(postReq({ dids: "oops" }), stubDb, stubEnv);
-  expect(res.status).toBe(400);
-});
-
-test("handleEnrichProfiles: > 100 DIDs → 400 (hard server-side cap)", async () => {
-  const tooMany = Array.from({ length: 101 }, (_, i) =>
-    `did:plc:${i.toString().padStart(20, "0")}aaaaaaaa`);
-  const res = await handleEnrichProfiles(postReq({ dids: tooMany }), stubDb, stubEnv);
-  expect(res.status).toBe(400);
-});
-
-test("handleEnrichProfiles: invalid DID shape → 400", async () => {
-  const res = await handleEnrichProfiles(
-    postReq({ dids: ["did:plc:valid", "not-a-did", "did:web:also-valid"] }),
-    stubDb, stubEnv,
-  );
-  expect(res.status).toBe(400);
-});
-
-test("handleEnrichProfiles: empty array → 200 with zeros", async () => {
-  const res = await handleEnrichProfiles(postReq({ dids: [] }), stubDb, stubEnv);
-  expect(res.status).toBe(200);
-  const body: any = await res.json();
-  expect(body.ok).toBe(true);
-  expect(body.requested).toBe(0);
-  expect(body.profiles_found).toBe(0);
-  expect(body.written).toBe(0);
-  expect(body.hidden).toBe(0);
-  expect(body.errors).toEqual([]);
 });

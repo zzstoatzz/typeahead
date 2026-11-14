@@ -7,22 +7,17 @@ import { recordExclusions, recordSnapshot } from "./corpus";
 import { recordProfile } from "./stats-profile";
 import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
 import { recordStats, statsReadDb } from "./stats-store";
-import { refreshModeration } from "./cron";
 import { controlDb, pruneIndexRequests } from "./control-store";
 import { controlHealth, handleControlHealth } from "./control-health";
 import { handleSearch } from "./handlers/search";
-import { handleIngest } from "./handlers/ingest";
-import { handleLabelCursor, handleLabelReconcile, handleLabelStream } from "./account-labels";
-import { handleIdentityComplete, handleIdentityLease, handleIdentityStatus, handlePlcCursor, handlePlcOperations } from "./identity-queue";
-import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList, handleEnrichProfiles } from "./handlers/admin";
+import { handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList } from "./handlers/admin";
 import { handleGetProfiles, handleGetProfile } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { handleWebManifest } from "./handlers/web-manifest";
 import { handleSourceIcon } from "./handlers/source-icon";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
-import { handleSlotIndexRequests, handleSlotPolicy, handleSlotProfileFill } from "./handlers/slot-control";
-import { tursoActorsOn } from "./turso-policy-mirror";
+import { handleSlotIndexRequests, handleSlotPolicy } from "./handlers/slot-control";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
 import { llmsTxt } from "./pages/llms";
@@ -35,10 +30,10 @@ import { RequestTiming } from "./request-timing";
  *  `cron_budget_exhausted` one naming what was skipped. */
 export const CRON_BUDGET_MS = 12 * 60 * 1000;
 
-/** What the old ingester, the bulk scripts and operators call to write
- *  Turso's actor tables. With TURSO_ACTORS off nothing writes those tables,
- *  and a caller that is still running is told so. */
-const TURSO_ACTOR_ENDPOINTS = new Set([
+/** What the old ingester, the bulk scripts and operators called to write the
+ *  retired actor tables. A caller that is still running is told so, in the
+ *  words it was told before. */
+const RETIRED_ENDPOINTS = new Set([
   "/admin/ingest", "/admin/delete", "/admin/enrich-profiles",
   "/admin/identity/lease", "/admin/identity/complete", "/admin/identity/plc", "/admin/identity/status",
   "/admin/labels", "/admin/labels/reconcile", "/admin/labels/cursor",
@@ -85,7 +80,6 @@ export default {
       }],
       ["materializeStats", () => materializeStats(statsReadDb(env, db), env)],
       ["recordProfile", async () => { await recordProfile(statsReadDb(env, db), env.KV); }],
-      ["refreshModeration", () => refreshModeration(db, env)],
       // the control database is what store slots take moderation policy
       // from; /request-indexing keeps answering when it is down, so nothing
       // else would say so
@@ -99,17 +93,12 @@ export default {
         const pruned = await pruneIndexRequests(controlDb(env), Math.floor(Date.now() / 1000));
         if (pruned) console.log(JSON.stringify({ event: "index_requests_pruned", pruned }));
       }],
-      // no enrichment here. The identity + profile passes that used to run
-      // last were killed by the 15-minute wall in 120 of 140 runs
-      // (2026-08-27..09-03), silently: a wall kill is not an exception, so
-      // cron_step_failed never fired. They live on heavypad now
-      // (typeahead-identity-hourly, typeahead-enrich-backfill), where an
-      // hour is an hour.
+      // no enrichment here: discovering, resolving and refreshing accounts
+      // is the store process's work on each slot.
     ];
     const t_run = Date.now();
     const phases: Record<string, number> = {};
     for (const [name, fn] of steps) {
-      if (name === "refreshModeration" && !tursoActorsOn(env)) continue;
       const elapsed = Date.now() - t_run;
       if (elapsed > CRON_BUDGET_MS) {
         // say so, loudly: skipping is the honest alternative to being killed
@@ -222,11 +211,8 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   if (pathname === "/slot/control/index-requests" && request.method === "GET") {
     return handleSlotIndexRequests(request, env);
   }
-  if (pathname === "/slot/control/profile-fill" && request.method === "GET") {
-    return handleSlotProfileFill(request, env, await getDb(env));
-  }
 
-  if (!tursoActorsOn(env) && TURSO_ACTOR_ENDPOINTS.has(pathname)) {
+  if (RETIRED_ENDPOINTS.has(pathname)) {
     return json({ error: "Gone", message: "this endpoint wrote the Turso actor tables, which are retired; store slots follow the network themselves" }, 410);
   }
 
@@ -295,39 +281,6 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
     return handleSourceIcon(request, statsReadDb(env, db), ctx);
   }
 
-  if (pathname === "/admin/ingest" && request.method === "POST") {
-    return handleIngest(request, db, env, ctx);
-  }
-
-  if (pathname === "/admin/identity/lease" && request.method === "POST") {
-    return handleIdentityLease(request, db, env);
-  }
-  if (pathname === "/admin/identity/complete" && request.method === "POST") {
-    return handleIdentityComplete(request, db, env);
-  }
-  if (pathname === "/admin/identity/plc" && request.method === "GET") {
-    return handlePlcCursor(request, env);
-  }
-  if (pathname === "/admin/identity/plc" && request.method === "POST") {
-    return handlePlcOperations(request, db, env);
-  }
-  if (pathname === "/admin/identity/status" && request.method === "GET") {
-    return handleIdentityStatus(request, db, env);
-  }
-  if (pathname === "/admin/labels" && request.method === "POST") {
-    return handleLabelStream(request, db, env);
-  }
-  if (pathname === "/admin/labels/reconcile" && request.method === "POST") {
-    return handleLabelReconcile(request, db, env);
-  }
-  if (pathname === "/admin/labels/cursor" && request.method === "GET") {
-    return handleLabelCursor(request, db, env);
-  }
-
-  if (pathname === "/admin/delete" && request.method === "POST") {
-    return handleDelete(request, db, env, ctx);
-  }
-
   if (pathname === "/admin/mod-override" && request.method === "POST") {
     return handleModOverrideSet(request, env);
   }
@@ -346,10 +299,6 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
   if (pathname === "/admin/domain-blocks" && request.method === "GET") {
     return handleDomainBlockList(request, env);
-  }
-
-  if (pathname === "/admin/enrich-profiles" && request.method === "POST") {
-    return handleEnrichProfiles(request, db, env);
   }
 
   return json({ error: "not found" }, 404);

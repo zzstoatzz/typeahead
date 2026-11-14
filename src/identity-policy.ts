@@ -8,12 +8,6 @@ export function isSearchExcludedHandle(handle: string): boolean {
   return normalized === "handle.invalid" || quarantinedHandles.has(normalized);
 }
 
-export function admittedHandle(event: { handle?: string; handle_verified?: boolean }): string {
-  if (!event.handle) return "";
-  if (event.handle === "handle.invalid") return event.handle;
-  return event.handle_verified === true && !isSearchExcludedHandle(event.handle) ? event.handle : "";
-}
-
 const actorSchema = z.object({ did: z.string(), handle: z.string() }).passthrough();
 const envelopeSchema = z.object({
   actors: z.array(actorSchema).optional(),

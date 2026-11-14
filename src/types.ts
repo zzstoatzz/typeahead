@@ -15,11 +15,6 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   /// "d1-only" (Turso not touched). See
   /// statsMode in src/stats-store.ts.
   STATS_MODE?: string;
-  /// "off" stops every write to, and remaining read of, the Turso actor
-  /// tables: the ingester's endpoints answer 410, admin policy changes and
-  /// /request-indexing write the control database only, and the cron's
-  /// moderation refresh does not run. Anything else leaves them on.
-  TURSO_ACTORS?: string;
   SEARCH_BACKEND_URL?: string;
   SEARCH_TRANSPORT?: Fetcher;
   SEARCH_CACHE_GENERATION?: string;
@@ -66,28 +61,6 @@ export interface RequestKvData {
   materialized_at: number;
 }
 
-export interface IngestEvent {
-  did: string;
-  handle?: string;
-  handle_verified?: boolean;
-  display_name?: string;
-  avatar_cid?: string;
-  description?: string;
-  banner_cid?: string;
-  /** resolved alongside handle by the ingester's slingshot pool — carrying it
-   *  here is what retired the enrichment cron's per-DID pds backfill. */
-  pds?: string;
-  /** set when this event must durably request identity resolution; the worker
-   *  enqueues it in the same request that may advance the relay cursor. */
-  identity?: "identity" | "account";
-}
-
-export interface SlingshotResponse {
-  did: string;
-  handle: string;
-  pds: string;
-}
-
 export const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -102,9 +75,6 @@ export const SLINGSHOT_URL =
 
 export const BSKY_TYPEAHEAD_URL =
   "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead";
-
-export const BSKY_GET_PROFILES_URL =
-  "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles";
 
 /** The mark: a lowercase t on the dark panel, with the accent block cursor
  *  the wordmark carries on every page. Served at /favicon.svg and rasterized
