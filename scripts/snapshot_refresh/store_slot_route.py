@@ -3,21 +3,16 @@
 # requires-python = ">=3.12"
 # dependencies = ["boto3>=1.36"]
 # ///
-"""Route search to a store-fed slot, and back, with a conditional write to R2.
+"""Move the search route between the two store slots, with a conditional write to R2.
 
-The refresh controller in my-prefect-server admits a slot from the bundle it
-installed there. A store-fed slot has no such bundle: it is bootstrapped once
-and then follows its own store's change log, so its build id never changes and
-it never reports `cutover_source_ready`, which the reader computes only for the
-Turso source policy. This admits it on what it reports about itself, compared
-with the slot that is serving now, which may be a managed slot or the other
-store slot.
+A slot is admitted on what it reports about itself, compared with the slot
+that is serving now.
 
 In the record a cutover writes, `previous` is the target that was serving when
-the cutover was written: the slot a rollback returns to. It is not "the
-standby". A rollback restores the whole record the cutover replaced, taken from
-the admission stored for the routed slot, so that record's own `previous` comes
-back with it and a second rollback undoes the cutover before.
+the cutover was written: the slot a rollback returns to. A rollback restores
+the whole record the cutover replaced, taken from the admission stored for the
+routed slot, so that record's own `previous` comes back with it and a second
+rollback undoes the cutover before.
 
     store_slot_route.py check    --origin URL --binary-sha256 HEX   reads only public endpoints
     store_slot_route.py cutover  --origin URL --binary-sha256 HEX   prints the plan
@@ -51,13 +46,10 @@ import urllib.request
 
 ROUTE_KEY = 'control/search-routing.json'
 ADMISSION_PREFIX = 'control/store-slot-admissions/'
-STANDBY_PREFIX = 'control/tantivy-standby/'
 TRANSPORT = 'https://typeahead-search-transport.n8-3e9.workers.dev'
 FORMAT = 'tantivy-0.27-f32-did-expiry-v4'
 STORE_POLICY = 'store-change-log-v1'
-MANAGED_ORIGINS = ('https://typeahead-tantivy-a.fly.dev', 'https://typeahead-tantivy-b.fly.dev')
 STORE_ORIGINS = ('https://typeahead-shadow-a.fly.dev', 'https://typeahead-shadow-b.fly.dev')
-ROUTABLE_ORIGINS = MANAGED_ORIGINS + STORE_ORIGINS
 BUILD = re.compile(r'b[0-9]{10}-[A-Za-z0-9_-]+')
 DIGEST = re.compile(r'[a-f0-9]{64}')
 STRATEGIES = ('per-segment', 'global-merge')
@@ -97,32 +89,32 @@ def digest_json(value):
     return hashlib.sha256(canonical(value)).hexdigest()
 
 
-def validate_target(target, origins):
+def validate_target(target):
     if not isinstance(target, dict) or set(target) != set(TARGET_FIELDS):
         raise Refused('route target does not have exactly the routed fields')
     if (
         target['engine'] != 'tantivy'
-        or target['origin'] not in origins
+        or target['origin'] not in STORE_ORIGINS
         or target['format'] != FORMAT
         or target['retrieval_strategy'] not in STRATEGIES
         or not isinstance(target['build_id'], str)
         or not BUILD.fullmatch(target['build_id'])
         or any(not isinstance(target[key], str) or not DIGEST.fullmatch(target[key]) for key in ('admission_sha256', 'binary_sha256'))
     ):
-        raise Refused(f"route target is not a valid Tantivy target for {', '.join(origins)}")
+        raise Refused(f"route target is not a valid Tantivy target for {', '.join(STORE_ORIGINS)}")
     return target
 
 
-def validate_record(record, current_origins):
-    """The envelope the refresh controller writes: version, current, previous, mutation."""
+def validate_record(record):
+    """The routing record: version, current, and the previous target if there is one."""
     if not isinstance(record, dict) or record.get('version') != 1 or type(record['version']) is not int:
         raise Refused('routing record is not version 1')
-    unknown = set(record) - {'version', 'current', 'previous', 'mutation'}
+    unknown = set(record) - {'version', 'current', 'previous'}
     if unknown:
         raise Refused(f"routing record carries fields this tool would drop: {', '.join(sorted(unknown))}")
-    validate_target(record.get('current'), current_origins)
+    validate_target(record.get('current'))
     if record.get('previous') is not None:
-        validate_target(record['previous'], ROUTABLE_ORIGINS)
+        validate_target(record['previous'])
         if record['previous']['origin'] == record['current']['origin']:
             raise Refused('routing record names one slot as both current and previous')
     return record
@@ -223,7 +215,7 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
         raise Refused(f'{candidate_origin} is not a store slot origin')
     if not isinstance(binary_sha256, str) or not DIGEST.fullmatch(binary_sha256):
         raise Refused('the expected binary sha256 must be 64 lowercase hex characters')
-    validate_target(serving_target, ROUTABLE_ORIGINS)
+    validate_target(serving_target)
     if candidate_origin == serving_target['origin']:
         raise Refused(f'{candidate_origin} is already routed')
 
@@ -299,12 +291,11 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     end, start = round_state.get('last_completed_at'), round_state.get('last_completed_started_at')
     floor = ours.get('snapshot_watermark')
     round_age = round_duration = None
-    # The Turso policy wants a full sweep every day because polling can miss a
-    # change. The bridge reads every entry of the store's change log and starts
-    # a round itself when it falls behind the log or finds the index diverged
+    # The bridge reads every entry of the store's change log and starts a round
+    # itself when it falls behind the log or finds the index diverged
     # (services/src/bridge/Bridge.zig), and runs none on a timer by default. So
     # the gate is that the index was reconciled against the store after the
-    # bundle it started from, and that no round is running now.
+    # snapshot it started from, and that no round is running now.
     if round_state.get('schema_version') != 1 or not is_count(end) or not is_count(start) or not is_count(floor) or not floor < start <= end <= now:
         reasons.append('candidate has not completed a reconciliation round against its store since its bootstrap')
     else:
@@ -363,16 +354,13 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
         'serving_unhealthy_reasons': serving_reasons,
         'compared_with_serving': compared,
         'machine_id': candidate['status']['headers'].get('x-typeahead-machine-id'),
-        'cutover_source_ready_reported': ours.get('cutover_source_ready'),
     }
     return identity, gates
 
 
 def plan_cutover(record, candidate_origin, candidate, serving, binary_sha256, now, serving_unhealthy=False):
     """The admission document and the record that would replace `record`."""
-    validate_record(record, ROUTABLE_ORIGINS)
-    if record.get('mutation') is not None:
-        raise Refused('a refresh holds a mutation lease on the routing record; let it finish or cancel it first')
+    validate_record(record)
     identity, gates = admit(candidate_origin, candidate, record['current'], serving, binary_sha256, now, serving_unhealthy)
     admission = {
         'schema_version': 1,
@@ -383,37 +371,20 @@ def plan_cutover(record, candidate_origin, candidate, serving, binary_sha256, no
         'prior_route': record,
     }
     target = {**identity, 'admission_sha256': digest_json(admission)}
-    return admission, {'version': 1, 'current': validate_target(target, STORE_ORIGINS), 'previous': record['current']}
+    return admission, {'version': 1, 'current': validate_target(target), 'previous': record['current']}
 
 
-def plan_rollback(record, admission, prior_slot, standby=None):
-    """The record that was routed before the cutover, if its slot still answers as it did.
-
-    The prior slot is a managed slot or the other store slot. Either way the
-    restored `current` must be the routed record's `previous`.
-    """
-    validate_record(record, STORE_ORIGINS)
-    if record.get('mutation') is not None:
-        raise Refused('the routing record carries a mutation lease that this tool did not write')
+def plan_rollback(record, admission, prior_slot):
+    """The record that was routed before the cutover, if its slot still answers as it did."""
+    validate_record(record)
     if (
         not isinstance(admission, dict)
         or admission.get('kind') != 'store-slot-route-admission'
         or digest_json(admission) != record['current']['admission_sha256']
     ):
         raise Refused('the stored admission does not match the routed store slot')
-    prior = validate_record(admission.get('prior_route'), ROUTABLE_ORIGINS)
-    if prior.get('mutation') is None and prior['current'] != record.get('previous'):
-        # my-prefect-server's standby refresh rebuilt the other managed slot and
-        # recorded it as `previous`, after storing the route to restore for it.
-        if (
-            not isinstance(standby, dict)
-            or standby.get('schema_version') != 1
-            or standby.get('kind') != 'standby-rollback-route'
-            or standby.get('store_admission_sha256') != record['current']['admission_sha256']
-        ):
-            raise Refused('the stored prior route is not the one this record replaced, and no standby refresh recorded its previous slot')
-        prior = validate_record(standby.get('route'), MANAGED_ORIGINS)
-    if prior.get('mutation') is not None or prior['current'] != record.get('previous'):
+    prior = validate_record(admission.get('prior_route'))
+    if prior['current'] != record.get('previous'):
         raise Refused('the stored prior route is not the one this record replaced')
     reasons = identity_reasons('prior slot', prior_slot, prior['current'])
     if prior_slot['ready']['body'].get('ready') is not True:
@@ -478,14 +449,7 @@ def read_record(store):
     if found is None:
         raise Refused('there is no routing record')
     raw, etag = found
-    record = json.loads(raw)
-    if isinstance(record, dict):
-        # The refresh controller drops these retired fields on every read and write.
-        for key in ('native_rollback', 'rollback', 'promoted_at'):
-            record.pop(key, None)
-        if isinstance(record.get('previous'), dict) and record['previous'].get('engine', 'native') == 'native':
-            del record['previous']
-    return record, etag
+    return json.loads(raw), etag
 
 
 def routed(target, get=http_get):
@@ -534,7 +498,7 @@ def switch(store, etag, before, after, *, get=http_get, sleep=time.sleep, clock=
 
 def cutover(store, candidate_origin, binary_sha256, *, write, serving_unhealthy=False, now=None, get=http_get, **timing):
     record, etag = read_record(store)
-    validate_record(record, ROUTABLE_ORIGINS)
+    validate_record(record)
     now = int(time.time()) if now is None else now
     admission, after = plan_cutover(
         record, candidate_origin, observe(candidate_origin, get), observe(record['current']['origin'], get), binary_sha256, now, serving_unhealthy
@@ -553,20 +517,14 @@ def cutover(store, candidate_origin, binary_sha256, *, write, serving_unhealthy=
 
 def rollback(store, *, write, get=http_get, **timing):
     record, etag = read_record(store)
-    validate_record(record, STORE_ORIGINS)
+    validate_record(record)
     found = store.get(ADMISSION_PREFIX + record['current']['admission_sha256'] + '.json')
     if found is None:
         raise Refused('no admission is stored for the routed store slot')
     admission = json.loads(found[0])
     if record.get('previous') is None:
         raise Refused('the routing record has no previous slot to return to')
-    prior_origin = record['previous']['origin']
-    standby = None
-    # Only the refresh controller repoints `previous`, and only to a managed slot.
-    if prior_origin in MANAGED_ORIGINS:
-        found = store.get(STANDBY_PREFIX + record['current']['admission_sha256'] + '/' + record['previous']['admission_sha256'] + '.json')
-        standby = json.loads(found[0]) if found is not None else None
-    prior = plan_rollback(record, admission, observe(prior_origin, get), standby)
+    prior = plan_rollback(record, admission, observe(record['previous']['origin'], get))
     report = {'operation': 'rollback', 'written': False, 'expected_etag': etag, 'route': prior}
     if not write:
         return report
@@ -579,7 +537,7 @@ def serving_route(get):
     status, _, raw = get(TRANSPORT + '/route')
     if status != 200:
         raise Refused(f'the transport answered {status} for /route')
-    return validate_target(json.loads(raw), ROUTABLE_ORIGINS)
+    return validate_target(json.loads(raw))
 
 
 def standby(binary_sha256=None, *, now=None, get=http_get):
@@ -587,8 +545,8 @@ def standby(binary_sha256=None, *, now=None, get=http_get):
 
     It runs the cutover's admission, as a failover when the serving slot is
     not healthy. Without `binary_sha256` a standby is expected to run the
-    binary the serving store slot's record names, which an operator read from
-    that machine when it was admitted.
+    binary the serving slot's record names, which an operator read from that
+    machine when it was admitted.
     """
     serving_target = serving_route(get)
     now = int(time.time()) if now is None else now
@@ -599,11 +557,9 @@ def standby(binary_sha256=None, *, now=None, get=http_get):
         if origin == serving_target['origin']:
             continue
         expected, source = binary_sha256, 'operator'
-        if expected is None and serving_target['origin'] in STORE_ORIGINS:
+        if expected is None:
             expected, source = serving_target['binary_sha256'], 'serving route'
         try:
-            if expected is None:
-                raise Refused('the serving slot is not a store slot, so its record does not name the binary a store slot runs; pass --binary-sha256')
             identity, gates = admit(origin, observe(origin, get), serving_target, serving, expected, now, bool(serving_reasons))
             slots.append({'origin': origin, 'fit': True, 'cutover_needs_serving_slot_unhealthy': bool(serving_reasons),
                           'binary_sha256_expected_from': source, 'target': identity, 'gates': gates})
@@ -637,7 +593,7 @@ def build_parser():
             command.add_argument('--write', action='store_true')
     commands.add_parser('rollback').add_argument('--write', action='store_true')
     commands.add_parser('standby').add_argument(
-        '--binary-sha256', help="the reader's sha256 a standby must run; by default the one the serving store slot's record names"
+        '--binary-sha256', help="the reader's sha256 a standby must run; by default the one the serving slot's record names"
     )
     return parser
 
