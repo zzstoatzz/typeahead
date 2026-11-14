@@ -80,7 +80,7 @@ export default {
       }],
       ["recordSnapshot", () => recordSnapshot(db, env)],
       ["recordExclusions", async () => {
-        const counted = await recordExclusions(db, env.KV, env);
+        const counted = await recordExclusions(env.KV, env);
         if (counted) console.log(JSON.stringify({ event: "exclusions_recorded", ...counted }));
       }],
       ["materializeStats", () => materializeStats(statsReadDb(env, db), env)],

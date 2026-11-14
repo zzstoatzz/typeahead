@@ -4,8 +4,7 @@ import type { Env } from "./types";
 /** Reads of the routed store slot that are not searches: stored actors and
  *  corpus counts, on the search engine's public listener. They go the way a
  *  search does, through the transport, which follows the routing record and
- *  refuses an answer that does not carry the routed slot's identity.
- *  docs/turso-retirement.md. */
+ *  refuses an answer that does not carry the routed slot's identity. */
 
 const actorSchema = z.object({
   did: z.string(),
@@ -91,13 +90,4 @@ export async function slotActors(env: SlotEnv, actors: string[]): Promise<SlotAc
 
 export function slotCorpus(env: SlotEnv): Promise<SlotCorpus> {
   return slotGet(env, "/corpus", corpusSchema);
-}
-
-/** A three-way switch for one feature leaving Turso: `turso` reads Turso,
- *  `compare` serves Turso's answer and logs how the slot's differs, `slot`
- *  reads only the slot. Anything else, or nothing, is `turso`. */
-export type ReadMode = "turso" | "compare" | "slot";
-
-export function readMode(value: string | undefined): ReadMode {
-  return value === "compare" || value === "slot" ? value : "turso";
 }

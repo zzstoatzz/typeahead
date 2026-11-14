@@ -4,46 +4,6 @@ import { TRAFFIC_SOURCE_WHERE } from "./metrics";
 
 export type Snapshot = StatsKvData["snapshots"][number];
 
-/** count Turso's actors for the current hour's snapshot (src/corpus.ts records it).
- *
- *  the corpus is ~6M rows; a `COUNT(*)` / `SUM(CASE …)` over the whole table
- *  takes ~300s over libSQL HTTP, which silently blew the cron's budget once the
- *  table grew (snapshots froze 2026-05-18). instead:
- *    - `total`        — O(1) read of the maintained `actors_total` counter
- *    - `hidden`       — selective count via `idx_actors_hidden` (partial index)
- *    - empty handles  — selective range seek on `idx_actors_handle`
- *    - empty avatars  — selective count via `idx_actors_avatar_empty`
- *  with_handles / with_avatars are then `total - empty`. every count touches
- *  only a small slice (<400k matching rows), so the whole thing is sub-second. */
-export async function countSnapshot(db: SqlDb, now = Date.now()): Promise<Snapshot | null> {
-  const hour = Math.floor(now / 3_600_000);
-  const [totalRes, hiddenRes, emptyHandlesRes, emptyAvatarsRes] = await db.batch([
-    db.prepare("SELECT value AS n FROM counters WHERE name = 'actors_total'"),
-    db.prepare("SELECT COUNT(*) AS n FROM actors WHERE hidden != 0"),
-    // COLLATE NOCASE or this is a SCAN of all ~10.6M index entries instead of a
-    // SEARCH: idx_actors_handle is declared COLLATE NOCASE, so a binary-equality
-    // predicate cannot seek it and falls back to idx_actors_enrich_identity as a
-    // covering scan. Cheap when idle, but it is the most expensive query in the
-    // hourly cron and the first to time out under write contention — which
-    // fails the step and leaves that hour with no snapshot row.
-    db.prepare("SELECT COUNT(*) AS n FROM actors WHERE handle = '' COLLATE NOCASE"),
-    db.prepare("SELECT COUNT(*) AS n FROM actors WHERE avatar_url = ''"),
-  ], "read");
-
-  const num = (r: any): number => Number(r?.results?.[0]?.n ?? 0);
-  const total = num(totalRes);
-  if (total <= 0) return null; // counter not seeded yet — don't write a bogus zero row
-
-  const hidden = num(hiddenRes);
-  return {
-    hour,
-    total: total - hidden,
-    with_handles: total - num(emptyHandlesRes),
-    with_avatars: total - num(emptyAvatarsRes),
-    hidden,
-  };
-}
-
 export async function writeSnapshot(db: SqlDb, snapshot: Snapshot): Promise<void> {
   await db.prepare(
     `INSERT OR REPLACE INTO snapshots (hour, total, with_handles, with_avatars, hidden)

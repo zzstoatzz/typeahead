@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { SlotReadError, readMode, slotActors, slotCorpus, type SlotEnv } from "./slot-read";
+import { SlotReadError, slotActors, slotCorpus, type SlotEnv } from "./slot-read";
 
 function slot(answer: (url: string) => Response | Promise<Response>) {
   const asked: string[] = [];
@@ -64,10 +64,4 @@ test("corpus counts are read with or without the store's count", async () => {
   });
   expect((await slotCorpus(slot(() => Response.json({ ...CORPUS, store: null })).env)).store).toBeNull();
   expect((await failure(slotCorpus(slot(() => Response.json({ index: { actors: -1 } })).env))).status).toBeNull();
-});
-
-test("a mode is turso unless it is exactly compare or slot", () => {
-  expect([undefined, "", "turso", "Slot", "compare ", "1"].map(readMode)).toEqual(["turso", "turso", "turso", "turso", "turso", "turso"]);
-  expect(readMode("compare")).toBe("compare");
-  expect(readMode("slot")).toBe("slot");
 });

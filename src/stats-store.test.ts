@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, expect, setDefaultTimeout, spyOn, test } from "bun:test";
 import type { SqlDb } from "./db";
-import { recordSnapshot } from "./corpus";
 import { writeSnapshot } from "./enrichment";
 import { recordActorDelta, recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
 import { collectingCtx, statsRows, statsStores } from "./stats-d1-fixture";
@@ -140,16 +139,4 @@ test("without the binding the D1 path is a no-op", async () => {
   }
   expect(rowCount(await statsRows(stores.turso), "request_buckets")).toBe(2);
   expect(logged).toEqual([]);
-});
-
-test("the hourly snapshot counts actors in Turso and writes the row to both stores", async () => {
-  await stores.client.executeMultiple(`
-    CREATE TABLE actors (did TEXT PRIMARY KEY, handle TEXT NOT NULL DEFAULT '', avatar_url TEXT DEFAULT '', hidden INTEGER NOT NULL DEFAULT 0);
-    INSERT INTO actors (did, handle, avatar_url, hidden) VALUES ('did:plc:a', 'a.test', 'cid', 0), ('did:plc:b', '', '', 0), ('did:plc:c', 'c.test', '', 1);
-    UPDATE counters SET value = 3 WHERE name = 'actors_total';
-  `);
-  await recordSnapshot(stores.turso, { STATS_DB: stores.d1, STATS_MODE: "read-turso" });
-  const snapshots = (await statsRows(stores.turso)).find((entry) => entry.table === "snapshots")?.rows;
-  expect(snapshots).toMatchObject([{ total: 2, with_handles: 2, with_avatars: 1, hidden: 1 }]);
-  expect((await statsRows(stores.mirror)).find((entry) => entry.table === "snapshots")?.rows).toEqual(snapshots);
 });

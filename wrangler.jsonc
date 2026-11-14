@@ -12,7 +12,6 @@
     "PDS_UI_ENABLED": "1",
     "SEARCH_CACHE_GENERATION": "tantivy-b1793346536-cp-7c8322df79-cutover",
     "STATS_MODE": "d1-only",
-    "CORPUS_MODE": "slot",
     "TURSO_ACTORS": "off"
   },
   "services": [

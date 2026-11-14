@@ -15,11 +15,6 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   /// "d1-only" (Turso not touched). See
   /// statsMode in src/stats-store.ts.
   STATS_MODE?: string;
-  /// Where the corpus counts the cron records for /stats come from, the
-  /// hourly snapshot and the daily exclusions: "turso", "compare" (Turso's
-  /// counts, with the routed slot's logged beside them) or "slot". See
-  /// readMode in src/slot-read.ts.
-  CORPUS_MODE?: string;
   /// "off" stops every write to, and remaining read of, the Turso actor
   /// tables: the ingester's endpoints answer 410, admin policy changes and
   /// /request-indexing write the control database only, and the cron's
