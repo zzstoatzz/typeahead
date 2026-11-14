@@ -72,5 +72,16 @@ test("workerd search forwards acknowledged scopes, separates edge cache and pres
     expect(cached).toEqual(answers[3]);
     const alias = await mf.dispatchFetch("https://public.test/xrpc/app.bsky.actor.searchActorsTypeahead?q=cache&prefer_pds=acme.test&boost=100");
     expect(await alias.json()).toEqual(answers[3]);
+    // every search the counter takes is also counted for the app that sent it
+    expect(await (await request("q=__")).json()).toEqual({ actors: [] });
+    const counted = async () => {
+      const searches = await db.prepare("SELECT coalesce(sum(searches), 0) + coalesce(sum(cache_hits), 0) AS n, coalesce(sum(cache_hits), 0) AS hits FROM metrics").first<{ n: number; hits: number }>();
+      const attributed = await db.prepare("SELECT coalesce(sum(hits), 0) AS n FROM traffic_sources").first<{ n: number }>();
+      return { searches: searches!.n, cacheHits: searches!.hits, attributed: attributed!.n };
+    };
+    let totals = await counted();
+    for (let attempt = 0; attempt < 50 && totals.searches !== totals.attributed; attempt++) { await Bun.sleep(20); totals = await counted(); }
+    expect(totals.cacheHits).toBeGreaterThan(0);
+    expect(totals.attributed).toBe(totals.searches);
   } finally { await mf.dispose(); await rm(directory, { recursive: true, force: true }); }
 }, 30000);

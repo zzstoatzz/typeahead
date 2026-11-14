@@ -73,19 +73,23 @@ export async function handleSearch(
   const limit = limitParam;
   const t0 = Date.now();
   const term = sanitize(q);
+  // One search, counted once and for the app that sent it, however it is
+  // answered. The all-time total on /stats and the per-app totals are the
+  // same searches only while every path records both.
+  const counted = (record: typeof recordMetric) => {
+    recordStats(ctx, env, (store, now) => record(store, now - t0, now));
+    recordStats(ctx, env, (store, now) => recordTrafficSource(store, request, now));
+  };
   if (!term) {
-    recordStats(ctx, env, (store, now) => recordMetric(store, now - t0, now));
+    counted(recordMetric);
     return json({ actors: [] });
   }
 
-  const fallback = async (mode: "manual" | "automatic") => {
-    const response = await blueskyFallback(term, limit, mode);
-    recordStats(ctx, env, (store, now) => recordMetric(store, now - t0, now));
-    recordStats(ctx, env, (store, now) => recordTrafficSource(store, request, now));
-    return response;
-  };
-  if (env.EMERGENCY_PROXY_BSKY) return fallback("manual");
-  if (!env.SEARCH_BACKEND_URL) return fallback("automatic");
+  const fallback = (mode: "manual" | "automatic") => blueskyFallback(term, limit, mode);
+  if (env.EMERGENCY_PROXY_BSKY || !env.SEARCH_BACKEND_URL) {
+    counted(recordMetric);
+    return fallback(env.EMERGENCY_PROXY_BSKY ? "manual" : "automatic");
+  }
 
   const ingressColo = request.cf?.colo ?? "unknown";
 
@@ -102,7 +106,7 @@ export async function handleSearch(
   const cache = caches.default;
   const cached = await cache.match(cacheKey);
   if (cached) {
-    recordStats(ctx, env, (store, now) => recordCacheHit(store, now - t0, now));
+    counted(recordCacheHit);
     const response = await filterIdentityResponse(cached, "actors");
     response.headers.set("Server-Timing", `cache;desc="hit";dur=${Date.now() - t0}`);
     return response;
@@ -153,7 +157,6 @@ export async function handleSearch(
         }
 
         const elapsedMs = Date.now() - t0;
-        recordStats(ctx, env, (store, now) => recordTrafficSource(store, request, now));
         const timing = backendRes.headers.get("Server-Timing") ?? "";
         const routeMs = /transport_route;dur=([0-9.]+)/.exec(timing);
         const originMs = /transport_origin_headers;dur=([0-9.]+)/.exec(timing);
@@ -188,6 +191,6 @@ export async function handleSearch(
       return fallback("automatic");
     }
   } finally {
-    recordStats(ctx, env, (store, now) => recordMetric(store, now - t0, now));
+    counted(recordMetric);
   }
 }
