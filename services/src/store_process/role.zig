@@ -1,4 +1,4 @@
-//! `MODE=store`: the ingester's second role. It follows the relay, the
+//! `MODE=store`: the role this binary runs. It follows the relay, the
 //! labeler and the PLC export, resolves identities, refreshes profiles from
 //! the appview, and commits everything to a zkv store on local disk. It
 //! opens no connection to Turso, and one to the Worker: the control loop
@@ -322,8 +322,11 @@ const Role = struct {
         log.info("following {s} after seq {d} ({s})", .{ relay_host, cursor, if (stored != null) "stored" else "bootstrap" });
         self.intake.resumeFrom(cursor);
 
-        // One host, deliberately: a relay seq means nothing to another relay.
-        // See the worker role's firehoseThread in main.zig.
+        // One host, deliberately. zat's default_hosts lists four relays, but
+        // they are independent relays with independent `seq` spaces, not
+        // mirrors. A seq is only meaningful to the relay that issued it, so
+        // failing over and resuming a stored cursor against another relay
+        // lands at an arbitrary point: a silent skip or an enormous replay.
         var client = zat.FirehoseClient.init(self.io, self.allocator, .{ .hosts = &.{relay_host}, .cursor = cursor });
         defer client.deinit();
         client.subscribe(&self.intake) catch |err| log.err("firehose subscribe failed: {}", .{err});
@@ -474,7 +477,7 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         .intake = .{ .gpa = allocator, .owner = owner, .options = .{ .on_fatal = exitOnIntakeFailure } },
         .labels = .{ .gpa = allocator, .owner = owner },
         .plc = .{ .gpa = allocator, .io = io, .owner = owner },
-        .resolver = identity.Resolver.init(allocator, io, "", ""),
+        .resolver = identity.Resolver.init(allocator, io),
         .work = undefined,
     };
     defer self.intake.deinit();

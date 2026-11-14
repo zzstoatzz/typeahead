@@ -1,6 +1,6 @@
 //! The PLC export tail and the label stream, committing to the store. Both
-//! reuse the worker role's reading, paging and replay rules; only where a
-//! page or a batch lands differs, and here it lands with its cursor in one
+//! take their reading, paging and replay rules from `plc_tail.zig` and
+//! `label_tail.zig`; a page or a batch lands here with its cursor in one
 //! commit.
 
 const std = @import("std");

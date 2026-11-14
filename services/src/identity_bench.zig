@@ -62,7 +62,7 @@ pub fn main(init: std.process.Init) !void {
     try stub.start(init.io, gpa);
     defer stub.deinit();
 
-    var resolver = identity.Resolver.init(gpa, stub.io(), "", "");
+    var resolver = identity.Resolver.init(gpa, stub.io());
     defer resolver.deinit();
     resolver.upstreams = stub.upstreams();
     resolver.reuse_connections = reuse;

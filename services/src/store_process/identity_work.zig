@@ -1,5 +1,5 @@
 //! Identity resolution against the store's own queue: lease due DIDs,
-//! resolve each from its authority with the worker role's resolver, and
+//! resolve each from its authority with `identity.zig`'s resolver, and
 //! commit what was observed. A lost report is not lost work: the lease
 //! lapses and the DID is leased again.
 

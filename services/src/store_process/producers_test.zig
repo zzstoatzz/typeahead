@@ -180,8 +180,6 @@ const Feed = struct {
 };
 
 test "a stalled store pauses intake, the pause is not a wedge, and intake resumes" {
-    // The worker role's equivalent is ingest.zig "a slow backlog drain does
-    // not look like a stalled relay" (2026-11-09).
     var gate: Gate = .{};
     const f = try Fixture.create(.{ .max_queued_changes = 8, .idle_wait_ms = 1, .maintenance = .{ .context = &gate, .step = Gate.step } });
     defer f.destroy();

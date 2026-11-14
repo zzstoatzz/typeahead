@@ -1,5 +1,5 @@
 //! Test root for the store role. Rooted at src/ so the role's files can
-//! reach the store module and the worker role's shared pieces.
+//! reach the store module and the files beside it.
 
 test {
     _ = @import("store_process/handle_policy.zig");

@@ -3,7 +3,7 @@
 //! Every record reaches stderr for `fly logs`. Logfire receives all of them
 //! except the two kinds `shipped` names, which were about 70% of the
 //! project's records in the week to 2026-11-10 and repeated numbers the
-//! once-a-minute `ingest.heartbeat` span already carries.
+//! once-a-minute heartbeat span already carries.
 
 const std = @import("std");
 const logfire = @import("logfire");
@@ -13,7 +13,7 @@ pub const flush_scope = .flush;
 
 pub fn shipped(comptime level: std.log.Level, comptime scope: @EnumLiteral()) bool {
     if (scope == flush_scope) return false;
-    // zat's connection progress; the ingester logs its own connects and read
+    // zat's connection progress; the store role logs its own connects and read
     // errors, and zat reports a failed connection at err.
     if (scope == .zat and @backingInt(level) >= @backingInt(std.log.Level.info)) return false;
     return true;

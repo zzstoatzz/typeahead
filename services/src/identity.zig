@@ -1,4 +1,4 @@
-//! Identity resolution for DIDs in the worker's durable `identity_queue`.
+//! Identity resolution for DIDs the store's identity queue leases.
 //!
 //! Per the sync spec, `#identity` is a prod to invalidate cached identity data:
 //! it "does not … reliably indicate what the current state of the identity is",
@@ -7,36 +7,29 @@
 //! its own resolution.
 //!
 //! Signals never come here directly. `#identity`, a reactivating `#account`
-//! and a newly discovered actor ride the cursor-protected ingest batch, and the
-//! worker enqueues them in the same request that may advance the relay cursor,
-//! so a restart cannot lose one (it was all in memory until 2026-10-31). This
-//! file drains that queue:
-//!   1. lease due work from /admin/identity/lease (leasing pushes its due time
-//!      out, so work a crashed resolver held comes back on its own)
-//!   2. fetch the DID document from its authority (plc.directory, or the
-//!      did:web host) — never from an identity cache
-//!   3. verify the claimed handle bidirectionally (well-known / DNS TXT must
+//! and a newly discovered actor are queued durably by the store, and
+//! `store_process/identity_work.zig` leases that queue. For each leased DID
+//! this file:
+//!   1. fetches the DID document from its authority (plc.directory, or the
+//!      did:web host), never from an identity cache
+//!   2. verifies the claimed handle bidirectionally (well-known / DNS TXT must
 //!      point back at the DID)
-//!   4. report the observation, with the time it was made and the lease's
-//!      generation, to /admin/identity/complete
+//!   3. decides what to record, with the time the observation was made
 //!
-//! Until 2026-09-25 step 2 went through slingshot, a cache nobody had prodded:
+//! Until 2026-09-25 step 1 went through slingshot, a cache nobody had prodded:
 //! it answered seconds after the PLC op and wrote the OLD handle for ~20–26% of
 //! handle changes (sampled), which nothing downstream ever corrected.
 //!
 //! A handle that does not verify is retried after 60 s and again after 15 min
 //! (a fresh domain can lag its DNS or well-known), then recorded as
-//! `handle.invalid` — the atproto convention the appview also serves — rather
+//! `handle.invalid`, the atproto convention the appview also serves, rather
 //! than keeping a previous handle that no longer resolves to this DID either.
-//! An unreachable DID document backs off exponentially; the worker abandons it
-//! after its attempt budget. The actor row itself is written by discovery, so
-//! a DID that never resolves still exists for the handle-enrichment drain.
+//! An unreachable DID document backs off exponentially.
 
 const std = @import("std");
 const Io = std.Io;
 const Allocator = std.mem.Allocator;
 const mem = std.mem;
-const json = std.json;
 const zat = @import("zat");
 const HttpTransport = zat.HttpTransport;
 const ingest = @import("ingest.zig");
@@ -51,8 +44,8 @@ pub const UNAVAILABLE_BASE_SECS: i64 = 60;
 pub const UNAVAILABLE_MAX_SECS: i64 = 6 * 60 * 60;
 
 /// Jobs leased per request. With the pool's queue capacity this bounds work in
-/// flight to well under the worker's lease, so leased work is resolved before
-/// it lapses rather than leased again.
+/// flight to well under the lease, so leased work is resolved before it
+/// lapses rather than leased again.
 pub const LEASE_BATCH = 50;
 const IDLE_POLL_SECS = 5;
 const PARTIAL_POLL_SECS = 1;
@@ -89,7 +82,7 @@ pub const Job = struct {
     attempts: u32,
 };
 
-/// Outcome counters, served on the ingester's /health.
+/// Outcome counters, served on the store's /health.
 pub const Stats = struct {
     leased: std.atomic.Value(u64) = .init(0),
     lease_failed: std.atomic.Value(u64) = .init(0),
@@ -134,7 +127,7 @@ pub fn unavailableDelay(attempts: u32) i64 {
 /// What to report for a DID, given its DID-doc lookup (null = the document
 /// could not be fetched) and how many leases it has taken, including this one.
 ///
-/// Split out from `process` so the rules are testable without HTTP:
+/// Split out from `observe` so the rules are testable without HTTP:
 ///   - a verified handle is written, replacing whatever the row had
 ///   - an unverified handle is retried while stages remain, reporting only the
 ///     pds meanwhile; once they are spent it is recorded as handle.invalid
@@ -150,44 +143,7 @@ pub fn decide(lookup: ?Lookup, attempts: u32) Outcome {
     return .{ .resolved = .{ .handle = INVALID_HANDLE, .pds = l.pds } };
 }
 
-const ResultJson = struct {
-    outcome: []const u8,
-    did: []const u8,
-    gen: u64,
-    observed_at: i64,
-    attempts: ?u32 = null,
-    handle: ?[]const u8 = null,
-    handle_verified: ?bool = null,
-    pds: ?[]const u8 = null,
-    delay_seconds: ?i64 = null,
-    @"error": ?[]const u8 = null,
-};
-
-fn resultJson(job: *const Job, observed_at: i64, outcome: Outcome) ResultJson {
-    return switch (outcome) {
-        .resolved => |r| .{
-            .outcome = "resolved",
-            .did = job.did.slice(),
-            .gen = job.gen,
-            .observed_at = observed_at,
-            .handle = r.handle,
-            .handle_verified = r.handle_verified,
-            .pds = r.pds,
-        },
-        .retry => |r| .{
-            .outcome = "retry",
-            .did = job.did.slice(),
-            .gen = job.gen,
-            .observed_at = observed_at,
-            .attempts = job.attempts,
-            .pds = r.pds,
-            .delay_seconds = r.delay_seconds,
-            .@"error" = r.@"error",
-        },
-    };
-}
-
-/// Where resolution goes. The roles leave every field null; the benchmark and
+/// Where resolution goes. The store role leaves every field null; the benchmark and
 /// the tests point them at a loopback stand-in.
 pub const Upstreams = struct {
     plc_url: ?[]const u8 = null,
@@ -200,8 +156,6 @@ pub const Upstreams = struct {
 pub const Resolver = struct {
     allocator: Allocator,
     io: Io,
-    worker_url: []const u8,
-    worker_secret: []const u8,
     upstreams: Upstreams = .{},
     /// Resolve over kept connections. Off, every lookup opens and closes its
     /// own, which is what this did before 2026-11-11 and what the tests
@@ -218,18 +172,8 @@ pub const Resolver = struct {
     sessions: [max_sessions]*Session = undefined,
     sessions_idle: usize = 0,
 
-    pub fn init(
-        allocator: Allocator,
-        io: Io,
-        worker_url: []const u8,
-        worker_secret: []const u8,
-    ) Resolver {
-        return .{
-            .allocator = allocator,
-            .io = io,
-            .worker_url = worker_url,
-            .worker_secret = worker_secret,
-        };
+    pub fn init(allocator: Allocator, io: Io) Resolver {
+        return .{ .allocator = allocator, .io = io };
     }
 
     pub fn deinit(self: *Resolver) void {
@@ -237,31 +181,12 @@ pub const Resolver = struct {
         self.sessions_idle = 0;
     }
 
-    /// poolio process function — called per dequeued Job.
-    pub fn process(self: *Resolver, io: Io, job: Job) Io.Cancelable!void {
-        _ = io;
-        var arena = std.heap.ArenaAllocator.init(self.allocator);
-        defer arena.deinit();
-        const seen = self.observe(arena.allocator(), job);
-
-        // Pool workers share Resolver as their context, so each invocation
-        // reports over its own client.
-        var transport = HttpTransport.init(self.io, self.allocator);
-        transport.keep_alive = false;
-        defer transport.deinit();
-        // A lost report is not lost work: the lease lapses and it is leased again.
-        self.postResult(&transport, resultJson(&job, seen.observed_at, seen.outcome)) catch |err| {
-            _ = stats.post_failed.fetchAdd(1, .monotonic);
-            log.warn("post identity {s}: {s}", .{ job.did.slice(), @errorName(err) });
-        };
-    }
-
     /// Resolve one job from its authority and decide what to report. Strings
     /// in the outcome are owned by `arena`.
     pub fn observe(self: *Resolver, arena: Allocator, job: Job) Observation {
         const did_slice = job.did.slice();
 
-        // Taken before the fetch: the worker keeps the newest observation, and
+        // Taken before the fetch: the store keeps the newest observation, and
         // a document fetched after this instant can only be newer.
         const observed_at = ingest.timestamp();
         const lookup = self.fetchLookup(arena, did_slice) catch |err| blk: {
@@ -450,79 +375,6 @@ pub const Resolver = struct {
         try client.ca_bundle.addCertsFromFilePathAbsolute(client.allocator, self.io, now, path);
         client.now = now;
     }
-
-    fn post(self: *Resolver, transport: *HttpTransport, path: []const u8, payload: []const u8) ![]u8 {
-        var url_buf: [512]u8 = undefined;
-        const url = try std.fmt.bufPrint(&url_buf, "{s}{s}", .{ self.worker_url, path });
-
-        var auth_buf: [256]u8 = undefined;
-        const auth = try std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{self.worker_secret});
-
-        const result = try transport.fetch(ingest.workerPost(url, payload, auth));
-        if (result.status != .ok) {
-            log.warn("{s} HTTP {d}: {s}", .{ path, @backingInt(result.status), result.body });
-            self.allocator.free(result.body);
-            return error.HttpError;
-        }
-        return result.body;
-    }
-
-    fn postResult(self: *Resolver, transport: *HttpTransport, result: ResultJson) !void {
-        var output: std.Io.Writer.Allocating = .init(self.allocator);
-        defer output.deinit();
-        var jw: json.Stringify = .{
-            .writer = &output.writer,
-            .options = .{ .emit_null_optional_fields = false },
-        };
-        try jw.write(.{ .results = &[_]ResultJson{result} });
-        const body = try self.post(transport, "/admin/identity/complete", output.written());
-        self.allocator.free(body);
-    }
-
-    const LeasedJson = struct { did: []const u8, gen: u64, attempts: u32 };
-    const LeaseResponse = struct { jobs: []const LeasedJson };
-
-    /// Lease due work into `out`; returns how many jobs were filled.
-    fn lease(self: *Resolver, transport: *HttpTransport, out: []Job) !usize {
-        var payload_buf: [64]u8 = undefined;
-        const payload = try std.fmt.bufPrint(&payload_buf, "{{\"limit\":{d}}}", .{out.len});
-        const body = try self.post(transport, "/admin/identity/lease", payload);
-        defer self.allocator.free(body);
-
-        const parsed = try json.parseFromSlice(LeaseResponse, self.allocator, body, .{ .ignore_unknown_fields = true });
-        defer parsed.deinit();
-        var n: usize = 0;
-        for (parsed.value.jobs) |j| {
-            if (n == out.len) break;
-            const did = Did.fromSlice(j.did) orelse {
-                log.warn("lease returned an unusable did ({d} bytes)", .{j.did.len});
-                continue;
-            };
-            out[n] = .{ .did = did, .gen = j.gen, .attempts = j.attempts };
-            n += 1;
-        }
-        return n;
-    }
-
-    /// The drain loop: lease due work and hand it to the resolver pool.
-    /// `put` blocks while the pool is full, which is the backpressure that
-    /// keeps leased work bounded.
-    pub fn drain(self: *Resolver, pool: *Pool) void {
-        var transport = HttpTransport.init(self.io, self.allocator);
-        transport.keep_alive = true;
-        defer transport.deinit();
-        var queue: WorkerQueue = .{ .resolver = self, .transport = &transport };
-        drainFrom(self.io, &queue, pool);
-    }
-
-    const WorkerQueue = struct {
-        resolver: *Resolver,
-        transport: *HttpTransport,
-
-        pub fn lease(self: *WorkerQueue, out: []Job) !usize {
-            return self.resolver.lease(self.transport, out);
-        }
-    };
 };
 
 /// Lease from `queue` (`lease(out: []Job) !usize`) into `pool` until
@@ -552,9 +404,6 @@ fn firstHandle(handles: []const []const u8) ?zat.Handle {
     }
     return null;
 }
-
-/// Convenience alias — the poolio instantiation used throughout the ingester.
-pub const Pool = poolio.Pool(Job, Resolver);
 
 const testing = std.testing;
 
@@ -615,54 +464,9 @@ test "decide: a document without a handle reports its pds and settles" {
     try testing.expectEqualStrings("https://pds.example", o.resolved.pds.?);
 }
 
-test "result json carries what the worker's schema requires for each outcome" {
-    const job: Job = .{ .did = Did.fromSlice("did:plc:abc").?, .gen = 3, .attempts = 2 };
-    var buf: std.Io.Writer.Allocating = .init(testing.allocator);
-    defer buf.deinit();
-    var jw: json.Stringify = .{ .writer = &buf.writer, .options = .{ .emit_null_optional_fields = false } };
-    try jw.write(resultJson(&job, 1700000000, decide(null, 2)));
-    try testing.expectEqualStrings(
-        \\{"outcome":"retry","did":"did:plc:abc","gen":3,"observed_at":1700000000,"attempts":2,"delay_seconds":120,"error":"did_unavailable"}
-    , buf.written());
-
-    var resolved: std.Io.Writer.Allocating = .init(testing.allocator);
-    defer resolved.deinit();
-    var rw: json.Stringify = .{ .writer = &resolved.writer, .options = .{ .emit_null_optional_fields = false } };
-    try rw.write(resultJson(&job, 1700000000, decide(.{ .handle = "a.example", .pds = "https://p", .verified = true }, 2)));
-    try testing.expectEqualStrings(
-        \\{"outcome":"resolved","did":"did:plc:abc","gen":3,"observed_at":1700000000,"handle":"a.example","handle_verified":true,"pds":"https://p"}
-    , resolved.written());
-}
-
 test "firstHandle skips non-handle alsoKnownAs entries" {
     const handles = [_][]const u8{ "https://example.com/profile", "alice.example.com" };
     try testing.expectEqualStrings("alice.example.com", firstHandle(&handles).?.str());
     const none = [_][]const u8{"https://example.com/profile"};
     try testing.expect(firstHandle(&none) == null);
-}
-
-fn integrationEnv(name: [*:0]const u8) ?[]const u8 {
-    if (std.c.getenv(name)) |p| return mem.span(p);
-    return null;
-}
-
-// Runs the real lease → resolve → complete path against a worker (local
-// `wrangler dev` on local sqld); skipped unless TYPEAHEAD_IDENTITY_E2E_URL is
-// set. The caller enqueues the DIDs first; this resolves each from its
-// authority and the caller checks what the worker recorded.
-test "integration: leased identity work is resolved and reported" {
-    const url = integrationEnv("TYPEAHEAD_IDENTITY_E2E_URL") orelse return error.SkipZigTest;
-    const secret = integrationEnv("TYPEAHEAD_IDENTITY_E2E_SECRET") orelse return error.SkipZigTest;
-    const io = std.Options.debug_io;
-    var resolver = Resolver.init(testing.allocator, io, url, secret);
-    var transport = HttpTransport.init(io, testing.allocator);
-    defer transport.deinit();
-
-    var jobs: [LEASE_BATCH]Job = undefined;
-    const n = try resolver.lease(&transport, &jobs);
-    try testing.expect(n > 0);
-    const before = stats.post_failed.load(.monotonic);
-    for (jobs[0..n]) |job| try resolver.process(io, job);
-    try testing.expectEqual(before, stats.post_failed.load(.monotonic));
-    try testing.expectEqual(@as(usize, 0), try resolver.lease(&transport, &jobs));
 }

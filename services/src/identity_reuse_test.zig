@@ -63,7 +63,7 @@ const Fixture = struct {
         // The failing cases are logged as warnings, as they are in service.
         testing.log_level = .err;
         try self.stub.start(testing.io, testing.allocator);
-        self.resolver = identity.Resolver.init(testing.allocator, self.stub.io(), "", "");
+        self.resolver = identity.Resolver.init(testing.allocator, self.stub.io());
         self.resolver.upstreams = self.stub.upstreams();
         self.resolver.reuse_connections = reuse;
     }
@@ -84,7 +84,7 @@ test "lookups over kept connections report what lookups over fresh ones do" {
     try fixture.start(true);
     defer fixture.deinit();
     const kept = &fixture.resolver;
-    var fresh = identity.Resolver.init(testing.allocator, fixture.stub.io(), "", "");
+    var fresh = identity.Resolver.init(testing.allocator, fixture.stub.io());
     defer fresh.deinit();
     fresh.upstreams = fixture.stub.upstreams();
     fresh.reuse_connections = false;

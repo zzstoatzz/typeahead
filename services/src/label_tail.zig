@@ -1,15 +1,11 @@
-//! Follows Bluesky's moderation labeler into the worker's label store.
-//!
-//! Labels reach accounts we index only through this stream once it is live:
-//! the old path was whatever `getProfiles` returned when a sample happened to
-//! revisit an account. See docs/plans/label-stream.md.
+//! Follows Bluesky's moderation labeler for the store.
 //!
 //! The stream is `com.atproto.label.subscribeLabels` on the labeler's own
 //! service. We keep labels from the adopted source whose subject is an
-//! account (a DID) or that account's profile record, and post them in batches
-//! to `/admin/labels` with the seq they reach. The worker commits the cursor
-//! with the batch, so the cursor only moves after the labels land; any failure
-//! reconnects from the committed cursor and replays.
+//! account (a DID) or that account's profile record, and hand them in batches
+//! to a sink with the seq they reach. The sink (`store_process/tails.zig`)
+//! commits the cursor with the batch, so the cursor only moves after the
+//! labels land; any failure reconnects from the committed cursor and replays.
 //!
 //! Frames are decoded here rather than by the client, so a malformed frame is
 //! counted and logged instead of vanishing at debug level.
@@ -18,10 +14,7 @@ const std = @import("std");
 const Io = std.Io;
 const Allocator = std.mem.Allocator;
 const mem = std.mem;
-const json = std.json;
 const zat = @import("zat");
-const HttpTransport = zat.HttpTransport;
-const ingest = @import("ingest.zig");
 
 const log = std.log.scoped(.label_tail);
 
@@ -42,7 +35,7 @@ pub const Stats = struct {
     malformed: std.atomic.Value(u64) = .init(0),
     posts: std.atomic.Value(u64) = .init(0),
     post_failed: std.atomic.Value(u64) = .init(0),
-    /// the cursor the worker last committed; 0 until the first commit
+    /// the cursor the sink last committed; 0 until the first commit
     committed: std.atomic.Value(i64) = .init(0),
     /// unix seconds of the newest label seen, for lag
     newest_cts: std.atomic.Value(i64) = .init(0),
@@ -50,8 +43,7 @@ pub const Stats = struct {
 pub var stats: Stats = .{};
 
 /// The account a label is about when we act on it: adopted source, and a
-/// subject that is a DID or that DID's profile record. Mirrors
-/// `labelSubject` in src/account-labels.ts.
+/// subject that is a DID or that DID's profile record.
 pub fn adoptedSubject(label: zat.Label) ?[]const u8 {
     if (!mem.eql(u8, label.src, ADOPTED_SOURCE)) return null;
     if (mem.startsWith(u8, label.uri, "did:")) return label.uri;
@@ -63,8 +55,7 @@ pub fn adoptedSubject(label: zat.Label) ?[]const u8 {
     return did;
 }
 
-/// one adopted label, with the stream seq of the frame that carried it; also
-/// the shape /admin/labels takes
+/// one adopted label, with the stream seq of the frame that carried it
 pub const Wire = struct {
     src: []const u8,
     uri: []const u8,
@@ -74,63 +65,6 @@ pub const Wire = struct {
     cid: ?[]const u8 = null,
     neg: ?bool = null,
     exp: ?[]const u8 = null,
-};
-
-pub const Tail = struct {
-    allocator: Allocator,
-    io: Io,
-    worker_url: []const u8,
-    worker_secret: []const u8,
-
-    fn auth(self: *Tail, buf: []u8) ![]const u8 {
-        return std.fmt.bufPrint(buf, "Bearer {s}", .{self.worker_secret});
-    }
-
-    pub fn run(self: *Tail) void {
-        var worker = HttpTransport.init(self.io, self.allocator);
-        worker.keep_alive = true;
-        defer worker.deinit();
-        var sink: WorkerSink = .{ .tail = self, .worker = &worker };
-        follow(self.allocator, self.io, &sink);
-    }
-};
-
-/// Where the worker role keeps labels: the Worker's label store.
-const WorkerSink = struct {
-    tail: *Tail,
-    worker: *HttpTransport,
-
-    /// the worker's committed cursor; null before the first commit
-    pub fn cursor(self: *WorkerSink) !?i64 {
-        const tail = self.tail;
-        var url_buf: [512]u8 = undefined;
-        const url = try std.fmt.bufPrint(&url_buf, "{s}/admin/labels/cursor", .{tail.worker_url});
-        var auth_buf: [256]u8 = undefined;
-        const result = try self.worker.fetch(.{ .url = url, .authorization = try tail.auth(&auth_buf) });
-        defer tail.allocator.free(result.body);
-        if (result.status != .ok) return error.HttpError;
-        const parsed = try json.parseFromSlice(struct { cursor: ?i64 }, tail.allocator, result.body, .{ .ignore_unknown_fields = true });
-        defer parsed.deinit();
-        return parsed.value.cursor;
-    }
-
-    pub fn commit(self: *WorkerSink, labels: []const Wire, reached: i64) !void {
-        const tail = self.tail;
-        var body: std.Io.Writer.Allocating = .init(tail.allocator);
-        defer body.deinit();
-        var jw: json.Stringify = .{ .writer = &body.writer, .options = .{ .emit_null_optional_fields = false } };
-        try jw.write(.{ .labels = labels, .cursor = reached });
-
-        var url_buf: [512]u8 = undefined;
-        const url = try std.fmt.bufPrint(&url_buf, "{s}/admin/labels", .{tail.worker_url});
-        var auth_buf: [256]u8 = undefined;
-        const result = try self.worker.fetch(ingest.workerPost(url, body.written(), try tail.auth(&auth_buf)));
-        defer tail.allocator.free(result.body);
-        if (result.status != .ok) {
-            log.warn("label post HTTP {d}: {s}", .{ @backingInt(result.status), result.body });
-            return error.HttpError;
-        }
-    }
 };
 
 /// Follow the labeler stream into `sink` until cancelled. The sink answers
@@ -277,18 +211,4 @@ test "adopts account and profile-record labels from Bluesky's moderation service
     try testing.expectEqual(@as(?[]const u8, null), adoptedSubject(testLabel(ADOPTED_SOURCE, "at://" ++ did ++ "/app.bsky.feed.post/3mzaa3w7dwa24")));
     try testing.expectEqual(@as(?[]const u8, null), adoptedSubject(testLabel("did:plc:someotherlabeler", did)));
     try testing.expectEqual(@as(?[]const u8, null), adoptedSubject(testLabel(ADOPTED_SOURCE, "at://did:plc:a/b/app.bsky.actor.profile/self")));
-}
-
-test "a batch serializes as /admin/labels expects, omitting unset fields" {
-    const items = [_]Wire{
-        .{ .src = ADOPTED_SOURCE, .uri = "did:plc:a", .val = "spam", .cts = "2026-11-01T00:00:00.000Z", .seq = 7 },
-        .{ .src = ADOPTED_SOURCE, .uri = "did:plc:b", .val = "!hide", .cts = "2026-11-01T00:00:01.000Z", .seq = 8, .neg = true, .exp = "2026-12-01T00:00:00.000Z" },
-    };
-    var body: std.Io.Writer.Allocating = .init(testing.allocator);
-    defer body.deinit();
-    var jw: json.Stringify = .{ .writer = &body.writer, .options = .{ .emit_null_optional_fields = false } };
-    try jw.write(.{ .labels = &items, .cursor = @as(i64, 8) });
-    try testing.expectEqualStrings(
-        \\{"labels":[{"src":"did:plc:ar7c4by46qjdydhdevvrndac","uri":"did:plc:a","val":"spam","cts":"2026-11-01T00:00:00.000Z","seq":7},{"src":"did:plc:ar7c4by46qjdydhdevvrndac","uri":"did:plc:b","val":"!hide","cts":"2026-11-01T00:00:01.000Z","seq":8,"neg":true,"exp":"2026-12-01T00:00:00.000Z"}],"cursor":8}
-    , body.written());
 }
