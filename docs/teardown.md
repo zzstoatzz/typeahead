@@ -3,7 +3,8 @@
 What is left over from the old system. Search runs on the two store slots;
 everything here is retired and still exists, or is code that only the retired
 parts used. Read on 2026-11-13 with read-only commands, with measurements
-from the cutover of the same date. "Not checked" marks what neither covered.
+from the cutover of the same date; the code sections were read again on
+2026-11-14. "Not checked" marks what neither covered.
 
 Nothing in the first group may be deleted without the owner's explicit go.
 
@@ -19,8 +20,7 @@ loaded from, and `control/tantivy-standby/`. The bucket held about 131 GB on
 
 ### Still in my-prefect-server
 
-- The flow code and tests for the three removed deployments, and
-  `just refresh-search` in this repository, which submitted `typeahead-index`.
+- The flow code and tests for the three removed deployments.
 - The `typeahead-turso-*` and `typeahead-tantivy-*-fly-deploy-token` credential
   blocks. The deploy tokens are for apps that no longer exist.
 - The deployments `typeahead-plc-identity` and `cloud-builder-probe`. What
@@ -74,6 +74,29 @@ deploy:
   audited, compared, reconciled or refreshed Turso rows.
 - The Turso schema dump and the in-memory libSQL the tests used in its place.
 
+From the code, on 2026-11-14, after the apps were destroyed. The transport
+and the public Worker change with their next deploy; the slots run the same
+store process and need none:
+
+- The ingester role of the binary in `services/`: its relay handler and the
+  posts to `/admin/ingest`, `/admin/delete`, `/admin/identity/*` and
+  `/admin/labels*`, the bloom filter, the Turso client with its migrations,
+  and the `zug` dependency. The binary runs as the store (`MODE=store`) or
+  its loader (`MODE=store-bootstrap`) and refuses any other mode.
+- `services/Dockerfile`, `services/fly.toml`, `just deploy-ingest` and
+  `just refresh-search`.
+- `deploy/tantivy-dev/` and `deploy/tantivy-dev-ui/`.
+- The refresh controller's side of `scripts/snapshot_refresh/`: the bundle
+  installer, the managed slot's guest program and image, the live route
+  rehearsal and `just rehearse-route-live`; and `scripts/snapshot_compaction/`,
+  which published the bundles.
+- The destroyed slots' origins in the transport's allowed list
+  (`src/search-route.ts`), and the refresh lease its route write honoured.
+- The ingest recovery and PDS repair scripts, the scripts that measured the
+  native engine's SQLite overlay, `scripts/tests/turso_transport.py`,
+  `scripts/snapshot_refresh/test_search_accounting.mjs`, and the experiments
+  `bounded-lookup-canary`, `recall-comparison` and `recall-scope`.
+
 ## Work that remains
 
 ### Evergreen's inventory
@@ -98,30 +121,40 @@ None of these reads or writes Turso.
   writes them; `/stats` still reads `actor_deltas`.
 - `migrations/stats-d1/0001_statistics_tables.sql` names Turso and the schema
   dump in its opening comment. It is an applied migration.
-- A comment in `src/handlers/og.ts`, the notes in `ops/usage/README.md`, and
-  `scripts/tests/turso_transport.py`, which drives the old ingester's Zig
-  tests.
-- `scripts/capture-ingest-recovery.py`, `scripts/check-recovery-status.py`,
-  `scripts/plan-ingest-recovery.py` and the `scripts/pds_repair_*.py` modules
-  are what is left of the ingest recovery and the PDS repair. They read the
-  relay, the old ingester's health and local files.
-- `scripts/snapshot_refresh/test_search_accounting.mjs` expects the search
-  handler to answer 200 with no actors when its engine fails. It answers from
-  Bluesky or 503, so the script fails; no check runs it.
+- A comment in `src/handlers/og.ts`.
 
-### The old ingester's code
+### What the old system left in the code
 
-- The destroyed slots' origins in `src/search-route.ts` and `MANAGED_ORIGINS`
-  in `scripts/snapshot_refresh/store_slot_route.py`.
-
-- The ingester role in `services/src/`: `main.zig`'s `MODE=ingester` path,
-  `ingest.zig`, and what only it uses. The store role is the same binary, so
-  this is a separation and not a directory delete.
+- Managed-slot support in `scripts/snapshot_refresh/store_slot_route.py`:
+  `MANAGED_ORIGINS`, the refresh lease it honours and the standby ledger a
+  rollback reads. A stored record's `previous`, and the `prior_route` inside a
+  stored admission, may still name a destroyed slot, and the tool refuses a
+  record that names an origin it does not know. Removing the origins needs a
+  read of the live record and its admissions first, and a rule for history
+  that names a destroyed slot. Most of the tool's tests use a managed slot as
+  the serving slot a store slot is admitted against.
 - `services/tantivy-input/`, the poller that fed the old slots from Turso.
-- `services/fly.toml` and `just deploy-ingest`.
-- `deploy/tantivy-dev/` and `deploy/tantivy-dev-ui/`, tooling for retired
-  trial backends. Whether the `tantivy-dev-ui` preview Worker is still
-  deployed: not checked.
+  Nothing runs it. `just test-tantivy` uses it as the client that drives the
+  engine's policy expiry, rejected policy snapshots and kill-point recovery
+  (`test_rust.py --policy-checks`); it can go once that test talks to the
+  engine itself.
+- The engine's Turso source policy and `cutover_source_ready` in
+  `services/tantivy/`, which applied only to a slot the poller fed.
+- `conditionalRouteUpdate` in `src/search-route.ts`. Only the two loopback
+  tests in `scripts/snapshot_refresh/` call it; production's route is written
+  by `store_slot_route.py`.
+- The profile fill in the store process (`profile_fill.zig`, `PROFILE_FILL*`),
+  which copied Turso's descriptions and banners once. It is off on both
+  slots and the Worker no longer serves its endpoint.
+- Names: the binary is still `typeahead-ingester` in the image, its log scope
+  is `ingester`, the relay decoding lives in `services/src/ingest.zig`, and
+  the PLC reader's user agent says `ingester`. The image layout and what the
+  slots send are unchanged on purpose.
+- `scripts/shadow_compare/`, which compared a store slot with a Turso-fed
+  slot before the cutover, and `scripts/perf/`. Whether either is still
+  wanted: not decided.
+- Whether the `tantivy-dev-ui` preview Worker is still deployed: not checked.
+  Its source is removed.
 
 ### Left on the slots
 
@@ -136,9 +169,9 @@ None of these reads or writes Turso.
   plain deploy drops them.
 - `/data/compare` on slot A's volume, left by the comparison run before the
   cutover. It exists; its size was not measured.
-- `deploy/shadow-slot/README.md`, `bootstrap.md`, `sizing.md` and
-  `validation.md` still describe the slot as a shadow beside production, and
-  `fly.toml` begins with "Not deployed".
+- `deploy/shadow-slot/bootstrap.md`, `sizing.md` and `validation.md` still
+  describe the slot as a shadow beside production, and `fly.toml` begins
+  with "Not deployed".
 - The Fly app names still say `shadow`.
 
 ### The readiness gap

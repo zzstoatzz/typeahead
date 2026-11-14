@@ -1,16 +1,12 @@
-# Shadow slot
+# Store slot
 
-Packaging for one slot of the [embedded-store service](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/plans/embedded-store-service.md): a single Fly machine with a single volume that runs the store process and the Tantivy index process side by side. It is meant to run beside production with no route pointing at it, so its answers can be compared before it serves anyone.
+Packaging for one slot of the search service: a single Fly machine with a single volume that runs the store process and the Tantivy index process side by side. Both slots, `typeahead-shadow-a` and `typeahead-shadow-b`, run this image. One serves and the other stands by; [operating](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operating.md) has the procedures and [how it works](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/how-it-works.md#inside-one-slot) the design. The app names, this directory and the `SHADOW_*` variables keep the name the slots had while they ran beside the system they replaced.
 
-Status, 2026-11-10: the Fly app `typeahead-shadow-a` exists with a 40 GB volume, and its index was bootstrapped on the machine from bundle `b1794333857-cp-e3e8808936` (13,164,304 actors). The store process is not running there yet, so the index is unfed and answers searches with 503: its moderation policy has to be refreshed every 300 seconds, which the store process will do. No route points at the app. The supervisor was also exercised locally; see [validation](https://tangled.org/zzstoatzz.io/typeahead/blob/main/deploy/shadow-slot/validation.md).
+## What a slot holds
 
-## How it differs from a production slot
+The store process follows the relay, the PLC directory and the labeler itself, keeps every account in a store on the volume, and feeds the index on the same machine. A slot holds no credential that can write anywhere else. Its one connection to the Worker is outbound and read-only: the store process pulls moderation policy and indexing requests from it ([the control database](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operating.md#the-control-database)). Its origin is in the transport's list of allowed origins in [`src/search-route.ts`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/src/search-route.ts), so the routing record can name it. Only [`store_slot_route.py`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/snapshot_refresh/store_slot_route.py) writes that record, as [flip the route](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operating.md#flip-the-route) describes.
 
-A production slot (`typeahead-tantivy-a` and `-b`) runs the Tantivy reader plus a poller that reads Turso, is installed from a published bundle by the refresh controller twice a day, and is sized at two shared CPUs, 1 GB of memory and a 20 GB volume. The ingester is a separate app.
-
-The shadow slot puts the ingester's successor on the same machine as the reader. It holds no Turso credentials and no Worker admin secret, takes a bundle once at bootstrap, and afterwards is fed only by its own store. Its one connection to the Worker is outbound and read-only: the store process pulls moderation policy and indexing requests from it ([slot control](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operating.md#the-control-database)). Its origin is in the transport's list of allowed origins in [`src/search-route.ts`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/src/search-route.ts), so the routing record can name it once a transport built from that list is deployed. The refresh controller never writes such a record; only [`store_slot_route.py`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/snapshot_refresh/store_slot_route.py) does, as the [store slot runbook](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operating.md#flip-the-route) describes.
-
-The store process is a role of the ingester binary, selected with `MODE=store`, and is still being built. The binary in an image built from a tree without that role refuses the mode and exits, and the supervisor keeps retrying it while the index runs. The supervisor always starts the binary in that mode and refuses to start at all when Turso or Worker credentials are present, so this image cannot become a second production ingester by mistake.
+The store process is the binary built from `services/`, which the image installs as `typeahead-ingester`, the name it had when it also ran as the ingester. It runs as the store with `MODE=store` and as the store's loader with `MODE=store-bootstrap`, and refuses any other mode. The supervisor always starts it with `MODE=store`, and refuses to start at all when `TURSO_URL`, `TURSO_AUTH_TOKEN` or `TYPEAHEAD_SECRET` is set: those were the old system's write credentials, and a slot must not hold them.
 
 ## Build
 
@@ -22,7 +18,7 @@ docker build --platform linux/amd64 -f deploy/shadow-slot/Dockerfile -t typeahea
 
 The image holds the store binary twice. `typeahead-ingester` is built for any x86-64 CPU. `typeahead-ingester.aes` is the same source built with `-Dcpu=x86_64_v2+aes+avx+pclmul`: Zig's standard library chooses its AES and GHASH code when it compiles, and uses the CPU's instructions only when the target has those three features. The baseline build decrypts the relay's TLS stream (bsky.network picks `TLS_AES_256_GCM_SHA384`) in software, which measured as about half of the relay reader's CPU ([collector CPU, 2026-11-12](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/evals/collector-cpu-20261112/README.md)). A binary built for instructions the CPU lacks dies with SIGILL, so the supervisor reads the `flags` line of `/proc/cpuinfo` at start and runs the `.aes` build only when it lists every feature that build needs (`cx16 lahf_lm popcnt pni ssse3 sse4_1 sse4_2 avx aes pclmulqdq`); on any other machine it runs the baseline build. Its first lines say which: `store binary: the build that uses the CPU's AES`, or `store binary: the baseline build; this CPU does not report …`. Both machines the slots run on reported all of them on 2026-11-12 (an Intel Xeon under `typeahead-shadow-a`, an AMD EPYC under `typeahead-shadow-b`); that is two hosts, not a guarantee about Fly's fleet, which is why the choice is made on the machine. `bootstrap.sh` uses the baseline build.
 
-The Zig compiler, the Rust toolchain and both base images are pinned by version and checksum. The Zig steps run with the network off from the vendored dependencies; Cargo fetches the locked crates in one step and compiles offline in the next. The reader built here is not byte-identical to the released production reader, so its `binary_sha256` differs.
+The Zig compiler, the Rust toolchain and both base images are pinned by version and checksum. The Zig steps run with the network off from the vendored dependencies; Cargo fetches the locked crates in one step and compiles offline in the next.
 
 ## Processes
 
@@ -102,22 +98,12 @@ Secrets the app needs:
 | name | where the value comes from |
 |---|---|
 | the store process's bearer secret for its read endpoints | new and random for this app; the name comes with the store process |
-| `ADMIN_SECRET` | new and random for this app. It guards the index's loopback admin endpoints, which the store process will call. It must not be the Worker's secret of the same name |
-| `INDEX_R2_ENDPOINT`, `INDEX_R2_BUCKET` | the same account endpoint and bucket the production slots and the index deployment use |
-| `INDEX_R2_ACCESS_KEY_ID`, `INDEX_R2_SECRET_ACCESS_KEY` | a new R2 token with Object Read only on that bucket. The routing record lives in the same bucket, so the publisher's read-write token must not be reused. Needed only for bootstrap and can be unset afterwards |
-| `LOGFIRE_WRITE_TOKEN` | optional; the write token of the Logfire `typeahead` project that the ingester uses today |
+| `ADMIN_SECRET` | new and random for this app. It guards the index's loopback admin endpoints, which the store process calls. It must not be the Worker's secret of the same name |
+| `INDEX_R2_ENDPOINT`, `INDEX_R2_BUCKET` | the account endpoint and the `typeahead-index` bucket, which holds the bundles a bootstrap reads |
+| `INDEX_R2_ACCESS_KEY_ID`, `INDEX_R2_SECRET_ACCESS_KEY` | a new R2 token with Object Read only on that bucket. The routing record lives in the same bucket, so a read-write token must not be used. Needed only for bootstrap and can be unset afterwards |
+| `LOGFIRE_WRITE_TOKEN` | optional; the write token of the Logfire `typeahead` project |
 | `SLOT_CONTROL_SECRET` | the bearer secret for the Worker's `/slot/control/*`, at least 32 bytes, the same value on the Worker and on every slot. It reads the control record and can change nothing. It must not be the Worker's admin secret, which those endpoints refuse. Not set anywhere as of 2026-11-12; set it with `fly secrets set --stage` so that setting it restarts nothing |
-
-Secrets production has that the shadow must not: `TURSO_URL` and `TURSO_AUTH_TOKEN` (ingester and production slots) and `TYPEAHEAD_SECRET` (the ingester's copy of the Worker admin secret). `TYPEAHEAD_URL` goes with them. The supervisor exits if any of the three secrets is set.
 
 ## Bootstrap
 
 The [bootstrap runbook](https://tangled.org/zzstoatzz.io/typeahead/blob/main/deploy/shadow-slot/bootstrap.md) covers how the volume gets its first index and store, the disk it needs, and what must hold before the store process advances a cursor.
-
-## Not done yet
-
-- The store process. Until its role lands in the binary, the store side of the image only exits.
-- The store loader and cursor seeding in the bootstrap script. Seeding the index alone works.
-- The index bridge, so the index is not updated after bootstrap and reports not ready once its watermark is older than the lag limit.
-- Any Fly resource, and any measurement on a Fly volume.
-- A run of the comparison job. The store process stays unreachable from outside the machine; the comparison's corpus walk [runs on the machine](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md#corpus-phase-on-the-shadow-machine) instead.

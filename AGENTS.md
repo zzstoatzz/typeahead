@@ -174,9 +174,9 @@ regression is pinned). Extend it, don't prune it.
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
   `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
 - The old ingester, the Turso-fed slots, the index refresh and the HeavyPad flows are
-  retired and listed in [teardown](docs/teardown.md). Do not deploy, resume or delete
-  any of them without Nate's explicit go; `just deploy-ingest` and `just refresh-search`
-  belong to them.
+  retired: their apps are destroyed and their code and recipes are removed. What is
+  left of them is listed in [teardown](docs/teardown.md); do not delete any of it
+  without Nate's explicit go.
 
 ## conventions
 

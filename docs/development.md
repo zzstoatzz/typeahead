@@ -41,8 +41,9 @@ just test-store-route         # the route tool against an in-memory bucket
 Changes to matching or ranking also need `just --no-dotenv test-tantivy`,
 which CI runs on main.
 
-The store process is one role of the binary in `services/`, chosen with
-`MODE=store`. A bare `zig build run` sets no role and exits. The slot image is
+The store process is the binary in `services/`, started with `MODE=store`
+(`MODE=store-bootstrap` loads a new store). A bare `zig build run` sets no
+mode and exits. The slot image is
 built from `deploy/shadow-slot/Dockerfile`:
 
 ```sh

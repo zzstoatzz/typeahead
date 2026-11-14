@@ -1,9 +1,13 @@
 # Tantivy source adapter
 
-This directory contains the read-only Turso source adapter for the production
-Tantivy backend. The adapter reconciles source
-observations into the serving index. These tools do not change routing or write
-to the source database.
+Nothing runs this adapter. It polled Turso and reconciled what it read into
+the index of the slots the refresh controller managed; Turso and those slots
+are gone, and a store slot's index is fed by its own store process.
+
+It stays because `just test-tantivy` runs `test_rust.py --policy-checks`,
+which uses the adapter as the client that drives a real engine through policy
+expiry, rejected policy snapshots and kill-point recovery. The rest of this
+file describes the adapter as it ran.
 
 `sync.py` defaults to `--source-mode observed`. It discovers changed identities
 through indexed timestamp keysets, obtains backend document hashes and a durable

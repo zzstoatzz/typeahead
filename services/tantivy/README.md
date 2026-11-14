@@ -274,8 +274,8 @@ object, compare-and-set against the previous committed cursor; initial cursor is
 null. `watermark` is optional and advances only when the controller has drained all
 source streams through its safe cutoff. It must not mean merely the largest actor
 timestamp seen. Responses report applied/replayed/stale counts, cursor, watermark
-and Tantivy commit opstamp. `services/tantivy-input/sync.py` supplies the read-only
-source polling/controller; this crate does not acquire source credentials.
+and Tantivy commit opstamp. On a slot the store process's index bridge is the
+client; this crate does not acquire source credentials.
 
 Every live actor or tombstone has a stored full record and source version in the
 same Tantivy document. Higher versions replace; identical replay is a no-op;
@@ -376,8 +376,9 @@ initial bounds are explicitly unqualified operational SLOs; a true boolean does
 not establish full-corpus throughput, policy query cost or deployment admission.
 Native local operator rows still require independent inventory/migration.
 
-Run `python3 services/tantivy-input/test_rust.py --policy-checks` for actual
-HTTP/SQLite/Rust policy tests, including pre-K refill, source ordering, policy
+Run `python3 services/tantivy-input/test_rust.py --policy-checks` (part of
+`just test-tantivy`; it drives the engine with the retired Turso poller as its
+client) for actual HTTP/SQLite/Rust policy tests, including pre-K refill, source ordering, policy
 expiry/readiness, failed policy admission, deletion without reindexing,
 restart and commit-abort durability. `/debug/search` reports hydrated candidates,
 hydration time and moderation time separately for controlled qualification.
