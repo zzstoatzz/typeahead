@@ -171,18 +171,6 @@ control-backfill-sql:
 control-check target="--remote":
     bun scripts/control-backfill.ts check {{target}}
 
-# compare getProfiles answers for a sample of Turso's visible actors with the
-# slot's, before PROFILE_MODE moves to slot. `slot` is the transport (the
-# routed slot) or one slot's own origin. Needs the Turso variables; read-only,
-# non-zero when more than `max_rate` of the sample is missing or differs
-profile-check sample="500" slot="https://typeahead-search-transport.n8-3e9.workers.dev" max_rate="0.01":
-    bun scripts/turso-parity.ts profiles --sample {{sample}} --slot {{slot}} --max-rate {{max_rate}}
-
-# compare Turso's hourly snapshot counts with the slot's, before CORPUS_MODE
-# moves to slot. Needs the Turso variables; read-only
-corpus-check slot="https://typeahead-search-transport.n8-3e9.workers.dev" max_rate="0.05":
-    bun scripts/turso-parity.ts corpus --slot {{slot}} --max-rate {{max_rate}}
-
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
 deploy-worker url="https://typeahead.waow.tech": control-ready lint
     bunx tsc --noEmit
