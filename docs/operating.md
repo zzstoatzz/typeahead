@@ -305,7 +305,9 @@ fly volumes create shadow_data --snapshot-id <snapshot id> -s 40 -r ewr -a <app>
 ```
 
 Then destroy the slot's machine and [deploy](#upgrade-the-slots) to that app,
-which creates a machine on the new volume. The store resumes from the cursors
+which creates a machine on the new volume. A volume restored from the other
+slot's snapshot carries that slot's index cursor; `INDEX_ADOPT_CURSOR=1` in
+`fly.toml` makes the bridge take the index over with one full resync round. The store resumes from the cursors
 in the snapshot, so a snapshot older than the relay keeps events for leaves a
 gap that the PLC directory and the scheduled refresh close over time; prefer
 the newest snapshot. Wait for `standby` to report the slot fit and for a
@@ -432,7 +434,7 @@ The public Worker's settings are in `wrangler.jsonc`. Profiles, the
 reputation page and the account counts on `/stats` are read from the serving
 slot through the transport. Policy and index requests are in the
 `typeahead-control` D1 database and statistics in `typeahead-stats`. The
-`/admin` endpoints the old ingester wrote through answer 410.
+retired `/admin` write endpoints answer 410.
 
 ## Statistics
 
@@ -534,7 +536,7 @@ under `store` and `queues` are refreshed once a minute.
 | `enrichment` | the profile refresh loop: pacing, completed, retried, not found, rate-limited, and any pause in force |
 | `control` | the policy revision held, when the Worker last confirmed it, the last index request taken, failures by kind, and `age_seconds` |
 | `corpus` | the last count of accounts: live, with handles, with avatars, hidden |
-| `handle_repair`, `first_check`, `profile_fill` | one-time passes; each is done when `finished_at` is set |
+| `first_check` | a one-time pass that queues a first profile fetch for accounts no source has answered for; done when `finished_at` is set |
 
 For the first 30 seconds after the store opens, the counts read zero and
 `/store/*` answers 503. The account count first appears 300 seconds in.

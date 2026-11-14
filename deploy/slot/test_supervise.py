@@ -354,12 +354,10 @@ class SuperviseTest(unittest.TestCase):
         self.stop(slot)
 
     def test_the_workers_admin_secret_starts_nothing(self) -> None:
-        for name in ("ADMIN_SECRET", "TYPEAHEAD_SECRET"):
-            with self.subTest(name=name):
-                slot = Slot(self, **{name: "not-for-a-slot"})
-                self.assertEqual(1, slot.exit_status())
-                self.assertEqual([], slot.events())
-                self.assertIn(f"{name} is set", slot.output())
+        slot = Slot(self, TYPEAHEAD_SECRET="not-for-a-slot")
+        self.assertEqual(1, slot.exit_status())
+        self.assertEqual([], slot.events())
+        self.assertIn("TYPEAHEAD_SECRET is set", slot.output())
 
 
 if __name__ == "__main__":

@@ -43,12 +43,10 @@ result=0
 
 say() { printf '[supervisor] %s\n' "$*"; }
 
-for forbidden in ADMIN_SECRET TYPEAHEAD_SECRET; do
-  if [[ -n ${!forbidden:-} ]]; then
-    say "$forbidden is set: a slot must not hold the Worker's admin secret"
-    exit 1
-  fi
-done
+if [[ -n ${TYPEAHEAD_SECRET:-} ]]; then
+  say "TYPEAHEAD_SECRET is set: a slot must not hold the Worker's admin secret"
+  exit 1
+fi
 
 # The store works in the background and search answers people: when both
 # want a CPU, the index process gets it.

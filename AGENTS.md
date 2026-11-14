@@ -173,10 +173,9 @@ regression is pinned). Extend it, don't prune it.
   [operating](docs/operating.md#upgrade-the-slots).
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
   `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
-- The old ingester, the Turso-fed slots, the index refresh and the HeavyPad flows are
-  retired: their apps are destroyed and their code and recipes are removed. What is
-  left of them is listed in [teardown](docs/teardown.md); do not delete any of it
-  without Nate's explicit go.
+- The system before the store slots (a separate ingester, Turso, a twice-daily index
+  refresh) is gone: apps, data, code and recipes. What still carries its shape is
+  listed in [teardown](docs/teardown.md).
 
 ## conventions
 

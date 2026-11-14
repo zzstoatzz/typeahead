@@ -1,4 +1,4 @@
-# Not deployed. See README.md for what has to exist first.
+# The slot image. Both slots deploy from this file; pass the app with -a.
 # Deploy from the repository root: fly deploy . --config deploy/slot/fly.toml
 
 app = 'typeahead-shadow-a'
