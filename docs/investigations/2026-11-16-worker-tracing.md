@@ -122,3 +122,13 @@ is an existing OTLP destination, not a requirement for diagnosing this boundary.
 No collector, SDK, Fly deployment or eval-page change is involved. The initial
 change passed 238 Worker and 77 Python tests, lint, type checking and dry-run
 builds; the RPC callback adjustment also passed the 11 route/tracing tests.
+
+At 09:41 UTC, published commit `211e347` was deployed as public version
+`721eb37b-71e5-43c1-a351-265846961198` and transport version
+`0f42c594-0412-47b2-8548-5e7312994e6c`. Both API and public-image smoke gates
+passed. Cloudflare settings readback confirmed 5% traces on both Workers,
+continued native persistence and the Logfire destination; destination delivery
+reported success at 09:41:22 UTC with no export error. Optional authenticated
+admin smoke checks were skipped because the admin credential was unavailable.
+README was reviewed against the final changes; its tracing pointer remains
+accurate and no further overview change was needed.
