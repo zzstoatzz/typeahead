@@ -1,7 +1,7 @@
 # Statistics must not scan serving data
 
 Assessment requested November 16, 2026, after the standby experiment began.
-This is the required replacement design, not a claim that it is deployed.
+Implementation and rollout are in progress; see current status below.
 The paced reader is an experiment, not the architectural fix.
 
 ## What the history says
@@ -23,22 +23,21 @@ the trigger to a cron/Worker nor giving the reader another thread makes it safe.
 
 ### Maintain facts with the existing writes
 
-Persist fixed-size corpus counters in the store, updating each actor's old/new
-contribution in the same batch as its mutation. Cover discovery, profile and
-identity changes, activity/ranking changes, enrichment, moderation overrides,
-label expiry, deactivation/reactivation and tombstone removal. `Batch.save`
-already centralizes actor writes; tombstone pruning is a separate deletion
-path that must also participate. Multiple changes to a DID in one batch must
-telescope correctly. Abort, replay, crash and restart must preserve the same
-counts as the actor records.
+The assessment initially proposed store counters. Source inspection found a
+simpler owner: Tantivy already maintains actor counts transactionally, and every
+indexed actor mutation passes through its commit. Extend that metadata rather
+than introducing a second maintained counter system in ZKV. Update each actor's old/new
+contribution in the same index commit as its mutation. Replacement, replay,
+abort and restart preserve the counters. Tombstones contribute zero, so pruning
+them changes no live statistic.
 
 Maintain index-side exclusion counters alongside the existing metadata updates
 for actor and searchable totals. Do not replace `Count` with another query over
 the same postings. Existing metadata without new counts is explicitly unknown,
 not a reason for `/corpus` to enumerate documents or postings.
 
-Track exact pending queue lengths when their keys are inserted/deleted. Stop
-enumerating queues just to report health. Time-dependent due counts may be
+Queue lengths remain explicitly unknown rather than adding a second transaction
+system to track them. Stop enumerating queues just to report health. Time-dependent due counts may be
 unknown or a small explicitly bounded sample; backlog/admission decisions need
 their own bounded probes. Use the storage engine's maintained byte statistics
 and bounded filesystem metadata calls instead of enumerating every file for a
@@ -48,8 +47,11 @@ observational statistics and retains its existing work budgets.
 ### Remove recount capability from serving roles
 
 Remove `Scanner.run` and the hourly scan configuration from the production
-store role. Keep recount code in an explicit operator tool that is not copied
-into the production image. `/corpus`, `/health`, startup, cron and metrics
+store role. Keep recount code in an explicit offline CLI, separate from the normal serve
+command. The existing image already carries offline import commands; reuse that
+maintenance boundary rather than adding another executable/build/deployment.
+The checked helper refuses the serving origin and quiesces the standby, and
+the index writer lock prevents initialization alongside a serving process. `/corpus`, `/health`, startup, cron and metrics
 export may only read maintained facts or previously saved snapshots. No
 missing-value, recovery or debugging path may fall back to a corpus read.
 
@@ -90,7 +92,7 @@ permission for load tests against a serving target.
 
 | Boundary | Required check |
 | --- | --- |
-| Production build | Normal store/index roles cannot import or invoke the recount tool; production image omits that executable. Scan-enabling configuration is rejected, not silently accepted. |
+| Production build | The store role cannot import a scanner; the index server cannot invoke the offline initializer. Scan-enabling configuration is rejected, not silently accepted. |
 | Store transitions | Replay generated histories against an independent count model, covering abort, crash/reopen, duplicate events, multi-update batches, moderation, disappearance/reactivation and pruning. |
 | Read cost | Instrument storage reads: `/corpus` and health statistics perform a fixed amount of work as fixture size grows. Missing/invalid counters perform no scan. |
 | Index counts | Differential tests cover live/deleted/replaced documents and changed moderation without posting-list enumeration on reads. |
@@ -105,15 +107,33 @@ priority, scan frequency or per-page speed does not satisfy these gates.
 
 ## Current status
 
-The serving slot has not been changed. Its existing hourly scanner remains a
-known violation of the required design. The completed standby experiment
-reproduced the regression twice with identical results for 88 matched query
-cases. Its processes and scratch data are retired. B is fit and its hourly
-scanner is still disabled as an interim mitigation; the required replacement
-and regression gates are not implemented or deployed. See
-[the experiment record](2026-11-16-standby-scan.md) for measured results and
-verified deployment state.
+2026-11-16: implementation is locally qualified; rollout has not begun.
+The serving slot A is unchanged. B still has the temporary scan-disable setting.
 
-README describes the currently deployed architecture and is not rewritten to
-claim this replacement has shipped. Update it and the operating/API documents
-with the implementation and verified rollout, including unknown/stale counts.
+The index counters intentionally describe indexed live actors. The former store
+scan included roughly 850 live actors without handles, which the bridge maps to
+index tombstones. Historical snapshots remain intact; new snapshots will use the
+indexed population. No search result or indexing eligibility changes.
+
+Local evidence:
+
+- `just check`: typecheck/lint, 248 Bun tests, 59 routing tests, two offline
+  helper tests, supervisor/smoke tests and all four Worker deployment builds.
+- `just test-services`: 334 tests, including real kill/reopen and bounded
+  control/enrichment backlog behavior. Health does not enumerate queues/files.
+- `just --no-dotenv test-tantivy`: 24 library tests, normalization/differential,
+  HTTP, reconciliation, policy, PDS, crash/retry and merge checks.
+- Counter history seed `20261116`: 160 actor replacements plus replay,
+  deletion/reactivation, avatars, hidden flags and excluded handles; four
+  reopens and an offline recount match an independent map oracle. Missing and
+  malformed counts remain unknown while actor changes continue.
+- Disposable planted avatar-count and deletion-count bugs both fail the history
+  oracle. The HTTP check refuses initialization alongside a running index writer.
+- Structural regression guards prohibit scanner imports/reporting in the store
+  role, count queries on `/corpus`, and the old reporting endpoint.
+
+These are bounded tests, not a general claim that observational I/O cannot ever
+fail. Request traffic counters still write asynchronously to D1. Existing engine
+metadata, cursors and ingestion maintenance retain their normal resource costs.
+No new service, database or schedule was added. Production rollout and standby
+latency evidence will be recorded here after verification.

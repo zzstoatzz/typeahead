@@ -289,7 +289,7 @@ pub fn compactionPlanned(db: *const Db) bool {
 }
 
 /// Bytes and files under the store directory: tables, log segments, the
-/// manifest. Walks the directory, so call it for a health report, not per
+/// manifest. Walks the directory; use only for explicit offline inspection, never per
 /// request.
 pub fn disk(gpa: std.mem.Allocator, io: Io, dir: Io.Dir) !Disk {
     var walker = try dir.walk(gpa);

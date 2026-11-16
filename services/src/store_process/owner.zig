@@ -117,13 +117,10 @@ pub const Options = struct {
     retain_at_most: u64 = 20_000_000,
     health_seconds: u64 = 60,
     /// How long after it opens the store the owner only commits and
-    /// maintains: pruning, the expiry pass, trimming and the health counts all wait this long, so a restart reaches its first
+    /// maintains: pruning, the expiry pass, trimming and health refresh all wait this long, so a restart reaches its first
     /// commits without a range scan in front of them. 0, the default,
     /// starts them on the first turn: the role sets it.
     startup_seconds: u64 = 0,
-    /// Keys counted at most when sizing a queue for the health snapshot.
-    count_cap: usize = 200_000,
-
     fn noFatal() void {}
 };
 
@@ -209,24 +206,23 @@ pub const Consumer = struct {
 /// What `/health` and the heartbeat report about the store, as of `taken_at`.
 /// Refreshed by the owner, so reading it never waits on the store.
 pub const Health = struct {
-    /// 0 from a start until the owner's first refresh. Until then the
-    /// queue counts and `disk` are zero: opening the store reads the
-    /// cursors, the walks and the table statistics, and counts nothing.
+    /// 0 until the first refresh. Queue and filesystem totals remain unknown;
+    /// health reads cursors, walk positions and maintained storage metadata.
     taken_at: u64 = 0,
     cursors: store_mod.read.Cursors = .{},
     plc_cursor: [change.max_cursor_bytes]u8 = undefined,
     plc_cursor_len: usize = 0,
-    identity_pending: u64 = 0,
-    identity_due: u64 = 0,
-    refresh_pending: u64 = 0,
+    identity_pending: ?u64 = null,
+    identity_due: ?u64 = null,
+    refresh_pending: ?u64 = null,
     /// Refresh entries due now; the rest of `refresh_pending` is leased.
-    refresh_due: u64 = 0,
+    refresh_due: ?u64 = null,
     walks: std.EnumArray(change.WalkPool, Walk) = .initFill(.{}),
-    tombstones: u64 = 0,
-    /// True when a count above stopped at `count_cap`.
+    tombstones: ?u64 = null,
+    /// Legacy field; observational queue enumeration is disabled.
     counts_capped: bool = false,
     maintenance: ?maintain.Stats = null,
-    disk: maintain.Disk = .{},
+    disk: ?maintain.Disk = null,
 
     pub fn plc(self: *const Health) ?[]const u8 {
         return if (self.plc_cursor_len == 0) null else self.plc_cursor[0..self.plc_cursor_len];
@@ -829,13 +825,6 @@ pub const Owner = struct {
         _ = self.counters.changes_trimmed.fetchAdd(trimmed.removed, .monotonic);
     }
 
-    fn countRange(self: *Owner, start: []const u8, end: []const u8, capped: *bool) !u64 {
-        var count: scan.Count = .{};
-        _ = try scan.all(self.gpa, self.store.db(), start, end, .{ .limit = self.options.count_cap }, &count);
-        if (count.entries >= self.options.count_cap) capped.* = true;
-        return count.entries;
-    }
-
     /// What the snapshot takes from point reads and the engine's own
     /// counters: cursors, walks, table statistics.
     fn readState(self: *Owner, fresh: *Health) !void {
@@ -866,28 +855,9 @@ pub const Owner = struct {
         fresh.maintenance = self.store.stats();
     }
 
-    /// What the snapshot has to scan for: the size of each queue and the
-    /// files on disk.
-    fn countState(self: *Owner, fresh: *Health, at: u64) !void {
-        var buf: keys.Buf = undefined;
-        const identity_bounds = keys.Prefix.identity.bounds();
-        var start_buf: keys.Buf = undefined;
-        const identity_start = self.store.timedStart(&start_buf, .identity);
-        fresh.identity_pending = try self.countRange(identity_start, &identity_bounds[1], &fresh.counts_capped);
-        fresh.identity_due = try self.countRange(identity_start, keys.timedBound(&buf, .identity, at + 1), &fresh.counts_capped);
-        const refresh_bounds = keys.Prefix.refresh.bounds();
-        const refresh_start = self.store.timedStart(&start_buf, .refresh);
-        fresh.refresh_pending = try self.countRange(refresh_start, &refresh_bounds[1], &fresh.counts_capped);
-        fresh.refresh_due = try self.countRange(refresh_start, keys.timedBound(&buf, .refresh, at + 1), &fresh.counts_capped);
-        const tombstone_bounds = keys.Prefix.tombstone.bounds();
-        fresh.tombstones = try self.countRange(self.store.timedStart(&start_buf, .tombstone), &tombstone_bounds[1], &fresh.counts_capped);
-        fresh.disk = self.store.diskUsage() catch .{};
-    }
-
     fn refreshHealth(self: *Owner, at: u64) !void {
         var fresh: Health = .{ .taken_at = at };
         try self.readState(&fresh);
-        try self.countState(&fresh, at);
 
         self.health_lock.lockUncancelable(self.io);
         defer self.health_lock.unlock(self.io);

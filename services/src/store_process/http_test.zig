@@ -127,13 +127,14 @@ test "health carries the store's numbers" {
     try testing.expectEqual(@as(i64, 80), body.relay.handed_cursor);
     try testing.expectEqual(@as(u64, 3), body.change_log.head);
     try testing.expectEqualStrings("bridge", body.change_log.consumers[0].name);
-    try testing.expectEqual(@as(u64, 1), body.queues.identity_pending);
-    try testing.expectEqual(@as(u64, 1), body.queues.tombstones);
+    try testing.expect(body.queues.identity_pending == null);
+    try testing.expect(body.queues.tombstones == null);
     try testing.expectEqual(@as(u64, 2), body.actors.created);
     try testing.expectEqual(@as(i64, 1), body.actors.live_delta);
     try testing.expectEqual(@as(u64, 1), body.writes.commits);
     try testing.expectEqual(f.now(), body.store.last_commit_at);
     try testing.expectEqual(f.now(), body.store.taken_at);
-    try testing.expect(body.store.levels.len > 0 and body.store.disk_bytes > 0 and body.store.disk_files > 0);
+    try testing.expect(body.store.levels.len > 0);
+    try testing.expect(body.store.disk_bytes == null and body.store.disk_files == null);
     try testing.expect(!body.store.stalled);
 }

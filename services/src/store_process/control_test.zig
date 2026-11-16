@@ -1309,10 +1309,9 @@ test "the role pulls the control record while it runs, reports it in /health and
         .config = .{
             .store_dir = path,
             .offline = true,
-            .corpus_scan_seconds = 0,
             .control = .{ .on = .{ .url = stub.url(&url_buf, ""), .secret = secret, .poll_seconds = 5 } },
         },
-        .options = .{ .startup_seconds = 1, .corpus_delay_seconds = 3600, .stop = &stop },
+        .options = .{ .startup_seconds = 1, .stop = &stop },
     };
     const thread = try std.Thread.spawn(.{}, RunningRole.run, .{&running});
 

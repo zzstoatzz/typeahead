@@ -4,7 +4,6 @@
 const std = @import("std");
 const bridge_mod = @import("../bridge/root.zig");
 const store_mod = @import("../store/root.zig");
-const corpus_mod = @import("corpus.zig");
 const enrich = @import("enrich.zig");
 const http = @import("http.zig");
 const index_bridge = @import("index_bridge.zig");
@@ -712,7 +711,7 @@ test "the walks queue ranked actors at their hourly rate and the rest only while
     try testing.expectEqual(@as(u64, 1), health.walks.get(.rest).passes);
 }
 
-test "health reports the loop, both walks with their periods, and the corpus count" {
+test "health reports progress without scanning for queue or corpus totals" {
     const rig = try Rig.create(.{ .requests_per_second = 2, .jitter = 0, .walk_per_hour = 7200, .sweep_per_hour = 7200 });
     defer rig.destroy();
     const a = rig.f.arena.allocator();
@@ -730,13 +729,11 @@ test "health reports the loop, both walks with their periods, and the corpus cou
     rig.f.advance(61);
     _ = rig.f.owner.turn(0);
 
-    var scanner: corpus_mod.Scanner = .{ .gpa = testing.allocator, .io = testing.io, .root = rig.f.tmp.dir, .path = "store", .layout = rig.f.owner.options.store.layout, .interval_seconds = 3600 };
-    scanner.scan();
     const reader = try store_mod.Reader.open(testing.allocator, testing.io, rig.f.tmp.dir, "store", rig.f.owner.options.store.layout);
     defer reader.close();
     var signals: @import("intake.zig").Signals = .{};
     var ignored: std.atomic.Value(u64) = .init(0);
-    const context: http.Context = .{ .owner = rig.f.owner, .reader = reader, .intake = &signals, .labels_ignored = &ignored, .read_secret = null, .enricher = &rig.enricher, .corpus = &scanner };
+    const context: http.Context = .{ .owner = rig.f.owner, .reader = reader, .intake = &signals, .labels_ignored = &ignored, .read_secret = null, .enricher = &rig.enricher };
     const response = try http.respond(&context, a, .GET, "/health", null);
     const body = try std.json.parseFromSliceLeaky(http.HealthBody, a, response.body, .{ .ignore_unknown_fields = true });
 
@@ -750,23 +747,17 @@ test "health reports the loop, both walks with their periods, and the corpus cou
     try testing.expectEqual(@as(u64, 7200), loop.quality_walk.per_hour);
     try testing.expectEqual(@as(u64, 30), loop.quality_walk.queued);
     try testing.expectEqual(@as(u64, 1), loop.quality_walk.passes);
-    try testing.expectEqual(@as(?u64, 30), loop.quality_walk.pool);
-    try testing.expectEqual(@as(?u64, 15), loop.quality_walk.period_seconds);
+    try testing.expect(loop.quality_walk.pool == null);
+    try testing.expect(loop.quality_walk.period_seconds == null);
     try testing.expectEqual(@as(u64, 20), loop.rest_walk.queued);
     try testing.expectEqual(@as(u64, 1), loop.rest_walk.passes);
-    try testing.expectEqual(@as(?u64, 20), loop.rest_walk.pool);
-    try testing.expectEqual(@as(?u64, 10), loop.rest_walk.period_seconds);
-    try testing.expectEqual(@as(u64, 25), body.queues.refresh_due);
-    try testing.expectEqual(@as(u64, 0), body.queues.refresh_leased);
-    try testing.expectEqual(@as(u64, 25), body.queues.refresh_pending);
+    try testing.expect(loop.rest_walk.pool == null);
+    try testing.expect(loop.rest_walk.period_seconds == null);
+    try testing.expect(body.queues.refresh_due == null);
+    try testing.expect(body.queues.refresh_leased == null);
+    try testing.expect(body.queues.refresh_pending == null);
 
-    const corpus = body.corpus.?;
-    try testing.expectEqual(@as(?u64, 50), corpus.live);
-    try testing.expectEqual(@as(?u64, 50), corpus.total);
-    try testing.expectEqual(@as(?u64, 50), corpus.with_handles);
-    try testing.expectEqual(@as(?u64, 10), corpus.with_avatars);
-    try testing.expectEqual(@as(?u64, 0), corpus.hidden);
-    try testing.expectEqual(@as(u64, 1), corpus.scans);
+    try testing.expect(body.corpus == null);
 }
 
 test "the role's transport reads status, body and Retry-After over a real connection" {

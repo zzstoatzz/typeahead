@@ -76,7 +76,11 @@ against the deployed engine before changing retrieval.
 
 Avoid corpus-proportional work on the request path and in the Worker cron. A
 full resync of a slot's index from its store is deliberately corpus-scale; it
-runs on the standby, never on the serving slot.
+runs on the standby, never on the serving slot. Statistics and health reporting
+read maintained metadata only: no corpus/postings/queue/file enumeration, no
+startup or missing-counter recount fallback. Initialize legacy counters only
+with `scripts/route/initialize_statistics.py` on an offline standby; see
+[statistics isolation](docs/operating.md#statistics-isolation).
 
 ## slots and the route
 

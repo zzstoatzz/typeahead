@@ -66,7 +66,7 @@ test("a slot's exclusions come from the index: unsearchable documents less the u
     version: 2, as_of: "2026-11-12T09:30:00.000Z", policy_hidden: 20, stale_hidden_flags: 0, handle_invalid: 30, quarantined: 7,
   });
   const allInvalid = { ...CORPUS, index: { actors: 10, searchable: 4, handle_invalid: 9, quarantined: 0 } };
-  expect(slotExclusions(allInvalid, new Date(NOW)).policy_hidden).toBe(0);
+  expect(slotExclusions(allInvalid, new Date(NOW))?.policy_hidden).toBe(0);
 });
 
 test("the hourly snapshot is the slot's count, written to the statistics store", async () => {
@@ -79,7 +79,7 @@ test("the hourly snapshot is the slot's count, written to the statistics store",
 test("no row is written while the store has no count, and a slot that does not answer fails the step", async () => {
   await recordSnapshot(answering({ ...CORPUS, store: null }).env, NOW);
   expect(await snapshots()).toEqual([]);
-  expect(events()).toEqual([{ event: "corpus_snapshot_skipped", reason: "the slot's store has no recent count" }]);
+  expect(events()).toEqual([{ event: "corpus_snapshot_skipped", reason: "the slot has no recent committed count" }]);
 
   await expect(recordSnapshot(down().env, NOW)).rejects.toThrow("the slot answered 503");
   expect(await snapshots()).toEqual([]);
@@ -104,4 +104,16 @@ test("exclusions are the slot's, counted once a day", async () => {
   const failedKv = memoryKv();
   await expect(recordExclusions(failedKv, down().env, at)).rejects.toThrow("the slot answered 503");
   expect(failedKv.store.size).toBe(0);
+});
+
+
+test("committed counts take precedence and unknown counts never reuse a legacy report", async () => {
+  const upgraded: SlotCorpus = { ...CORPUS, index: { ...CORPUS.index, statistics_version: 1 }, counts: { ...CORPUS.store!, total: 999 } };
+  expect(slotSnapshot(upgraded, NOW)?.total).toBe(999);
+  expect(slotSnapshot({ ...upgraded, counts: null }, NOW)).toBeNull();
+  const missing = { ...upgraded, index: { ...upgraded.index, handle_invalid: null } };
+  const kv = memoryKv();
+  kv.store.set(EXCLUSIONS_KEY, "previous report");
+  expect(await recordExclusions(kv, answering(missing).env, new Date(NOW))).toBeNull();
+  expect(kv.store.get(EXCLUSIONS_KEY)).toBe("previous report");
 });

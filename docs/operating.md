@@ -491,16 +491,39 @@ Every response carries `Server-Timing` with `worker`, and for searches
 `worker`, then `worker` with `search`, to find where a slow request spent its
 time.
 
-On 2026-11-16, the completed standby scan experiment left
-`typeahead-slot-b` with `CORPUS_SCAN_SECONDS=0` as an interim mitigation.
-Its original image and resource size are unchanged, it passed admission,
-and slot A remains serving with its existing hourly scanner. The scratch
-data and trial processes are gone. Ordinary deployment settings do not
-establish the disabled-scan guarantee. Read the
-[experiment and verified state](investigations/2026-11-16-standby-scan.md)
-before changing B, and the
-[required statistics-isolation replacement](investigations/2026-11-16-statistics-isolation.md)
-before treating pacing, a background thread or a Worker trigger as a fix.
+### Statistics isolation
+
+Corpus counts describe indexed live actors and are maintained in the same
+Tantivy commit as actor changes. Legacy store snapshots also included live
+actors without handles (about 850 at cutover); history is retained.
+`/corpus` reads only that metadata; it never queries postings or scans documents.
+Missing or malformed counters are unknown, and the Worker retains published history.
+The `scanned_at` compatibility field now means the index commit timestamp.
+Health queue totals, tombstone totals and filesystem totals are unavailable; stored
+cursors, bounded ingestion backlog checks and maintained engine metadata remain.
+No store scanner or reporter is started or imported by the serving role.
+`CORPUS_SCAN_SECONDS` accepts only `0`; any enabling value is rejected.
+Admission requires `statistics_version: 1` from the index binary.
+
+Existing indexes need one explicit offline initialization, on the standby only:
+
+```sh
+uv run --no-project scripts/route/initialize_statistics.py --app <standby app> --machine <id>
+uv run --no-project scripts/route/initialize_statistics.py --app <standby app> --machine <id> --write
+```
+
+The helper checks the live route and serving health, temporarily replaces the
+standby's command with sleep, runs the initializer, and restores and verifies
+its original machine configuration even after initialization failure. The
+initializer requires an explicit acknowledgement and an exclusive index writer
+lock; it never runs from startup, cron, health or a request. Its commit disables
+merging. No index rewrite or format change is needed. Wait for fresh admission
+and a clean latency round afterwards. An interrupted operator process requires
+checking/restoring the standby's command before proceeding; never route to it
+while offline. Prefer separate cloud copies for future audits.
+
+The [assessment and rollout evidence](investigations/2026-11-16-statistics-isolation.md)
+records verification and distinguishes local changes from deployed behavior.
 
 Successful backend search responses also retain `engine`, `transport_route`,
 `transport_origin_headers`, `transport_total`, `transport_hint_wait` and
@@ -585,14 +608,14 @@ under `store` and `queues` are refreshed once a minute.
 
 | block | holds |
 | --- | --- |
-| `store` | cursors for the relay, labeler, PLC directory and index bridge; the change log's head and floor; bytes on disk; last commit |
-| `queues` | identity lookups and profile refreshes waiting (`identity_due`, `refresh_due`) |
+| `store` | maintained table bytes and storage metadata; last commit |
+| `queues` | in-memory writes waiting; identity/refresh/tombstone totals unavailable |
 | `enrichment` | the profile refresh loop: pacing, completed, retried, not found, rate-limited, and any pause in force |
 | `control` | the policy revision held, when the Worker last confirmed it, the last index request taken, failures by kind, and `age_seconds` |
-| `corpus` | the last count of accounts: live, with handles, with avatars, hidden |
+| `corpus` | retired; counts come from committed index metadata at `/corpus` |
 
-For the first 30 seconds after the store opens, the counts read zero and
-`/store/*` answers 503. The account count first appears 300 seconds in.
+During startup `/store/*` answers 503 until its read handle opens. Unknown
+health totals stay absent; they do not become zero or trigger a scan.
 
 A `control` block whose `state` is `misconfigured` means the slot has no
 usable `SLOT_CONTROL_SECRET`. The slot serves with the policy it has.

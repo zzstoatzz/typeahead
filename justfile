@@ -20,6 +20,7 @@ lint:
 # in-memory bucket and fixture slots; no network
 test-route:
     python3 -W error -m unittest scripts/route/test_slot_route.py
+    PYTHONPATH=scripts/route python3 -W error -m unittest scripts/route/test_initialize_statistics.py
 
 # the slot's supervisor against stand-in processes: restarts, backoff and
 # the stop. Needs bash 5.2 or newer (macOS: `brew install bash`) and jq; no network

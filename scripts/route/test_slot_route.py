@@ -35,6 +35,7 @@ PREVIOUS = target(SLOT_A, 'b1794333857-cp-bootstrap', BINARY, admission='a' * 64
 def status(build_id, binary, cursor, **changed):
     value = {
         'engine': 'tantivy', 'build_id': build_id, 'format': route.FORMAT, 'binary_sha256': binary,
+        'statistics_version': 1,
         'retrieval_strategy': 'global-merge', 'ready': True, 'full_source': True, 'import_complete': True,
         'expiry_coverage_ready': True, 'normalize_version': 'v2-cjk-bigram', 'plan_version': 'complete-prefix-groups-v1',
         'pds_scope_version': 1, 'pds_scope_policy': 'all-recorded-canonical-hosts',
@@ -157,6 +158,9 @@ class World:
 
 
 class Admission(unittest.TestCase):
+    def test_refuses_unbounded_statistics_binary(self):
+        self.refused('bounded statistics', candidate=Slot(store_status(statistics_version=None)))
+
     def admit(self, candidate=None, serving=None, binary=BINARY):
         world = World()
         if candidate is not None:

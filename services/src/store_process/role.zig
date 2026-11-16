@@ -4,8 +4,7 @@
 //! opens one connection to the Worker: the control loop pulls moderation
 //! policy and indexing requests from it (`control.zig`).
 //! Configuration is in `config.zig`, the concurrency model in `owner.zig`,
-//! the HTTP surface in `http.zig`, enrichment in `enrich.zig`, the corpus
-//! count in `corpus.zig`.
+//! the HTTP surface in `http.zig` and enrichment in `enrich.zig`.
 //! `Stage` is the order it starts in.
 
 const std = @import("std");
@@ -23,7 +22,6 @@ const intake_mod = @import("intake.zig");
 const owner_mod = @import("owner.zig");
 const tails = @import("tails.zig");
 const index_bridge = @import("index_bridge.zig");
-const corpus_mod = @import("corpus.zig");
 const enrich = @import("enrich.zig");
 const control = @import("control.zig");
 const bridge_mod = @import("../bridge/root.zig");
@@ -51,8 +49,6 @@ pub const Stage = enum {
     intake_started,
     /// `/store/*` has its handle.
     reader_opened,
-    /// The corpus scanner is waiting for its first count.
-    corpus_started,
 };
 
 pub const State = struct {
@@ -66,8 +62,6 @@ pub const Options = struct {
     /// index: the owner leaves its scans (`owner.Options.startup_seconds`)
     /// and the `/store/*` handle is not opened.
     startup_seconds: u64 = 30,
-    /// How long after the start the first corpus count begins.
-    corpus_delay_seconds: u64 = 300,
     context: ?*anyopaque = null,
     /// Called as each stage is reached, on the thread that reached it.
     on_stage: ?*const fn (context: ?*anyopaque, stage: Stage, state: State) void = null,
@@ -124,11 +118,6 @@ fn heartbeat(owner: *Owner) void {
     span.setAttribute("change_log_head", health.cursors.next_change);
     span.setAttribute("change_log_floor", health.cursors.change_floor);
     span.setAttribute("queued_changes", c.queued_changes.load(.monotonic));
-    span.setAttribute("identity_pending", health.identity_pending);
-    span.setAttribute("identity_due", health.identity_due);
-    span.setAttribute("refresh_pending", health.refresh_pending);
-    span.setAttribute("refresh_due", health.refresh_due);
-    span.setAttribute("refresh_leased", health.refresh_pending -| health.refresh_due);
     if (self.enricher) |enricher| {
         const s = &enricher.stats;
         span.setAttribute("enrich_leased", s.leased.load(.monotonic));
@@ -163,27 +152,7 @@ fn heartbeat(owner: *Owner) void {
     span.setAttribute("walk_rest_passes", rest_walk.passes);
     span.setAttribute("walk_rest_position", rest_walk.position());
     span.setAttribute("walk_rest_last_pass_seconds", rest_walk.last_pass_seconds);
-    if (self.corpus) |scanner| {
-        const report = scanner.report();
-        span.setAttribute("corpus_scans", report.scans);
-        span.setAttribute("corpus_scan_failed", report.failed);
-        span.setAttribute("corpus_scanned_at", report.finished_at);
-        span.setAttribute("corpus_scan_ms", report.duration_ms);
-        if (report.counts) |counts| {
-            span.setAttribute("corpus_live", counts.live);
-            span.setAttribute("corpus_total", counts.total());
-            span.setAttribute("corpus_with_handles", counts.with_handles);
-            span.setAttribute("corpus_with_avatars", counts.with_avatars);
-            span.setAttribute("corpus_hidden", counts.hidden);
-            span.setAttribute("corpus_ranked", counts.ranked);
-            span.setAttribute("corpus_rest", counts.rest);
-            if (self.enricher) |enricher| {
-                if (enrich.walkPeriod(counts.ranked, counts.ranked, enricher.options.walk_per_hour, enrich.quality_scan_factor)) |period| span.setAttribute("walk_quality_period_seconds", period);
-                if (enrich.walkPeriod(counts.rest, counts.records, enricher.options.sweep_per_hour, enrich.rest_scan_factor)) |period| span.setAttribute("walk_rest_period_seconds", period);
-            }
-        }
-    }
-    span.setAttribute("tombstones", health.tombstones);
+
     span.setAttribute("commits", c.commits.load(.monotonic));
     span.setAttribute("changes_applied", c.changes_applied.load(.monotonic));
     span.setAttribute("changes_rejected", c.changes_rejected.load(.monotonic));
@@ -193,7 +162,6 @@ fn heartbeat(owner: *Owner) void {
     span.setAttribute("reopens", c.reopens.load(.monotonic));
     span.setAttribute("posts_blocked", c.posts_blocked.load(.monotonic));
     span.setAttribute("stall_turns", c.stall_turns.load(.monotonic));
-    span.setAttribute("disk_bytes", health.disk.bytes);
     if (health.maintenance) |stats| {
         span.setAttribute("tables", stats.tables);
         span.setAttribute("level0_tables", stats.levels[0].tables);
@@ -259,7 +227,6 @@ const Role = struct {
     work: identity_work.Work,
     bridge: ?*bridge_mod.Bridge = null,
     enricher: ?*enrich.Enricher = null,
-    corpus: ?*corpus_mod.Scanner = null,
     controller: ?*control.Controller = null,
     bridge_stop: std.atomic.Value(bool) = .init(false),
     stopping: std.atomic.Value(bool) = .init(false),
@@ -271,12 +238,12 @@ const Role = struct {
         report(self.options.context, stage, .{
             .owner = self.owner,
             .reader_open = self.reader.load(.acquire) != null,
-            .corpus_scans = if (self.corpus) |scanner| scanner.report().scans else 0,
+            .corpus_scans = 0,
         });
     }
 
     /// What waits until the index is fed: the `/store/*` handle, whose
-    /// open reads every table's metadata, and then the corpus scanner.
+    /// open reads every table's metadata.
     fn late(self: *Role) void {
         self.io.sleep(Io.Duration.fromSeconds(@intCast(self.options.startup_seconds)), .awake) catch return;
         const reader = store_mod.Reader.open(self.allocator, self.io, Io.Dir.cwd(), self.config.store_dir, self.owner.options.store.layout) catch |err| {
@@ -286,9 +253,6 @@ const Role = struct {
         };
         self.reader.store(reader, .release);
         self.reached(.reader_opened);
-        const scanner = self.corpus orelse return;
-        self.reached(.corpus_started);
-        scanner.run();
     }
 
     fn relay(self: *Role) void {
@@ -368,7 +332,6 @@ fn serveOne(self: *Role, stream: Io.net.Stream) void {
         .read_secret = self.config.read_secret,
         .bridge = self.bridge,
         .enricher = self.enricher,
-        .corpus = self.corpus,
         .control = self.controller,
         .control_problem = switch (self.config.control) {
             .misconfigured => |problem| problem,
@@ -510,30 +473,6 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         control_http.deinit();
     };
 
-    var scanner: corpus_mod.Scanner = .{
-        .gpa = allocator,
-        .io = io,
-        .root = Io.Dir.cwd(),
-        .path = config.store_dir,
-        .layout = owner.options.store.layout,
-        .interval_seconds = config.corpus_scan_seconds,
-        .delay_seconds = options.corpus_delay_seconds -| options.startup_seconds,
-    };
-    if (config.corpus_scan_seconds > 0) self.corpus = &scanner;
-
-    // The corpus count goes to the index on its own thread, with its own
-    // HTTP client: the bridge's is in use for as long as a commit takes.
-    var corpus_http: zat.HttpTransport = undefined;
-    var corpus_endpoint: bridge_mod.wire.Http = undefined;
-    var corpus_reporter: index_bridge.CorpusReporter = undefined;
-    const reports_corpus = config.index != null and self.corpus != null;
-    if (reports_corpus) {
-        corpus_http = zat.HttpTransport.init(io, allocator);
-        corpus_endpoint = .{ .http = &corpus_http, .base_url = config.index.?.admin_url, .authorization = bridge_endpoint.authorization };
-        corpus_reporter = .{ .gpa = allocator, .io = io, .scanner = &scanner, .client = .{ .transport = corpus_endpoint.transport() } };
-    }
-    defer if (reports_corpus) corpus_http.deinit();
-
     // Everything the heartbeat reads through `self` is in place, so the
     // threads can start, in the order `Stage` gives.
     var owner_task = try io.concurrent(Owner.run, .{owner});
@@ -547,7 +486,6 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         log.info("index bridge to {s} as source {s}, resting {d} ms between pushes", .{ index.admin_url, index.source_id, index.push_interval_ms });
     }
     self.reached(.bridge_started);
-    if (reports_corpus) try tasks.concurrent(io, index_bridge.CorpusReporter.run, .{ &corpus_reporter, &self.bridge_stop });
 
     var pool: identity_work.Pool = undefined;
     var have_pool = false;
@@ -588,7 +526,6 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
     self.bridge_stop.store(true, .release);
     if (self.enricher) |running| running.stop();
     if (self.controller) |running| running.stop();
-    scanner.stop();
     owner.stop();
     // Awaited, not canceled: a cancellation lands inside a commit as a
     // failed write, and the owner answers that by reopening the store.

@@ -46,7 +46,7 @@ const Recorder = struct {
         };
         self.len += 1;
         self.owner = state.owner;
-        if (at == .corpus_started) self.finished.set(self.io);
+        if (at == .reader_opened) self.finished.set(self.io);
     }
 
     fn stoppedHook(context: ?*anyopaque) void {
@@ -104,11 +104,10 @@ test "the role feeds the index and follows upstream before it counts, trims, ope
         .config = .{
             .store_dir = path,
             .offline = true,
-            .corpus_scan_seconds = 3600,
             // Nothing listens there: the bridge runs and every step fails.
             .index = .{ .admin_url = "http://127.0.0.1:1", .admin_secret = "unused", .source_id = "role-test" },
         },
-        .options = .{ .startup_seconds = 1, .corpus_delay_seconds = 3600, .context = &recorder, .on_stage = Recorder.stage, .on_stopped = Recorder.stoppedHook, .stop = &stop },
+        .options = .{ .startup_seconds = 1, .context = &recorder, .on_stage = Recorder.stage, .on_stopped = Recorder.stoppedHook, .stop = &stop },
     };
     const thread = try std.Thread.spawn(.{}, Running.run, .{&running});
     recorder.finished.waitUncancelable(io);
@@ -118,7 +117,7 @@ test "the role feeds the index and follows upstream before it counts, trims, ope
     thread.join();
     try running.result;
 
-    const stages = [_]role.Stage{ .store_opened, .bridge_started, .intake_started, .reader_opened, .corpus_started };
+    const stages = [_]role.Stage{ .store_opened, .bridge_started, .intake_started, .reader_opened };
     try testing.expectEqual(stages.len, recorder.len);
     for (stages, recorder.seen[0..recorder.len]) |want, seen| try testing.expectEqual(want, seen.stage);
     for (recorder.seen[0..3]) |seen| {

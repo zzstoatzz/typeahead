@@ -27,7 +27,7 @@
 //! | `ENRICH_HANDLE_BACKLOG`  | no       | such a handle queues no identity work while this many identity entries are due, default 100; `0` queues none |
 //! | `ENRICH_APPVIEW_URL`     | no       | the appview asked for profiles, default `https://public.api.bsky.app` |
 //! | `ENRICH_BLACKSKY_URL`    | no       | the appview asked about accounts Bluesky took down, default `https://api.blacksky.community` |
-//! | `CORPUS_SCAN_SECONDS`    | no       | seconds between corpus counts, default 3600; `0` turns them off. The first is taken 300 s after the start |
+//! | `CORPUS_SCAN_SECONDS`    | no       | retired; only `0` is accepted, no scanner exists in this role |
 //! | `CONTROL_URL`            | no       | the Worker's origin, `https://…`; with `SLOT_CONTROL_SECRET` it turns the control loop on: this slot pulls moderation policy and indexing requests from `/slot/control/*` there (`control.zig`). Unset, or `STORE_OFFLINE`, the loop is off and policy is whatever the store holds |
 //! | `SLOT_CONTROL_SECRET`    | no       | bearer secret for those endpoints, at least 32 bytes, the same value the Worker holds. It reads and can change nothing; never the Worker's admin secret |
 //! | `CONTROL_POLL_SECONDS`   | no       | seconds between polls, 5 to 3600, default 30; each rest is stretched by up to 20 % |
@@ -53,7 +53,6 @@ pub const Config = struct {
     index: ?Index = null,
     /// Null when enrichment is off.
     enrich: ?enrich.Options = null,
-    corpus_scan_seconds: u64 = 3600,
     control: Control = .off,
 };
 
@@ -121,7 +120,9 @@ pub fn load(getenv: Getenv) Error!Config {
     if (!config.offline and !enrich_off) {
         config.enrich = try enrichment(getenv);
     }
-    if (getenv("CORPUS_SCAN_SECONDS")) |text| config.corpus_scan_seconds = std.fmt.parseInt(u64, text, 10) catch return error.InvalidCorpusScan;
+    if (getenv("CORPUS_SCAN_SECONDS")) |text| {
+        if (!std.mem.eql(u8, text, "0")) return error.InvalidCorpusScan;
+    }
     if (!config.offline) config.control = controlLoop(getenv);
     return config;
 }
@@ -271,7 +272,7 @@ test "enrichment is on with its defaults unless the role is offline or told othe
     try testing.expectEqual(@as(usize, 100), defaults.handle_check.backlog_limit);
     try testing.expectEqualStrings("https://public.api.bsky.app", defaults.appview_url);
     try testing.expectEqualStrings("https://api.blacksky.community", defaults.blacksky_url);
-    try testing.expectEqual(@as(u64, 3600), (try load(fakeEnv(&.{base}))).corpus_scan_seconds);
+    try testing.expectError(error.InvalidCorpusScan, load(fakeEnv(&.{ base, .{ "CORPUS_SCAN_SECONDS", "3600" } })));
 
     try testing.expect((try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).enrich == null);
     try testing.expect((try load(fakeEnv(&.{ base, .{ "ENRICH", "0" } }))).enrich == null);
@@ -295,7 +296,6 @@ test "enrichment is on with its defaults unless the role is offline or told othe
     try testing.expectEqual(@as(usize, 25), options.handle_check.backlog_limit);
     try testing.expectEqualStrings("http://127.0.0.1:2584", options.appview_url);
     try testing.expectEqualStrings("https://blacksky.example", options.blacksky_url);
-    try testing.expectEqual(@as(u64, 0), set.corpus_scan_seconds);
 }
 
 test "the control loop runs when the Worker's origin and the slot secret are both set" {
@@ -342,10 +342,10 @@ test "a control loop that cannot run is left off and says why, and the role stil
 test "enrichment settings that could not pace a loop are refused" {
     const base = [2][]const u8{ "STORE_DIR", "/d" };
     for ([_][2][]const u8{
-        .{ "ENRICH_REQUESTS_PER_SECOND", "0" },              .{ "ENRICH_REQUESTS_PER_SECOND", "-1" },       .{ "ENRICH_REQUESTS_PER_SECOND", "fast" },
-        .{ "ENRICH_REQUESTS_PER_SECOND", "50" },             .{ "ENRICH_JITTER", "2" },                     .{ "ENRICH_WALK_PER_HOUR", "-5" },
-        .{ "ENRICH_LEASE_SECONDS", "5" },                    .{ "ENRICH_BACKOFF_SECONDS", "0" },            .{ "ENRICH_BACKOFF_MAX_SECONDS", "10" },
-        .{ "ENRICH_APPVIEW_URL", "http://appview.example" }, .{ "ENRICH_HANDLE_BACKLOG", "many" },          .{ "ENRICH_HANDLE_SETTLE_SECONDS", "-1" },
+        .{ "ENRICH_REQUESTS_PER_SECOND", "0" },              .{ "ENRICH_REQUESTS_PER_SECOND", "-1" }, .{ "ENRICH_REQUESTS_PER_SECOND", "fast" },
+        .{ "ENRICH_REQUESTS_PER_SECOND", "50" },             .{ "ENRICH_JITTER", "2" },               .{ "ENRICH_WALK_PER_HOUR", "-5" },
+        .{ "ENRICH_LEASE_SECONDS", "5" },                    .{ "ENRICH_BACKOFF_SECONDS", "0" },      .{ "ENRICH_BACKOFF_MAX_SECONDS", "10" },
+        .{ "ENRICH_APPVIEW_URL", "http://appview.example" }, .{ "ENRICH_HANDLE_BACKLOG", "many" },    .{ "ENRICH_HANDLE_SETTLE_SECONDS", "-1" },
     }) |pair| {
         const env = struct {
             var name: []const u8 = "";

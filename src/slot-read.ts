@@ -33,14 +33,15 @@ const actorSchema = z.object({
 export type SlotActor = z.infer<typeof actorSchema>;
 
 const count = z.number().int().nonnegative();
+const countsSchema = z.object({
+  live: count, total: count, with_handles: count, with_avatars: count, hidden: count, scanned_at: count,
+});
 const corpusSchema = z.object({
-  /** counted by the index from its own documents */
-  index: z.object({ actors: count, searchable: count, handle_invalid: count, quarantined: count }),
-  /** the store's last corpus scan; null until it has reported one to the
-   *  index, which forgets it when it restarts */
-  store: z.nullable(z.object({
-    live: count, total: count, with_handles: count, with_avatars: count, hidden: count, scanned_at: count,
-  })),
+  /** Maintained with index commits; legacy slots still count exclusions. */
+  index: z.object({ actors: count, searchable: count, handle_invalid: count.nullable(), quarantined: count.nullable(), statistics_version: z.literal(1).optional() }),
+  counts: countsSchema.nullable().optional(),
+  /** Legacy reports accepted only during rolling upgrades. */
+  store: countsSchema.nullable(),
 });
 export type SlotCorpus = z.infer<typeof corpusSchema>;
 

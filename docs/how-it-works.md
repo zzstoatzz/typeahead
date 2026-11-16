@@ -93,7 +93,10 @@ Procedures: [operating](operating.md).
 
 The unlisted [evaluation page](evaluation.md) reads saved benchmark snapshots.
 Its standalone collector and publisher are separate from the search and
-statistics paths. The initial run is imported; recurring collection is not active.
+statistics paths. The collector runs daily with shared request quotas and publishes
+saved reports to KV. Corpus statistics read fixed-size index metadata, maintained
+with actor commits; missing counters remain unknown. Health reporting does not
+enumerate queues or files. See [statistics isolation](operating.md#statistics-isolation).
 
 ## Changing the pictures
 

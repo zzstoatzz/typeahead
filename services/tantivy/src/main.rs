@@ -57,6 +57,14 @@ async fn run() -> Result<()> {
         })
     };
     match command.as_str() {
+        "initialize-statistics-offline" => {
+            if args.get("acknowledge-offline").map(String::as_str) != Some("true") {
+                return Err(Error::Invalid("offline acknowledgement required".into()));
+            }
+            let engine = Engine::open(data, memory)?;
+            engine.initialize_statistics_offline()?;
+            println!("{}", serde_json::json!({"statistics_initialized":true}));
+        }
         "resume-import" => {
             let mut bytes = Vec::new();
             File::open(required(&args, "receipt")?)?.take(1024 * 1024 + 1).read_to_end(&mut bytes)?;

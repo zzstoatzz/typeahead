@@ -25,14 +25,12 @@ const plc_tail = @import("../plc_tail.zig");
 const label_tail = @import("../label_tail.zig");
 const intake_mod = @import("intake.zig");
 const owner_mod = @import("owner.zig");
-const corpus_mod = @import("corpus.zig");
 const enrich = @import("enrich.zig");
 const control = @import("control.zig");
 const Bridge = @import("../bridge/root.zig").Bridge;
 const Owner = owner_mod.Owner;
 const Actor = store_mod.Actor;
 const Allocator = std.mem.Allocator;
-
 
 /// A label, with the field names of `store/record.zig`.
 pub const LabelBody = struct {
@@ -85,6 +83,7 @@ pub const ConsumerBody = struct { name: []const u8, position: u64, seen_at: u64 
 pub const LevelBody = struct { tables: usize, bytes: u64 };
 
 pub const HealthBody = struct {
+    statistics_version: u32 = 1,
     status: []const u8 = "ok",
     role: []const u8 = "store",
     rss_kb: u64,
@@ -104,13 +103,13 @@ pub const HealthBody = struct {
     queues: struct {
         /// Changes waiting for the owner.
         writes: usize,
-        identity_pending: u64,
-        identity_due: u64,
-        refresh_pending: u64,
+        identity_pending: ?u64 = null,
+        identity_due: ?u64 = null,
+        refresh_pending: ?u64 = null,
         /// Refresh entries due now, and those a fetch holds a lease on.
-        refresh_due: u64,
-        refresh_leased: u64,
-        tombstones: u64,
+        refresh_due: ?u64 = null,
+        refresh_leased: ?u64 = null,
+        tombstones: ?u64 = null,
         /// A count above stopped at the cap, so it is a lower bound.
         capped: bool,
     },
@@ -123,8 +122,8 @@ pub const HealthBody = struct {
         memtable_bytes: usize,
         unflushed_segments: u64,
         resident_metadata_bytes: usize,
-        disk_bytes: u64,
-        disk_files: u64,
+        disk_bytes: ?u64 = null,
+        disk_files: ?u64 = null,
         flushes: u64,
         compactions: u64,
         last_compaction_at: u64,
@@ -146,8 +145,7 @@ pub const HealthBody = struct {
         posts_blocked: u64,
         posts_blocked_ms: u64,
     },
-    /// Since this process started. A statistics total is the last full
-    /// count of live actors plus `live_delta` since that count.
+    /// Since this process started.
     actors: struct { created: u64, gone: u64, reactivated: u64, pruned: u64, live_delta: i64 },
     housekeeping: struct { hidden_refreshed: u64, expiry_passes: u64, domain_sweeps: u64, changes_trimmed: u64 },
     identity: struct { leased: u64, lease_failed: u64, verified: u64, unverified: u64, no_handle: u64, did_failed: u64, retried: u64, commit_failed: u64 },
@@ -157,8 +155,8 @@ pub const HealthBody = struct {
     bridge: ?BridgeBody = null,
     /// Absent when enrichment is off.
     enrichment: ?EnrichmentBody = null,
-    /// Absent when the corpus scan is off.
-    corpus: ?CorpusBody = null,
+    /// Retired scan report; counts are maintained by the index.
+    corpus: ?struct {} = null,
     /// Absent when the control loop was not asked for.
     control: ?ControlBody = null,
 };
@@ -252,9 +250,7 @@ pub fn controlBody(loop: *control.Controller) ControlBody {
     };
 }
 
-/// One standing refresh walk. `period_seconds` is `enrich.walkPeriod` for
-/// the pool the last corpus scan counted; null until a scan has run or when
-/// the walk is off.
+/// Refresh progress; pool size and estimated period are unavailable.
 pub const WalkBody = struct {
     per_hour: u64,
     /// Actors this walk queued since the process started.
@@ -317,23 +313,6 @@ pub const HandleChecksBody = struct {
     deferred: u64,
 };
 
-/// The last corpus count. `total` is what the statistics page calls total:
-/// live actors less the hidden ones.
-pub const CorpusBody = struct {
-    scanned_at: u64,
-    duration_ms: u64,
-    scans: u64,
-    failed: u64,
-    records: ?u64 = null,
-    live: ?u64 = null,
-    total: ?u64 = null,
-    with_handles: ?u64 = null,
-    with_avatars: ?u64 = null,
-    hidden: ?u64 = null,
-    ranked: ?u64 = null,
-    rest: ?u64 = null,
-};
-
 fn walkBody(arena: Allocator, walk: owner_mod.Walk, per_hour: u64, queued: u64, pool: ?u64, period: ?u64) !WalkBody {
     return .{
         .per_hour = per_hour,
@@ -348,7 +327,7 @@ fn walkBody(arena: Allocator, walk: owner_mod.Walk, per_hour: u64, queued: u64, 
     };
 }
 
-pub fn enrichmentBody(arena: Allocator, enricher: *enrich.Enricher, health: owner_mod.Health, counts: ?corpus_mod.Counts) !EnrichmentBody {
+pub fn enrichmentBody(arena: Allocator, enricher: *enrich.Enricher, health: owner_mod.Health) !EnrichmentBody {
     const s = &enricher.stats;
     const o = enricher.options;
     return .{
@@ -383,24 +362,9 @@ pub fn enrichmentBody(arena: Allocator, enricher: *enrich.Enricher, health: owne
             .settled = load(&s.handle_settled),
             .deferred = load(&s.handle_deferred),
         },
-        .quality_walk = try walkBody(arena, health.walks.get(.quality), o.walk_per_hour, load(&s.walk_queued), if (counts) |c| c.ranked else null, if (counts) |c| enrich.walkPeriod(c.ranked, c.ranked, o.walk_per_hour, enrich.quality_scan_factor) else null),
-        .rest_walk = try walkBody(arena, health.walks.get(.rest), o.sweep_per_hour, load(&s.sweep_queued), if (counts) |c| c.rest else null, if (counts) |c| enrich.walkPeriod(c.rest, c.records, o.sweep_per_hour, enrich.rest_scan_factor) else null),
+        .quality_walk = try walkBody(arena, health.walks.get(.quality), o.walk_per_hour, load(&s.walk_queued), null, null),
+        .rest_walk = try walkBody(arena, health.walks.get(.rest), o.sweep_per_hour, load(&s.sweep_queued), null, null),
     };
-}
-
-pub fn corpusBody(report: corpus_mod.Report) CorpusBody {
-    var body: CorpusBody = .{ .scanned_at = report.finished_at, .duration_ms = report.duration_ms, .scans = report.scans, .failed = report.failed };
-    if (report.counts) |c| {
-        body.records = c.records;
-        body.live = c.live;
-        body.total = c.total();
-        body.with_handles = c.with_handles;
-        body.with_avatars = c.with_avatars;
-        body.hidden = c.hidden;
-        body.ranked = c.ranked;
-        body.rest = c.rest;
-    }
-    return body;
 }
 
 /// The index bridge, from `Bridge.health`. `lag` is how many change-log
@@ -463,7 +427,6 @@ pub const Context = struct {
     read_secret: ?[]const u8,
     bridge: ?*Bridge = null,
     enricher: ?*enrich.Enricher = null,
-    corpus: ?*corpus_mod.Scanner = null,
     control: ?*control.Controller = null,
     /// Why the control loop is not running although it was asked for.
     control_problem: ?[]const u8 = null,
@@ -495,7 +458,6 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
     const created = load(&c.actors_created);
     const gone = load(&c.actors_gone);
     const reactivated = load(&c.actors_reactivated);
-    const corpus_report = if (ctx.corpus) |scanner| scanner.report() else null;
     return .{
         .rss_kb = ingest.getRssKB(),
         .relay = .{
@@ -515,7 +477,7 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .identity_due = health.identity_due,
             .refresh_pending = health.refresh_pending,
             .refresh_due = health.refresh_due,
-            .refresh_leased = health.refresh_pending -| health.refresh_due,
+            .refresh_leased = null,
             .tombstones = health.tombstones,
             .capped = health.counts_capped,
         },
@@ -527,8 +489,8 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .memtable_bytes = if (stats) |s| s.memtable_bytes else 0,
             .unflushed_segments = if (stats) |s| s.unflushed_segments else 0,
             .resident_metadata_bytes = if (stats) |s| s.resident_metadata_bytes else 0,
-            .disk_bytes = health.disk.bytes,
-            .disk_files = health.disk.files,
+            .disk_bytes = null,
+            .disk_files = null,
             .flushes = if (stats) |s| s.flushes.count else 0,
             .compactions = if (stats) |s| s.compactions else 0,
             .last_compaction_at = if (stats) |s| s.last_compaction_at else 0,
@@ -585,8 +547,8 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .newest_cts = load(&label_tail.stats.newest_cts),
         },
         .bridge = if (ctx.bridge) |bridge| try bridgeBody(arena, bridge) else null,
-        .enrichment = if (ctx.enricher) |enricher| try enrichmentBody(arena, enricher, health, if (corpus_report) |report| report.counts else null) else null,
-        .corpus = if (corpus_report) |report| corpusBody(report) else null,
+        .enrichment = if (ctx.enricher) |enricher| try enrichmentBody(arena, enricher, health) else null,
+        .corpus = null,
         .control = if (ctx.control) |loop| controlBody(loop) else if (ctx.control_problem) |problem| .{ .state = "misconfigured", .problem = problem } else null,
     };
 }

@@ -18,7 +18,7 @@ use std::{
     collections::HashMap,
     io::Read,
     net::SocketAddr,
-    sync::{Arc, Mutex, RwLock},
+    sync::Arc,
     time::{Duration, Instant},
 };
 use tokio::sync::Semaphore;
@@ -31,10 +31,6 @@ struct App {
     configured_concurrency: usize,
     machine_id: Option<Arc<String>>,
     instance_id: Option<Arc<String>>,
-    /// The co-located store's last corpus count, as it reported it. Held in
-    /// memory only: the store reports again after a restart of either side.
-    store_corpus: Arc<RwLock<Option<Value>>>,
-    index_corpus: Arc<Mutex<Option<(Instant, Value)>>>,
 }
 fn response(status: StatusCode, value: Value) -> Response {
     let mut response = (status, Json(value)).into_response();
@@ -279,7 +275,9 @@ async fn actors(State(app): State<App>, Query(pairs): Query<Vec<(String, String)
         .filter_map(|(name, value)| (name == "actor").then_some(value))
         .collect::<Vec<_>>();
     if wanted.is_empty() || wanted.len() > MAX_ACTORS {
-        return failure(Error::Invalid(format!("1..{MAX_ACTORS} actor parameters required")));
+        return failure(Error::Invalid(format!(
+            "1..{MAX_ACTORS} actor parameters required"
+        )));
     }
     let permit = match app.admission.clone().try_acquire_owned() {
         Ok(permit) => permit,
@@ -313,76 +311,27 @@ async fn actors(State(app): State<App>, Query(pairs): Query<Vec<(String, String)
         app.engine.retrieval.name(),
     )
 }
-/// How long one count of the index is served before it is taken again.
-const INDEX_CORPUS_TTL: Duration = Duration::from_secs(60);
-/// The index's own counts, and the store's last corpus count when it has
-/// reported one.
 async fn corpus(State(app): State<App>) -> Response {
-    let cached = app
-        .index_corpus
-        .lock()
-        .unwrap()
-        .as_ref()
-        .filter(|(taken, _)| taken.elapsed() < INDEX_CORPUS_TTL)
-        .map(|(_, value)| value.clone());
-    let index = match cached {
-        Some(value) => value,
-        None => {
-            let engine = app.engine.clone();
-            match tokio::task::spawn_blocking(move || engine.corpus()).await {
-                Ok(Ok(value)) => {
-                    *app.index_corpus.lock().unwrap() = Some((Instant::now(), value.clone()));
-                    value
-                }
-                Ok(Err(error)) => return failure(error),
-                Err(_) => return failure(Error::Storage("corpus task failed".into())),
-            }
-        }
+    let mut index = match app.engine.corpus() {
+        Ok(value) => value,
+        Err(error) => return failure(error),
     };
-    let store = app.store_corpus.read().unwrap().clone();
+    let counts = index
+        .as_object_mut()
+        .unwrap()
+        .remove("counts")
+        .unwrap_or(Value::Null);
     let g = app.engine.snapshot();
     with_identity(
-        response(StatusCode::OK, json!({"index":index,"store":store})),
+        response(
+            StatusCode::OK,
+            json!({"index":index,"counts":counts,"store":null}),
+        ),
         &g.metadata.build_id,
         &g.metadata.format,
         &app,
         app.engine.retrieval.name(),
     )
-}
-#[derive(Deserialize)]
-struct StoreCorpus {
-    live: u64,
-    total: u64,
-    with_handles: u64,
-    with_avatars: u64,
-    hidden: u64,
-    scanned_at: u64,
-}
-async fn store_corpus(
-    State(app): State<App>,
-    headers: HeaderMap,
-    Body(body): Body<StoreCorpus>,
-) -> Response {
-    if !authorized(&app, &headers) {
-        return response(StatusCode::UNAUTHORIZED, json!({"error":"unauthorized"}));
-    }
-    if body.total > body.live
-        || body.with_handles > body.live
-        || body.with_avatars > body.live
-        || body.hidden > body.live
-        || body.scanned_at > epoch().saturating_add(300)
-    {
-        return failure(Error::Invalid("corpus counts are inconsistent".into()));
-    }
-    *app.store_corpus.write().unwrap() = Some(json!({
-        "live": body.live,
-        "total": body.total,
-        "with_handles": body.with_handles,
-        "with_avatars": body.with_avatars,
-        "hidden": body.hidden,
-        "scanned_at": body.scanned_at,
-    }));
-    response(StatusCode::OK, json!({"ok":true}))
 }
 async fn health(State(app): State<App>) -> Response {
     let g = app.engine.snapshot();
@@ -424,6 +373,7 @@ async fn ready(State(app): State<App>) -> Response {
 async fn status(State(app): State<App>) -> Response {
     let g = app.engine.snapshot();
     let mut value = serde_json::to_value(&g.metadata).unwrap();
+    value["statistics_version"] = json!(1);
     value["engine"] = json!("tantivy");
     value["machine_id"] = json!(app.machine_id.as_ref().map(|value| value.as_str()));
     value["instance_id"] = json!(app.instance_id.as_ref().map(|value| value.as_str()));
@@ -433,7 +383,11 @@ async fn status(State(app): State<App>) -> Response {
     value["ready"] = json!(app.engine.generation_ready(&g));
     value["segments"] = json!(g.searcher.segment_readers().len());
     let stored = |count: fn(&tantivy::SegmentReader) -> u32| -> u64 {
-        g.searcher.segment_readers().iter().map(|segment| u64::from(count(segment))).sum()
+        g.searcher
+            .segment_readers()
+            .iter()
+            .map(|segment| u64::from(count(segment)))
+            .sum()
     };
     value["documents"] = json!(stored(tantivy::SegmentReader::max_doc));
     value["deleted_documents"] = json!(stored(tantivy::SegmentReader::num_deleted_docs));
@@ -442,11 +396,23 @@ async fn status(State(app): State<App>) -> Response {
     value["pds_unknown_actor_count"] =
         json!(g.metadata.pds_missing_actor_count + g.metadata.pds_invalid_actor_count);
     value["prefix_count"] = Value::Null;
-    value["expiry_coverage_ready"] = json!(g.metadata.expiry_coverage.as_ref().is_some_and(|coverage| coverage.ready(g.metadata.input_actors, g.metadata.actor_count, g.metadata.full_source)));
+    value["expiry_coverage_ready"] = json!(g.metadata.expiry_coverage.as_ref().is_some_and(
+        |coverage| coverage.ready(
+            g.metadata.input_actors,
+            g.metadata.actor_count,
+            g.metadata.full_source
+        )
+    ));
     value["expiry_coverage_state"] = json!(match g.metadata.expiry_coverage.as_ref() {
         None => "unknown",
         Some(coverage) if !coverage.import_complete => "incomplete",
-        Some(coverage) if coverage.ready(g.metadata.input_actors, g.metadata.actor_count, g.metadata.full_source) => "complete",
+        Some(coverage)
+            if coverage.ready(
+                g.metadata.input_actors,
+                g.metadata.actor_count,
+                g.metadata.full_source
+            ) =>
+            "complete",
         Some(_) => "blocked",
     });
     value.as_object_mut().unwrap().remove("last_source_batch");
@@ -664,8 +630,6 @@ pub async fn serve(
         configured_concurrency: concurrency,
         machine_id: runtime_identity("FLY_MACHINE_ID")?,
         instance_id: runtime_identity("FLY_MACHINE_VERSION")?,
-        store_corpus: Arc::default(),
-        index_corpus: Arc::default(),
     };
     let router = Router::new()
         .route("/search", get(search))
@@ -693,7 +657,6 @@ pub async fn serve(
                 .route("/admin/source-state", post(source_state))
                 .route("/admin/source-page", post(source_page))
                 .route("/admin/source-reconcile", post(source_reconcile))
-                .route("/admin/corpus", post(store_corpus))
                 .route("/index/status", get(status))
                 .route("/health", get(health))
                 .fallback(missing)

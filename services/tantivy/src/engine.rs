@@ -40,6 +40,8 @@ mod boost;
 mod merge_threads;
 mod rank_merge;
 mod read;
+mod statistics;
+pub use statistics::CorpusCounts;
 mod source;
 mod source_page;
 mod warm;
@@ -86,6 +88,8 @@ pub struct Metadata {
     pub policy_snapshot: Option<Value>,
     #[serde(default)]
     pub expiry_coverage: Option<expiry_coverage::Evidence>,
+    #[serde(default, deserialize_with = "statistics::deserialize_counts")]
+    pub corpus_counts: Option<CorpusCounts>,
 }
 impl Metadata {
     fn empty() -> Self {
@@ -114,6 +118,7 @@ impl Metadata {
             pds_invalid_reason_counts: BTreeMap::new(),
             policy_snapshot: None,
             expiry_coverage: None,
+            corpus_counts: Some(CorpusCounts::default()),
         }
     }
 }
@@ -665,6 +670,7 @@ impl Engine {
         for actor in pending.into_values() {
             let old = self.fields.find(&generation.searcher, &actor.did)?;
             let (doc, keys) = self.fields.document(&actor)?;
+            metadata.corpus_counts = metadata.corpus_counts.and_then(|counts| counts.replace(old.as_ref(), &actor));
             if let Some(coverage) = metadata.expiry_coverage.as_mut() {
                 coverage.replace_actor(old.as_ref(), &actor)?;
             }
@@ -1175,12 +1181,15 @@ fn check_format(index: &Index) -> Result<()> {
 }
 fn load_metadata(index: &Index) -> Result<Metadata> {
     let metas = index.load_metas()?;
-    let metadata: Metadata = serde_json::from_str(
+    let mut metadata: Metadata = serde_json::from_str(
         metas
             .payload
             .as_deref()
             .ok_or_else(|| Error::Storage("index commit metadata missing".into()))?,
     )?;
+    if metadata.corpus_counts.is_some_and(|counts| !counts.valid(metadata.actor_count)) {
+        metadata.corpus_counts = None;
+    }
     if metadata.format != FORMAT
         && metadata.format != SOURCE_FORMAT
         && metadata.format != POLICY_FORMAT
@@ -1381,6 +1390,7 @@ pub fn import<R: Read>(
             error
         })?;
         metadata.expiry_coverage.as_mut().unwrap().import_actor(&actor)?;
+        metadata.corpus_counts = metadata.corpus_counts.and_then(|counts| counts.replace(None, &actor));
         writer.add_document(document)?;
         metadata.input_actors += 1;
         metadata.indexed_memberships += keys as u64;

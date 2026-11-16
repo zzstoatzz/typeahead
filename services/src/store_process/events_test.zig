@@ -466,13 +466,13 @@ test "the PLC cursor only moves forward" {
 test "the health snapshot reads zero when nothing is pending" {
     const f = try Fixture.create(.{ .health_seconds = 0 });
     defer f.destroy();
-    try testing.expectEqual(@as(u64, 0), f.owner.health().identity_pending);
+    try testing.expect(f.owner.health().identity_pending == null);
     try hear(f, 1, &.{ signal(alice), signal(bob) });
     _ = try lease(f, 1);
     _ = f.owner.turn(0);
     const health = f.owner.health();
-    try testing.expectEqual(@as(u64, 2), health.identity_pending);
-    try testing.expectEqual(@as(u64, 1), health.identity_due);
+    try testing.expect(health.identity_pending == null);
+    try testing.expect(health.identity_due == null);
     try testing.expectEqual(@as(?u64, 1), health.cursors.relay);
 }
 

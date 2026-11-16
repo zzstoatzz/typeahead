@@ -6,17 +6,12 @@ import { writeStats, type StatsEnv } from "./stats-store";
 /** The corpus numbers /stats shows, taken from the routed store slot. Where
  *  the numbers are then kept (the `snapshots` table, KV) is not decided here. */
 
-/** A store's corpus scan runs hourly. One this old means the scanner or its
- *  report to the index has stopped, and an hour's snapshot is left out
- *  rather than repeated. */
+/** Reject stale legacy reports during the rolling upgrade. */
 export const STORE_COUNT_MAX_AGE_S = 6 * 3600;
 
-/** The hourly snapshot row from a slot's answer, or null when the store has
- *  not reported a count, or not recently. `total` is live actors less the
- *  hidden ones, the other two are live actors with a handle and with an
- *  avatar. */
+/** Committed index counters, with legacy reports accepted during upgrades. */
 export function slotSnapshot(corpus: SlotCorpus, now = Date.now()): Snapshot | null {
-  const store = corpus.store;
+  const store = corpus.index.statistics_version === 1 ? corpus.counts : corpus.store;
   if (!store || now / 1000 - store.scanned_at > STORE_COUNT_MAX_AGE_S) return null;
   return {
     hour: Math.floor(now / 3_600_000),
@@ -31,8 +26,9 @@ export function slotSnapshot(corpus: SlotCorpus, now = Date.now()): Snapshot | n
  *  handle, so the documents that are not searchable are the hidden ones and
  *  those whose handle failed verification; a slot recomputes `hidden` with
  *  every change, so there are no stale flags to report. */
-export function slotExclusions(corpus: SlotCorpus, now: Date): SearchExclusions {
+export function slotExclusions(corpus: SlotCorpus, now: Date): SearchExclusions | null {
   const { actors, searchable, handle_invalid, quarantined } = corpus.index;
+  if (handle_invalid === null || quarantined === null) return null;
   return {
     version: 2,
     as_of: now.toISOString(),
@@ -45,13 +41,11 @@ export function slotExclusions(corpus: SlotCorpus, now: Date): SearchExclusions 
 
 type CorpusEnv = SlotEnv & StatsEnv;
 
-/** Record this hour's actor counts. A slot that does not answer fails the
- *  step; a slot whose store has no recent count leaves the hour without a
- *  row. */
+/** Save committed counts without asking the slot to calculate anything. */
 export async function recordSnapshot(env: CorpusEnv, now = Date.now()): Promise<void> {
   const snapshot = slotSnapshot(await slotCorpus(env), now);
   if (!snapshot) {
-    console.log(JSON.stringify({ event: "corpus_snapshot_skipped", reason: "the slot's store has no recent count" }));
+    console.log(JSON.stringify({ event: "corpus_snapshot_skipped", reason: "the slot has no recent committed count" }));
     return;
   }
   await writeStats(env, (store) => writeSnapshot(store, snapshot));
@@ -61,6 +55,7 @@ export async function recordSnapshot(env: CorpusEnv, now = Date.now()): Promise<
 export async function recordExclusions(kv: ExclusionsKv, env: SlotEnv, now = new Date()): Promise<SearchExclusions | null> {
   if (!await exclusionsDue(kv, now)) return null;
   const exclusions = slotExclusions(await slotCorpus(env), now);
+  if (!exclusions) return null;
   await kv.put(EXCLUSIONS_KEY, JSON.stringify(exclusions));
   return exclusions;
 }

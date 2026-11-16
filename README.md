@@ -39,6 +39,8 @@ credentials.
 The [evaluation](docs/evaluation.md) compares saved runs against Bluesky and Tern, with
 adjustable scoring, serving-time breakdowns, retained history and an isolated
 runner scheduled independently of the public app.
+Statistics read counters maintained with index commits; they never start a
+corpus scan. See [statistics isolation](docs/operating.md#statistics-isolation).
 Worker serving traces use the existing Logfire project; see
 [timing boundaries](docs/investigations/2026-11-16-worker-tracing.md).
 

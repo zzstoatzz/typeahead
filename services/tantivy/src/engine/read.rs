@@ -1,5 +1,4 @@
 use super::*;
-use tantivy::collector::Count;
 
 /// Most actors one request may name.
 pub const MAX_ACTORS: usize = 25;
@@ -55,7 +54,10 @@ impl Engine {
         if wanted.is_empty() || wanted.len() > MAX_ACTORS {
             return Err(Error::Invalid(format!("1..{MAX_ACTORS} actors required")));
         }
-        if wanted.iter().any(|name| name.is_empty() || name.len() > 2048) {
+        if wanted
+            .iter()
+            .any(|name| name.is_empty() || name.len() > 2048)
+        {
             return Err(Error::Invalid("actor outside supported bounds".into()));
         }
         let now_ms = SystemTime::now()
@@ -110,26 +112,23 @@ impl Engine {
         Ok(actors)
     }
 
-    /// What the index holds, counted from its own bookkeeping and from the
-    /// postings of the handles search always excludes.
+    /// Committed metadata only; missing counters remain unknown.
     pub fn corpus(&self) -> Result<Value> {
         let generation = self.snapshot();
         if !self.generation_ready(&generation) {
             return Err(Error::NotReady);
         }
-        let count = |handle: &str| -> Result<u64> {
-            let query = key_term(self.fields.key, &format!("e:{handle}"));
-            Ok(generation.searcher.search(&query, &Count)? as u64)
-        };
-        let mut quarantined = 0;
-        for handle in QUARANTINED_HANDLES.iter() {
-            quarantined += count(handle)?;
-        }
+        let counts = generation.metadata.corpus_counts;
         Ok(json!({
+            "statistics_version": 1,
             "actors": generation.metadata.actor_count,
             "searchable": generation.metadata.searchable_actor_count,
-            "handle_invalid": count("handle.invalid")?,
-            "quarantined": quarantined,
+            "handle_invalid": counts.map(|c| c.handle_invalid),
+            "quarantined": counts.map(|c| c.quarantined),
+            "counts": counts.map(|c| json!({"live": generation.metadata.actor_count,
+                "total": generation.metadata.actor_count.saturating_sub(c.hidden),
+                "with_handles":c.with_handles,"with_avatars":c.with_avatars,"hidden":c.hidden,
+                "scanned_at":generation.metadata.last_commit_epoch})),
             "watermark": generation.metadata.watermark,
         }))
     }
@@ -239,7 +238,12 @@ mod tests {
         let upper = engine.actors(&names(&["ALICE.EXAMPLE"])).unwrap();
         assert_eq!(dids(&upper), ["did:fixture:0001"]);
         assert!(engine.actors(&names(&["alice"])).unwrap().is_empty());
-        assert!(engine.actors(&names(&["nobody.example"])).unwrap().is_empty());
+        assert!(
+            engine
+                .actors(&names(&["nobody.example"]))
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]

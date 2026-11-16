@@ -1,5 +1,4 @@
-"""The public read endpoints: /actors and /corpus, and the loopback
-/admin/corpus the co-located store reports its count to."""
+"""Public actor reads and constant-work committed corpus statistics."""
 import hashlib
 import json
 import os
@@ -80,14 +79,16 @@ def main():
                 assert body['index']['handle_invalid'] == 1 and body['index']['quarantined'] == 0
                 checks.append('index_counts_before_the_store_has_reported')
 
-                assert smoke.request(base, '/admin/corpus', STORE_COUNT, secret)[0] == 404
-                assert smoke.request(admin, '/admin/corpus', STORE_COUNT)[0] == 401
-                assert smoke.request(admin, '/admin/corpus', {**STORE_COUNT, 'hidden': 10}, secret)[0] == 400
-                assert smoke.request(admin, '/admin/corpus', {'live': 1}, secret)[0] in (400, 422)
-                assert smoke.request(base, '/corpus')[2]['store'] is None
-                assert smoke.request(admin, '/admin/corpus', STORE_COUNT, secret)[0] == 200
-                assert smoke.request(base, '/corpus')[2]['store'] == STORE_COUNT
-                checks.append('store_count_accepted_on_the_loopback_listener_only_and_served')
+                assert body['index']['statistics_version'] == 1
+                assert body['counts']['live'] == 3
+                assert body['counts']['total'] == 2
+                for listener in (base, admin):
+                    assert smoke.request(listener, '/admin/corpus', STORE_COUNT, secret)[0] == 404
+                checks.append('committed_counts_and_no_store_reporting_endpoint')
+                attempt = subprocess.run([str(BIN), 'initialize-statistics-offline', '--data', str(data), '--acknowledge-offline', 'true'], capture_output=True, text=True, timeout=10)
+                assert attempt.returncode != 0
+                assert 'lock' in attempt.stderr.lower(), attempt.stderr
+                checks.append('offline_initializer_cannot_open_a_running_index')
             finally:
                 smoke.stop(child)
 

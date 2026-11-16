@@ -296,8 +296,8 @@ test "a restarted owner commits at once and scans nothing until startup_seconds 
     const opened = f.owner.health();
     try testing.expectEqual(@as(u64, 0), opened.taken_at);
     try testing.expectEqual(@as(?u64, 7), opened.cursors.relay);
-    try testing.expectEqual(@as(u64, 0), opened.tombstones);
-    try testing.expectEqual(@as(u64, 0), opened.disk.files);
+    try testing.expect(opened.tombstones == null);
+    try testing.expect(opened.disk == null);
 
     _ = try f.commit(&.{.{ .observe = .{ .did = "did:plc:carol" } }}, .{ .relay = 8 });
     f.advance(29);
@@ -315,6 +315,5 @@ test "a restarted owner commits at once and scans nothing until startup_seconds 
     try testing.expect(f.owner.counters.changes_trimmed.load(.monotonic) > 0);
     const counted = f.owner.health();
     try testing.expectEqual(f.now(), counted.taken_at);
-    try testing.expect(counted.disk.files > 0);
+    try testing.expect(counted.disk == null);
 }
-

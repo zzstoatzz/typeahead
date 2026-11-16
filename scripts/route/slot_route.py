@@ -234,6 +234,8 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     theirs = serving['status']['body'] if compared else {}
 
     ours = candidate['status']['body']
+    if ours.get('statistics_version') != 1:
+        reasons.append('candidate lacks bounded statistics capability')
     build_id = ours.get('build_id')
     if not isinstance(build_id, str) or not BUILD.fullmatch(build_id):
         unanswered = candidate['status']
