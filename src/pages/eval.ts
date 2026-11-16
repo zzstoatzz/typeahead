@@ -71,8 +71,18 @@ export function evalPage(report: Report | null, params = new URLSearchParams(), 
   const matched = pairs(observations);
   const overlap = mean(matched.flatMap(p => p.overlap === null ? [] : [p.overlap]));
   const completed = observations.filter(o => o.outcome !== "pending").length;
+  const medianRow = ["median response", ...summaries.map(s => number(s.medianMs, " ms"))];
+  const labelsRow = ["labels coverage", ...summaries.map(s => report?.actorFieldsVersion ? number(s.labelsPct, "%") : "not captured")];
+  const verificationRow = ["verification coverage", ...summaries.map(s => report?.actorFieldsVersion ? number(s.verificationPct, "%") : "not captured")];
+  const primaryRows = [
+    medianRow,
+    ["successful requests", ...summaries.map(s => `${s.ok} / ${s.completed}`)],
+    ["exact handle first", ...summaries.map(s => number(s.exactPct, "%"))],
+    labelsRow,
+    verificationRow,
+  ];
   const detailRows = [
-    ["median response", ...summaries.map(s => number(s.medianMs, " ms"))],
+    medianRow,
     ["mean response", ...summaries.map(s => number(s.averageMs, " ms"))],
     ["p90 response", ...summaries.map(s => number(s.p90Ms, " ms"))],
     ["successful / completed", ...summaries.map(s => `${s.ok} / ${s.completed}`)],
@@ -82,9 +92,9 @@ export function evalPage(report: Report | null, params = new URLSearchParams(), 
     ["mean results", ...summaries.map(s => number(s.results))],
     ["display names / actor appearances", ...summaries.map(s => number(s.displayPct, "%"))],
     ["avatar URLs / actor appearances", ...summaries.map(s => number(s.avatarPct, "%"))],
-    ["labels coverage", ...summaries.map(s => report?.actorFieldsVersion ? number(s.labelsPct, "%") : "not captured")],
+    labelsRow,
     ["nonempty labels", ...summaries.map(s => report?.actorFieldsVersion ? number(s.labeledPct, "%") : "not captured")],
-    ["verification coverage", ...summaries.map(s => report?.actorFieldsVersion ? number(s.verificationPct, "%") : "not captured")],
+    verificationRow,
     ["verified accounts", ...summaries.map(s => report?.actorFieldsVersion ? number(s.verifiedPct, "%") : "not captured")],
     ["account creation date", ...summaries.map(s => report?.actorFieldsVersion ? number(s.createdAtPct, "%") : "not captured")],
     ["cache hit / miss / unknown", ...summaries.map(s => `${s.hits} / ${s.misses} / ${s.unknownCache}`)],
@@ -108,7 +118,7 @@ export function evalPage(report: Report | null, params = new URLSearchParams(), 
   ${report ? `<section class="score-panel" aria-label="aggregate benchmark comparison"><div class="section-head"><h2>score <span class="muted">/ 100</span></h2></div>
   ${result.providers.map(p => `<a class="score-row ${p.provider}-text" href="${link("dimensions")}" aria-label="${names[p.provider]} benchmark score ${number(p.total)}. Inspect dimensions and weights."><span>${names[p.provider]}</span><span class="track">${p.total === null ? "" : p.dimensions.map(d => `<span class="segment" style="width:${d.contribution ?? 0}%" title="${d.label}: ${number(d.contribution)} points"></span>`).join("")}</span><strong>${number(p.total)}</strong></a>`).join("")}
   <div class="scale" aria-hidden="true"><span>0</span><span>50</span><span>100</span></div><div class="score-caption"><span>${result.queries} queries · ${result.matched} matched cases · ${esc(report.location)}</span><a href="${link("dimensions")}">weights ↗</a></div></section>
-  <div class="glance-table"><table><thead><tr><th></th>${providers.map(p => `<th class="${p}-text">${names[p]}</th>`).join("")}</tr></thead><tbody>${[detailRows[0],["successful requests", ...summaries.map(s => `${s.ok} / ${s.completed}`)],["exact handle first", ...summaries.map(s => number(s.exactPct, "%"))],detailRows[10],detailRows[12]].map(row => `<tr><th>${row[0]}</th>${row.slice(1).map(value => `<td>${value}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+  <div class="glance-table"><table><thead><tr><th></th>${providers.map(p => `<th class="${p}-text">${names[p]}</th>`).join("")}</tr></thead><tbody>${primaryRows.map(row => `<tr><th>${row[0]}</th>${row.slice(1).map(value => `<td>${value}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
   ${result.excluded ? `<p class="notice">${result.excluded} incomplete or fallback cases excluded.</p>` : ""}${summaries[0].fallbacks ? `<p class="notice">${summaries[0].fallbacks} typeahead answers came from Bluesky fallback.</p>` : ""}
   ${evalTiming(report, state)}
   <details class="drill" id="dimensions"${open("dimensions")}><summary>score &amp; weights</summary><div class="drill-content"><form action="/eval#dimensions" method="get">${hidden(["speed", "availability", "exact", "view"])}<input type="hidden" name="view" value="dimensions"><div class="table-scroll"><table><thead><tr><th>dimension</th>${providers.map(p => `<th class="${p}-text">${names[p]}</th>`).join("")}<th>weight</th></tr></thead><tbody>${DIMENSIONS.map((d, i) => `<tr><th scope="row"><label for="weight-${d.id}">${d.label}</label></th>${result.providers.map(p => `<td>${number(p.dimensions[i].points)}</td>`).join("")}<td><input id="weight-${d.id}" name="${d.id}" type="number" min="0" max="100" step="1" value="${weights[d.id]}"></td></tr>`).join("")}</tbody></table></div><div class="weight-actions"><button>apply weights</button><a href="/eval?${esc(new URLSearchParams({ run: report.run, view: "dimensions" }).toString())}#dimensions">reset weights</a><span class="muted">weights normalize to 100%</span></div></form><div class="rules">${DIMENSIONS.map(d => `<p><b>${d.label}.</b> ${d.rule}</p>`).join("")}<p>Each query has equal weight within a dimension; repeated passes are averaged first. Only completed pairs are scored. A missing weighted dimension leaves the total unscored. This measures these service checks, not overall search relevance.</p></div></div></details>

@@ -255,3 +255,19 @@ New reports list their provider manifest. Historical two-provider snapshots
 retain their original score. Three-provider scores use completed matched cases
 across all three providers, including failures as zero. Tern uses the same
 query set, request spacing and backoff policy as the other providers.
+
+The first three-provider cloud run on 2026-11-16 started at 19:30:17 UTC
+([saved report](https://typeahead.waow.tech/eval/data.json?run=2026-11-16T19%3A30%3A17.911Z)).
+Collector version `cae59bfc-5454-4e07-ab5d-9f383042c6f8` collected 120 successful
+responses, 40 per provider, with a minimum 5,000 ms gap. Public JSON and the
+default page both selected that run. The
+[readback](investigations/2026-11-16-tern-eval.json) retains its hash and summaries.
+Labels were present on every returned actor appearance. Verification objects
+were present on 0% of Typeahead appearances, 37.4% of Bluesky appearances and
+2.4% of Tern appearances. Creation dates were present on 98%, 98.6% and 99.4%,
+respectively. Providers returned different accounts; these percentages compare
+response coverage, not completeness for an identical set of accounts.
+Median elapsed times were 68 ms, 116 ms and 145 ms, respectively; Typeahead's
+557 ms p90 was worse than Bluesky's 156 ms and Tern's 234 ms. The faster median
+does not resolve the tail. The temporary operator request is removed and the
+15-minute trigger restored after public verification.
