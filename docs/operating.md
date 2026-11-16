@@ -491,6 +491,17 @@ Every response carries `Server-Timing` with `worker`, and for searches
 `worker`, then `worker` with `search`, to find where a slow request spent its
 time.
 
+On 2026-11-16, the completed standby scan experiment left
+`typeahead-slot-b` with `CORPUS_SCAN_SECONDS=0` as an interim mitigation.
+Its original image and resource size are unchanged, it passed admission,
+and slot A remains serving with its existing hourly scanner. The scratch
+data and trial processes are gone. Ordinary deployment settings do not
+establish the disabled-scan guarantee. Read the
+[experiment and verified state](investigations/2026-11-16-standby-scan.md)
+before changing B, and the
+[required statistics-isolation replacement](investigations/2026-11-16-statistics-isolation.md)
+before treating pacing, a background thread or a Worker trigger as a fix.
+
 Successful backend search responses also retain `engine`, `transport_route`,
 `transport_origin_headers`, `transport_total`, `transport_hint_wait` and
 `transport_origin_start` when present. The transport renames the engine's

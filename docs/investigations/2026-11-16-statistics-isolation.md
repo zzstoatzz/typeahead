@@ -106,10 +106,13 @@ priority, scan frequency or per-page speed does not satisfy these gates.
 ## Current status
 
 The serving slot has not been changed. Its existing hourly scanner remains a
-known violation of the required design. The standby experiment measures the
-cause and a mitigation; it does not establish that the production guarantee
-exists. Its temporary configuration and processes must be retired as described
-in [the experiment record](2026-11-16-standby-scan.md).
+known violation of the required design. The completed standby experiment
+reproduced the regression twice with identical results for 88 matched query
+cases. Its processes and scratch data are retired. B is fit and its hourly
+scanner is still disabled as an interim mitigation; the required replacement
+and regression gates are not implemented or deployed. See
+[the experiment record](2026-11-16-standby-scan.md) for measured results and
+verified deployment state.
 
 README describes the currently deployed architecture and is not rewritten to
 claim this replacement has shipped. Update it and the operating/API documents
