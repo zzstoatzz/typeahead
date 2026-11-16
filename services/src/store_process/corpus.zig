@@ -76,6 +76,7 @@ pub const Scanner = struct {
     path: []const u8,
     layout: store_mod.engine.Layout,
     interval_seconds: u64,
+    page_rest_ms: u32 = 0,
     delay_seconds: u64 = 0,
     stopping: std.atomic.Value(bool) = .init(false),
     lock: Io.Mutex = .init,
@@ -97,7 +98,18 @@ pub const Scanner = struct {
         var position: store_mod.scan.Position = .{};
         defer position.deinit(self.gpa);
         var counts: Counts = .{};
-        _ = try reader.scanRange(&position, .actor, .{}, &counts);
+        if (self.page_rest_ms == 0) {
+            _ = try reader.scanRange(&position, .actor, .{}, &counts);
+        } else {
+            while (!position.done) {
+                if (self.stopping.load(.acquire)) return error.Canceled;
+                _ = try reader.scanRange(&position, .actor, .{ .limit = 1000 }, &counts);
+                if (!position.done) {
+                    try self.io.sleep(.fromMilliseconds(self.page_rest_ms), .awake);
+                    try reader.refresh();
+                }
+            }
+        }
         return counts;
     }
 
@@ -172,4 +184,26 @@ test "a stopped scanner returns without scanning" {
     scanner.stop();
     scanner.run();
     try testing.expectEqual(@as(u64, 0), scanner.report().scans);
+}
+
+test "paced pages retain complete counts and can stop before reading" {
+    const f = try harness.Fixture.create(.{});
+    defer f.destroy();
+    var changes: std.ArrayList(store_mod.Change) = .empty;
+    for (0..1007) |i| {
+        const did = try std.fmt.allocPrint(f.arena.allocator(), "did:plc:scan{d:0>5}", .{i});
+        const handle = try std.fmt.allocPrint(f.arena.allocator(), "scan{d}.test", .{i});
+        try changes.append(f.arena.allocator(), .{ .profile = .{ .did = did, .handle = handle } });
+    }
+    _ = try f.commit(changes.items, null);
+    var scanner: Scanner = .{ .gpa = testing.allocator, .io = testing.io, .root = f.tmp.dir, .path = "store", .layout = f.owner.options.store.layout, .interval_seconds = 3600 };
+    const original = try scanner.count();
+    scanner.page_rest_ms = 1;
+    const paced = try scanner.count();
+    try testing.expectEqual(original, paced);
+    try testing.expectEqual(@as(u64, 1007), paced.records);
+    try testing.expectEqual(@as(u64, 1007), paced.live);
+    try testing.expectEqual(@as(u64, 1007), paced.with_handles);
+    scanner.stop();
+    try testing.expectError(error.Canceled, scanner.count());
 }

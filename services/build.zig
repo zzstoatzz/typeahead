@@ -49,6 +49,19 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
+    const scan_probe = b.addExecutable(.{
+        .name = "corpus-scan-probe",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/corpus_scan_probe.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = role_imports,
+        }),
+    });
+    scan_probe.root_module.addAnonymousImport("identity-quarantine", .{ .root_source_file = quarantine });
+    b.step("build-corpus-scan-probe", "Build the read-only corpus scan experiment").dependOn(&b.addInstallArtifact(scan_probe, .{}).step);
+
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
     run_cmd.addPassthruArgs();
