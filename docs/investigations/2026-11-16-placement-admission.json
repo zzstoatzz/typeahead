@@ -1,0 +1,55 @@
+{
+  "operation": "standby",
+  "written": false,
+  "fit": true,
+  "serving": {
+    "engine": "tantivy",
+    "origin": "https://typeahead-slot-a.fly.dev",
+    "build_id": "b1794463531-cp-edfe0f3fd1",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "admission_sha256": "022ab111f559447ab7c5fce915315542f54f56fc2cd0e2ca63abc3c2856fd943",
+    "binary_sha256": "10999570a084bd6a7960db89a087b8874cd9963cf28996e62e02ead47c1ec2a6",
+    "retrieval_strategy": "global-merge"
+  },
+  "serving_healthy": true,
+  "serving_unhealthy_reasons": [],
+  "standby": [
+    {
+      "origin": "https://typeahead-slot-b.fly.dev",
+      "fit": true,
+      "cutover_needs_serving_slot_unhealthy": false,
+      "binary_sha256_expected_from": "serving route",
+      "target": {
+        "engine": "tantivy",
+        "origin": "https://typeahead-slot-b.fly.dev",
+        "build_id": "b1794463531-cp-edfe0f3fd1",
+        "format": "tantivy-0.27-f32-did-expiry-v4",
+        "binary_sha256": "10999570a084bd6a7960db89a087b8874cd9963cf28996e62e02ead47c1ec2a6",
+        "retrieval_strategy": "global-merge"
+      },
+      "gates": {
+        "sync_lag_s": 5,
+        "policy_age_s": 5,
+        "policy_sha256": "1247e2ceddd6e3bdae5471a69fb01e32c806e1a0f2f11c5a5124129193d46cd5",
+        "policy_compared_with_serving": true,
+        "canonical_rules_source_sha256": "ab36e3fbb399429b5f8c770e22f56e0e0b259b7ba0a62b742f5243908627e5f0",
+        "rules_compared_with_serving": true,
+        "reconciliation_age_s": 198776,
+        "reconciliation_duration_s": 2684,
+        "source_policy": "store-change-log-v1",
+        "source_id": "typeahead-slot-b-store",
+        "source_cursor_sha256": "65139ceb84eb034edf7f781e2db3f14e916e71b545b92ba16a3956393fe2e80e",
+        "source_observation_revision": 236519,
+        "normalize_version": "v2-cjk-bigram",
+        "plan_version": "complete-prefix-groups-v1",
+        "actor_count": 13304690,
+        "serving_actor_count": 13304691,
+        "serving_origin": "https://typeahead-slot-a.fly.dev",
+        "serving_healthy": true,
+        "serving_unhealthy_reasons": [],
+        "compared_with_serving": true,
+        "machine_id": "781e7e3ad11068"
+      }
+    }
+  ]
+}
