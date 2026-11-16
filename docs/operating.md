@@ -491,6 +491,16 @@ Every response carries `Server-Timing` with `worker`, and for searches
 `worker`, then `worker` with `search`, to find where a slow request spent its
 time.
 
+Successful backend search responses also retain `engine`, `transport_route`,
+`transport_origin_headers`, `transport_total`, `transport_hint_wait` and
+`transport_origin_start` when present. The transport renames the engine's
+`search` duration to `engine` before the public Worker adds its own timers.
+Only bounded numeric durations from this allowlist cross the public boundary.
+Cache hits report current hit timing, without historical backend intervals.
+Route validation and Fly fetch can overlap; never add their durations.
+The [eval timing disclosure](evaluation.md#where-time-goes) documents the
+timer boundaries and displays saved measurements without running probes.
+
 ## Alerts
 
 Alerts come from three places.

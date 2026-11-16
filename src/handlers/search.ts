@@ -6,6 +6,7 @@ import { CORS_HEADERS, BSKY_TYPEAHEAD_URL } from "../types";
 import { json, sanitize } from "../utils";
 import { recordMetric, recordCacheHit, recordTrafficSource } from "../metrics";
 import { recordStats } from "../stats-store";
+import { retainedBackendTiming } from "../server-timing";
 
 async function blueskyFallback(term: string, limit: number, mode: "manual" | "automatic"): Promise<Response> {
   const headers = { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store",
@@ -170,6 +171,8 @@ export async function handleSearch(
           headers: { "Content-Type": "application/json", ...CORS_HEADERS,
             "Server-Timing": `cache;desc="miss";dur=${cacheMs}, origin_headers;dur=${headersMs};desc="${backendRes.headers.get("fly-request-id") || "unknown"}", origin;dur=${backendMs}, search;dur=${Date.now() - t0}` },
         });
+        const backendTiming = retainedBackendTiming(timing);
+        if (backendTiming) response.headers.append("Server-Timing", backendTiming);
         response.headers.set("X-Typeahead-Cache-Generation", cacheGeneration);
         for (const header of ["X-Typeahead-Engine", "X-Typeahead-Format", "X-Typeahead-Build", "X-Typeahead-Binary-Sha256", "X-Typeahead-Retrieval-Strategy", "X-Typeahead-Machine-Id", "X-Typeahead-Machine-Version"]) {
           const value = backendRes.headers.get(header);

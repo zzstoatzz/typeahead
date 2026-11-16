@@ -1,4 +1,5 @@
 import { routeIdentity, responseMatchesRoute, type SearchRoute as Route } from "./search-route";
+import { timingDurations } from "./server-timing";
 
 type OriginFetch = (route: Route, signal: AbortSignal) => Promise<Response>;
 
@@ -16,11 +17,12 @@ export async function validatedSearch(
   };
   const begin = (route: Route) => {
     const abort = new AbortController();
-    const started = Date.now();
+    const originStarted = Date.now();
+    const offsetMs = originStarted - started;
     const result = fetchOrigin(route, AbortSignal.any([abort.signal, AbortSignal.timeout(3000)]))
-      .then(response => ({ ok: true as const, response, headersMs: Date.now() - started }),
-        () => ({ ok: false as const, headersMs: Date.now() - started }));
-    return { route, abort, result };
+      .then(response => ({ ok: true as const, response, headersMs: Date.now() - originStarted }),
+        () => ({ ok: false as const, headersMs: Date.now() - originStarted }));
+    return { route, abort, result, offsetMs };
   };
   const discard = async (pending: ReturnType<typeof begin>) => {
     pending.abort.abort();
@@ -59,6 +61,7 @@ export async function validatedSearch(
     await response.body?.cancel().catch(() => {});
     return Response.json({ error: "SearchBackendIdentityMismatch" }, { status: 503 });
   }
-  response.headers.set("Server-Timing", `transport_route;dur=${routeMs}, transport_origin_headers;dur=${result.headersMs}, transport_mode;desc="${mode}"`);
+  const engineMs = timingDurations(response.headers.get("Server-Timing")).get("search");
+  response.headers.set("Server-Timing", `transport_route;dur=${routeMs}, transport_origin_headers;dur=${result.headersMs}, transport_total;dur=${Date.now() - started}, transport_hint_wait;dur=${hintWaitMs}, transport_origin_start;dur=${pending.offsetMs}, transport_mode;desc="${mode}"${engineMs === undefined ? "" : `, engine;dur=${engineMs}`}`);
   return response;
 }

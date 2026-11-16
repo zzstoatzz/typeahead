@@ -4,7 +4,7 @@
 score, with dimensions, raw metrics and the test set available as drill-downs.
 The website reads saved snapshots; it never starts collection.
 
-Deployed unlisted on 2026-11-16 at [typeahead.waow.tech/eval](https://typeahead.waow.tech/eval)
+Initially deployed unlisted on 2026-11-16 at [typeahead.waow.tech/eval](https://typeahead.waow.tech/eval)
 from commit `2e41970`, Worker version `aaf2ce60-05f9-4e56-97b6-9397d0f6d89c`.
 The initial run is imported. The live [run download](https://typeahead.waow.tech/eval/data.json?run=2026-11-16T07%3A25%3A35.153Z)
 was verified equal to the retained seed, with all 80 observations. API and image
@@ -104,6 +104,37 @@ there is no automatic raw-data deletion. KV propagation can delay visibility
 across locations, so check `/eval` and download the initial run after rollout.
 The initial production import was verified on 2026-11-16; subsequent imports
 use the same idempotent path.
+
+## Where time goes
+
+The collapsed timing disclosure preserves the main score view. Open
+`/eval?view=timing#timing` for a duration breakdown, then select an individual
+request or the whole-run arithmetic mean. The outer stack partitions elapsed
+time into outside-Worker, cache lookup, backend round trip, remaining Worker
+time and unattributed time. Bluesky's total uses the same scale. Nested
+transport and engine intervals overlap and are shown separately, with their
+own coverage counts. Missing measurements are unknown, not zero. This view
+does not change scores or the immutable observations.
+
+This is a duration chart, not a chronological waterfall: the initial archive
+does not contain all interval start times. CPU flame graphs would answer a
+different question; these intervals include network and asynchronous waiting.
+The collector measures through the full response body. The transport's
+`transport_total` covers validation and fetch through accepted response headers,
+and `transport_origin_headers` covers the selected Fly fetch through headers.
+`engine` preserves the engine's own `search` timer. `transport_hint_wait` and
+`transport_origin_start` retain offsets for deeper analysis. Public cache hits
+replace these timings with current hit timings rather than replaying the
+cached request's engine cost. Future runs already archive the complete header.
+
+For the initial run, a separate
+[log-evidence file](../data/eval/timing-evidence/2026-11-16T07-25-35.153Z.json)
+recovers route and Fly-fetch durations for all 40 typeahead requests from
+existing `search_response_timing` events. Each event was uniquely matched by
+Cloudflare request ID and verified against query, timestamp and backend
+duration. Runtime joins also require the original run, observation ID and
+elapsed time. No benchmark was repeated and no engine timings from separate
+probes were substituted. The page links the evidence and unchanged raw run.
 
 ## Score definition
 

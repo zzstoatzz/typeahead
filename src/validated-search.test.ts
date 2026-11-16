@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { parseRoute } from "./search-route";
 import { validatedSearch } from "./validated-search";
+import { timingDurations } from "./server-timing";
 
 const first = parseRoute({ version: 1, current: {
   engine: "tantivy", origin: "https://typeahead-slot-a.fly.dev", build_id: "b1792908655-cp-first",
@@ -13,6 +14,19 @@ const second = parseRoute({ version: 1, current: {
 function identity(buildId: string) {
   return { "X-Typeahead-Engine": "tantivy", "X-Typeahead-Build": buildId, "X-Typeahead-Format": first.format, "X-Typeahead-Binary-Sha256": first.binary_sha256, "X-Typeahead-Retrieval-Strategy": first.retrieval_strategy };
 }
+
+test("transport retains engine timing under a distinct name without changing the response", async () => {
+  const response = await validatedSearch(Promise.resolve(first), first, async () => new Response("unchanged", {
+    headers: { ...identity(first.build_id), "Server-Timing": 'search;dur=2.319, private;desc="not forwarded"' },
+  }));
+  expect(await response.text()).toBe("unchanged");
+  const header = response.headers.get("Server-Timing");
+  const timing = timingDurations(header);
+  expect(timing.get("engine")).toBe(2.319);
+  expect(timing.has("search")).toBe(false);
+  expect(header).not.toContain("private");
+  for (const key of ["transport_total", "transport_origin_start", "transport_hint_wait", "transport_route"]) expect(timing.has(key)).toBe(true);
+});
 
 /** Wait for something a request causes, for at most a second. A fixed sleep
  *  here failed on a busy CI host, where two loopback round trips took longer

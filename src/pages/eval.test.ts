@@ -42,3 +42,17 @@ test("aggregate stays on the whole run while queries are inspected; forms pin th
   expect(page).not.toContain('id="dimensions" open');
   expect(evalPage(report)).toContain('id="test-set"><summary>');
 });
+
+test("timing drill-down stays collapsed, preserves provenance and marks missing attribution", () => {
+  const page = evalPage(report);
+  expect(page).toContain('id="timing"><summary>where time goes');
+  expect(page).toContain("unattributed");
+  expect(page).toContain("not captured");
+  expect(page).not.toContain("0% in the backend round trip");
+  const selected = evalPage(report, new URLSearchParams({ view: "timing", sample: "a" }));
+  expect(selected).toContain('id="timing" open');
+  expect(selected).toContain('value="a" selected');
+  expect(selected).toContain('name="run" value="r"');
+  expect(selected).toContain("Do not add the bars");
+  expect(page).not.toContain("NaN");
+});

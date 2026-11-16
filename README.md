@@ -37,7 +37,8 @@ tests and the deploy commands. local services need runtime configuration and
 credentials.
 
 The [evaluation](docs/evaluation.md) compares saved runs against Bluesky, with
-adjustable scoring, retained history and an isolated scheduled runner.
+adjustable scoring, serving-time breakdowns, retained history and an isolated
+runner. No recurring collection schedule is currently installed.
 
 ## docs
 
