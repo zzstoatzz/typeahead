@@ -36,3 +36,4 @@ steps:
       bunx wrangler deploy --dry-run
       bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
       bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run
+      bunx wrangler deploy -c deploy/eval/wrangler.jsonc --dry-run

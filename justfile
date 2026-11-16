@@ -41,6 +41,7 @@ check: typecheck lint test test-route test-supervise test-smoke
     bunx wrangler deploy --dry-run
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
     bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run
+    bunx wrangler deploy -c deploy/eval/wrangler.jsonc --dry-run
 
 # run the zig unit tests for the store process and the shared normalizer sources
 test-services:

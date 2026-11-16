@@ -1,0 +1,15 @@
+{
+  "name": "typeahead-eval-collector",
+  "main": "../../src/eval-scheduler.ts",
+  "compatibility_date": "2026-11-16",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": { "crons": ["2,17,32,47 * * * *"] },
+  "durable_objects": {
+    "bindings": [{ "name": "EVAL_RUNNER", "class_name": "EvaluationSchedule" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["EvaluationSchedule"] }],
+  "kv_namespaces": [{ "binding": "KV", "id": "af614e8f42a44543920f7aad0ae7b70a" }],
+  "observability": { "enabled": true }
+}

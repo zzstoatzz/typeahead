@@ -50,6 +50,7 @@ export const observationSchema = z.object({
   headers: z.record(z.string(), z.string()), error: z.string().nullable(), cooldownUntil: z.number(),
 });
 export type Observation = z.infer<typeof observationSchema>;
+export type AttemptTiming = Pick<Observation, "provider" | "startedAt" | "finishedAt" | "cooldownUntil">;
 export const reportSchema = z.object({
   version: z.literal(1), run: z.string(), corpus: z.string(), location: z.string(),
   startedAt: z.number(), updatedAt: z.number(), expected: z.number().int().positive(),
@@ -132,7 +133,7 @@ export function pairs(observations: Observation[]) {
   });
 }
 
-export function nextAllowed(observations: Observation[], provider: Provider, now: number): number {
+export function nextAllowed(observations: readonly AttemptTiming[], provider: Provider, now: number): number {
   const recent = observations.filter(o => o.provider === provider && o.startedAt > now - 86_400_000)
     .sort((a, b) => a.startedAt - b.startedAt);
   const budget = recent.length >= DAILY_BUDGET ? recent[recent.length - DAILY_BUDGET].startedAt + 86_400_000 : 0;

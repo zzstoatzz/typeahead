@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { DAILY_BUDGET, GAP_MS, cacheState, cooldown, nextAllowed, pairs, summarize, type Observation } from "./model";
-import { sample } from "../../scripts/eval/collect";
+import { sample } from "./sampling";
 
 export function observation(fields: Partial<Observation> = {}): Observation {
   return { id: "test", run: "run", corpus: "v1", provider: "typeahead", q: "alice.test", category: "exact handle", round: 0,

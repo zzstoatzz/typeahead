@@ -32,7 +32,7 @@ the query manifest is included. It is measured data, not a generated fixture.
 The seed is deliberately outside the ignored `.eval/` directory so rollout can
 import it into an empty store.
 
-New runs are retained as immutable JSON files under `.eval/runs/`. Set
+The portable runner retains new runs as immutable JSON files under `.eval/runs/`. Set
 `EVAL_DATA_DIR` to a persistent volume on another host. `EVAL_LOCATION` labels
 that runner's network location; use a distinct label when moving it. The preview
 combines the seed and retained runs. The selector keeps locations and runs
@@ -51,44 +51,48 @@ its latest checkpoint is recovered into the archive on the next invocation.
 The JSONL request ledger remains the source for reserved attempts and backoff.
 Keep the entire data directory, including the ledger, when moving a runner.
 
-## One collector and publisher
+## Scheduled production runner
 
-`scripts/eval/schedule.ts` owns one scheduled cycle: check whether a daily run
-is due, collect using the existing runner, retain the raw report, and publish.
-`src/eval/` owns the shared report format, scoring and snapshot protocol.
-There is no evaluation work in the app's cron, stats writer, search handler or
-browser. No extra database, Worker binding, or recurring service is installed.
+`typeahead-eval-collector` runs as a separate Cloudflare Worker with no HTTP
+route. Its cron checks every 15 minutes. A single Durable Object keeps the
+active run and request reservations in SQLite, and schedules one alarm per
+request. It uses the same sampling, corpus, quotas, backoff and snapshot
+format as the Bun runner. The public Worker only reads the published snapshots
+from KV.
+
+The latest archived run sets the initial 24-hour gate. A reservation is written
+before each request. If the runner restarts with an unresolved reservation,
+it archives the partial run and leaves that attempt pending. Retrying publication
+or public verification does not send more search requests. The publisher logs
+`eval_published` after KV readback and `eval_visible` after both the public JSON
+and the default page show the run. A failed readback leaves the checkpoint
+available for an alarm retry or the next cron.
+
+Deploy the collector independently after publishing the code:
+
+```sh
+bunx wrangler deploy -c deploy/eval/wrangler.jsonc --dry-run
+bunx wrangler deploy -c deploy/eval/wrangler.jsonc
+```
+
+The cron expression is in the collector configuration. To pause collection,
+remove the cron in that configuration and deploy it after the active run
+finishes. Removing the trigger alone does not cancel an alarm already scheduled
+by the Durable Object.
+
+For self-hosting, use the same portable Bun entry points:
 
 ```sh
 just eval-collect       # a finite manual run, subject to the persistent budget
-just eval-tick          # one scheduled tick; local publication only
-just eval-tick-remote   # the same tick, then publish retained runs to production KV
+just eval-tick          # one scheduled tick, with local snapshots
+just eval-tick-remote   # one scheduled tick, with publication to Cloudflare KV
 ```
 
-A tick runs at most once per 24 hours from the last actual run start. Repeated
-ticks skip collection; missed days are not replayed. Publication can be retried
-without collecting again. Use one host and one persistent data directory for
-both manual and scheduled collection. Local locks exclude overlapping collectors
-and publishers; these are not distributed locks. Keep one publisher for a KV
-namespace because KV does not provide a conditional manifest write.
-
-For rollout, configure an external scheduler on that host to invoke the command
-hourly (absolute paths to the checkout and Bun are required in cron):
-
-```cron
-17 * * * * cd /path/to/typeahead && EVAL_DATA_DIR=/var/lib/typeahead-eval EVAL_LOCATION=runner-region /path/to/bun scripts/eval/schedule.ts --remote >> /var/log/typeahead-eval.log 2>&1
-```
-
-The daily gate and request budget live in the runner, not in cron. This requires
-Bun, the installed project dependencies, writable persistent storage and Wrangler
-authentication for publication. The current adapter is a standalone host command,
-not a Cloudflare Cron Trigger: a future Cloudflare adapter should call the same
-collector/state contract rather than introduce a second collection implementation.
-No recurring schedule is active as part of this local work.
-
-Locks contain owner PIDs. On an interruption, verify that process has exited
-before removing its lock directory. Do not reset the ledger to clear a lock.
-Normal exits clean up locks; incomplete attempts still consume the budget.
+Run one publisher per KV namespace. If moving production collection to a host,
+pause and drain the Cloudflare collector first and import the retained reports
+before starting the host's schedule. Use one persistent data directory for both
+manual and scheduled collection. After an interruption, verify the recorded
+lock owner exited before removing a local lock. Keep its request ledger.
 
 ## Rollout import
 

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { archiveReport, readRuns } from "./archive";
 import { directoryStore } from "./publish";
 import { publishReports, readSnapshot } from "../../src/eval/archive";
-import { nextRunAt } from "./collect";
+import { nextRunAt } from "../../src/eval/sampling";
 import type { Report } from "../../src/eval/model";
 
 const report: Report = { version: 1, run: "2026-11-16T07:25:35.153Z", corpus: "v1", location: "local", startedAt: 100, updatedAt: 200, expected: 2, observations: [] };
