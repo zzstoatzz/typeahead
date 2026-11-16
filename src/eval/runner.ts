@@ -97,7 +97,7 @@ export class EvalRunner {
       console.log({ event: "eval_not_due", eligibleAt: new Date(due).toISOString() });
       return;
     }
-    const report = newRun(this.clock(), "Cloudflare Workers (ENAM placement hint)");
+    const report = newRun(this.clock(), "Cloudflare Workers");
     const active: ActiveRun = {
       report,
       previous: previous.observations.map(({ provider, startedAt, finishedAt, cooldownUntil }) =>

@@ -45,6 +45,9 @@ function queryDetails(observations: Observation[]): string {
 }
 
 export function evalPage(report: Report | null, params = new URLSearchParams(), runs: RunEntry[] = []): string {
+  const locationLabel = (location: string) => location === "Cloudflare Workers (ENAM placement hint)" ? "Cloudflare Workers" : location;
+  if (report) report = { ...report, location: locationLabel(report.location) };
+  runs = runs.map(run => ({ ...run, location: locationLabel(run.location) }));
   const state = new URLSearchParams(params);
   if (report) state.set("run", report.run);
   const weights = weightsFrom(params);

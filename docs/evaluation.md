@@ -60,6 +60,10 @@ request. It uses the same sampling, corpus, quotas, backoff and snapshot
 format as the Bun runner. The public Worker only reads the published snapshots
 from KV.
 
+Cloud runs display `Cloudflare Workers` as their runner label. The original
+cloud snapshot's `ENAM placement hint` suffix is normalized for display because
+it describes a placement preference rather than a measured execution location.
+
 An operator-requested full run can set a new `EVAL_MANUAL_RUN` identifier on
 the collector deployment. Each identifier is consumed once in durable state.
 It bypasses daily eligibility and permits up to 80 attempts per provider in
