@@ -1,0 +1,31 @@
+{
+  "name": "typeahead-placement-probe",
+  "main": "../../src/experiments/placement-caller.ts",
+  "compatibility_date": "2024-12-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "services": [
+    {
+      "binding": "REGIONAL",
+      "service": "typeahead-probe-regional"
+    },
+    {
+      "binding": "DEFAULT",
+      "service": "typeahead-probe-default"
+    },
+    {
+      "binding": "CURRENT",
+      "service": "typeahead-search-transport"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "destinations": [
+        "logfire-typeahead-traces"
+      ]
+    }
+  }
+}

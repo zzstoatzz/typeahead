@@ -1,0 +1,30 @@
+# Worker placement comparison
+
+Owner is the Typeahead serving-path investigation. The scratch directory is
+`.eval/placement/`, with a 10 MiB evidence budget. Temporary Workers are
+`typeahead-placement-probe`, `typeahead-probe-regional` and
+`typeahead-probe-default`. Delete the caller first, then both targets through
+the Cloudflare API after retaining results. No cron is configured.
+
+The two targets share one wrapper and import the production transport handler.
+They use the existing R2 route and RouteAuthority. One has the production
+`aws:us-east-1` hint, the other has default placement. Compatibility dates match
+production to isolate the placement variable. Only the caller has an HTTP URL.
+
+Phase one alternates eight echo pairs, reversing order on successive pairs.
+Both targets return the same 3 KiB body immediately, without route or Fly calls.
+Phase two alternates six search triples across regional, default and the
+production transport, using three fixed queries with limit seven. Requests
+are spaced at least five seconds after each response. Full response hashes,
+build IDs and timing headers are retained. This is a finite diagnostic with at
+most 18 backend searches, rather than a throughput benchmark.
+
+The current serving slot and standby admission were read before the experiment.
+The serving slot was healthy and the standby fit. The route is unchanged.
+
+Johanna's GitHub default branch was checked again at
+`f179358bef6118de9d87e1dffaf4b6835a270044`. The bounded-intersection change
+`9d25850` uses a limit-scaled scan budget, with a regression test demonstrating
+that the budget can omit a match. Her refresh sources fetch Slingshot identity
+and profile data alongside AppView facts through a durable queue. These engine
+and ingestion changes are independent of this forwarding experiment.
