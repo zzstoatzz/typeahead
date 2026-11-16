@@ -69,3 +69,13 @@ test("three-provider runs show field coverage while old snapshots mark discarded
   expect(page).toContain("tern-text");
   expect(page).not.toContain("not captured</td>");
 });
+
+test("method describes the selected manifest and normalized weights", () => {
+  const page = evalPage({ ...report, queries: [{ q: row.q, category: row.category }] }, new URLSearchParams({ speed: "10", availability: "20", exact: "10" }));
+  expect(page).toContain("1 query × 2 passes × 2 services");
+  expect(page).toContain("25% response speed · 50% successful answers · 25% exact-handle rank");
+  expect(page).toContain("Relevance and field coverage are not scored");
+  expect(page).toContain("Missing verification means unknown, not unverified");
+  expect(page).toContain("Page views only read saved data");
+  expect(page).not.toContain("20 queries · 2 passes");
+});

@@ -3,6 +3,10 @@
 `/eval` compares typeahead, Bluesky and Tern. The first view is a weighted benchmark
 score, with dimensions, raw metrics and the test set available as drill-downs.
 The website reads saved snapshots; it never starts collection.
+The score's “method” disclosure explains the sample, timing, current normalized
+weights, field denominators and collection policy. It uses the compact method
+pattern from relay-eval and Typeahead's shared theme; Tern uses amber, distinct
+from Bluesky's blue, throughout the score, query charts and timing comparison.
 
 Initially deployed unlisted on 2026-11-16 at [typeahead.waow.tech/eval](https://typeahead.waow.tech/eval)
 from commit `2e41970`, Worker version `aaf2ce60-05f9-4e56-97b6-9397d0f6d89c`.
@@ -239,6 +243,10 @@ comparable corpus totals, traffic volume, moderation coverage or identity freshn
 The [November 16 latency and Seek investigation](investigations/2026-11-16-seek.md)
 decomposes the initial saved run and compares the serving and index designs.
 Its additional diagnostic reads are separate from the scored eval dataset.
+The [cloud-run tail investigation](investigations/2026-11-16-tail.md) matches a
+slow request to Worker spans and correlates the backend stalls with historical
+Fly I/O metrics and the serving slot's corpus scan. It also records the prefix
+ranking feedback from the aka.dad thread.
 
 ## Actor-field coverage
 
