@@ -12,11 +12,15 @@ export async function sample(o: Observation, fetcher: (url: string, init: Reques
   try {
     const response = await fetcher(url.href, {
       headers: { "User-Agent": "typeahead-eval/1 (+https://typeahead.waow.tech; contact: @zzstoatzz.io)", "X-Client": "bench" },
-      signal: AbortSignal.timeout(10_000), redirect: "error",
+      signal: AbortSignal.timeout(10_000), redirect: "manual",
     });
     status = response.status;
     for (const key of HEADERS) { const value = response.headers.get(key); if (value !== null) headers[key] = value; }
     cooldownUntil = cooldown(status, response.headers, Date.now());
+    if (status >= 300 && status < 400) {
+      await response.body?.cancel();
+      throw new Error(`unexpected redirect: HTTP ${status}`);
+    }
     if (!response.ok) {
       await response.body?.cancel();
       return { ...o, status, headers, cooldownUntil, outcome: "http-error", error: `HTTP ${status}`, ms: performance.now() - start, finishedAt: Date.now() };

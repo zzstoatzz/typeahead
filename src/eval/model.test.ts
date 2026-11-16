@@ -52,7 +52,7 @@ test("collector sends one identified request, preserves backoff and validates ac
     calls++;
     expect(new URL(url).searchParams.get("limit")).toBe("10");
     expect(new Headers(init.headers).get("X-Client")).toBe("bench");
-    expect(init.redirect).toBe("error");
+    expect(init.redirect).toBe("manual");
     return new Response(null, { status: 429, headers: { "Retry-After": "7200" } });
   });
   expect(calls).toBe(1);
@@ -62,4 +62,8 @@ test("collector sends one identified request, preserves backoff and validates ac
   expect(invalid.outcome).toBe("invalid-response");
   const failed = await sample(observation(), async () => { throw new Error("offline"); });
   expect(failed.outcome).toBe("network-error");
+  const redirect = await sample(observation(), async () =>
+    new Response(null, { status: 302, headers: { Location: "https://example.test/" } }));
+  expect(redirect.outcome).toBe("network-error");
+  expect(redirect.status).toBe(302);
 });
