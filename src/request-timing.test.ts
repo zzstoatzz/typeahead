@@ -38,14 +38,19 @@ test("full Worker times cache hits, validation failures, rate denial and preflig
   } });
   const directory = await mkdtemp(join(tmpdir(), "typeahead-request-timing-"));
   const entry = join(directory, "worker.ts");
-  await writeFile(entry, `export {default} from ${JSON.stringify(new URL("./index.ts", import.meta.url).pathname)}`);
+  await writeFile(entry, `import worker from ${JSON.stringify(new URL("./index.ts", import.meta.url).pathname)};
+    let attempts = 0;
+    const limiter = { async limit() { return { success: ++attempts <= 3 }; } };
+    export default { ...worker, fetch(...args: Parameters<typeof worker.fetch>) {
+      const [request, env, ctx] = args;
+      return worker.fetch(request, { ...env, RATE_LIMITER: limiter }, ctx);
+    } };`);
   const built = await Bun.build({ entrypoints: [entry],
     target: "browser", external: ["node:*", "cloudflare:workers"] });
   if (!built.success) throw new Error(built.logs.join("\n"));
   const mf = new Miniflare({ modules: true, script: await built.outputs[0].text(),
     compatibilityDate: "2024-12-01", compatibilityFlags: ["nodejs_compat"],
-    bindings: { SEARCH_BACKEND_URL: server.url.toString().replace(/\/$/, "") },
-    ratelimits: { RATE_LIMITER: { simple: { limit: 3, period: 60 } } } });
+    bindings: { SEARCH_BACKEND_URL: server.url.toString().replace(/\/$/, "") } });
   try {
     const request = (suffix = "?q=fixture&limit=5") => mf.dispatchFetch(
       `https://public.test/xrpc/tech.waow.typeahead.searchActors${suffix}`,
