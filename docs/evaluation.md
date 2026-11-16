@@ -12,6 +12,16 @@ smoke checks passed; optional admin CRUD checks were not run without an admin
 secret. Navigation is unchanged and the page has `noindex`. No slot, transport,
 route or collection schedule was changed.
 
+The timing disclosure and header preservation were deployed on 2026-11-16
+from `7ae5d20`: public Worker `87c195f6-5664-4052-9952-f618135ee333`,
+transport `53744bc8-4569-4f7b-9f32-c59e272e40ab`.
+The [rollout evidence](investigations/2026-11-16-seek/timing-rollout.json)
+records the live headers, unchanged 80-observation archive and verification.
+Public API and image smoke checks passed; optional admin checks remained
+unavailable without a secret. Phone and desktop views were checked in both
+themes, and live cache hits were verified to omit historical engine timers.
+No slot, route, placement or collection schedule changed.
+
 ## Retained history
 
 The initial 2026-11-16 run is in

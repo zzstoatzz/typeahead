@@ -1,0 +1,29 @@
+{
+  "at": "2026-11-16T09:15:31.489Z",
+  "commit": "7ae5d208a3b2d3f77f8182690fc895246867e1b0",
+  "archivedObservations": 80,
+  "archiveUnchanged": true,
+  "pageStatus": 200,
+  "searchStatus": 200,
+  "serverTiming": "cache;desc=\"miss\";dur=5, origin_headers;dur=51;desc=\"01M7HT7S93BY1HM747M710E1F7-iad\", origin;dur=51, search;dur=56, engine;dur=2.795, transport_route;dur=12, transport_origin_headers;dur=16, transport_total;dur=16, transport_hint_wait;dur=0, transport_origin_start;dur=0, worker;dur=56, rate_limit;dur=0",
+  "engine": "tantivy",
+  "build": "b1794463531-cp-edfe0f3fd1",
+  "cacheHitTiming": "cache;desc=\"hit\";dur=11, worker;dur=11, rate_limit;dur=0",
+  "publicWorkerVersion": "87c195f6-5664-4052-9952-f618135ee333",
+  "transportVersion": "53744bc8-4569-4f7b-9f32-c59e272e40ab",
+  "validation": {
+    "workerTests": 237,
+    "pythonTests": 77,
+    "typecheck": true,
+    "lint": true,
+    "dryBuilds": 3,
+    "publicSmoke": true,
+    "imageSmoke": true,
+    "adminSmoke": "not run: secret unavailable",
+    "ui": [
+      "390×844 phone, light/dark",
+      "1280×900 desktop, light/dark",
+      "live phone and desktop"
+    ]
+  }
+}
