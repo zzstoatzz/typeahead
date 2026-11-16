@@ -27,13 +27,15 @@ guard() {
 
 sample() {
   trap - EXIT
-  trap 'exit 0' TERM INT HUP
+  local stopping=0
+  trap 'stopping=1' TERM INT HUP
   local phase=$1 i=0 encoded status elapsed engine result
   while IFS=$'\t' read -r case_id encoded; do
     printf '%s\t%s\n' "$case_id" "$encoded"
   done < queries.tsv > cases.tmp
   while true; do
     while IFS=$'\t' read -r case_id encoded; do
+      ((stopping == 0)) || return 0
       local at
       at=$(date +%s%3N)
       result=$(curl -sS --max-time 4 --max-filesize 1048576 -D headers.tmp -o body.tmp -w '%{http_code} %{time_total}' "http://127.0.0.1:8080/debug/search?q=$encoded&limit=10") || true
@@ -52,7 +54,8 @@ sample() {
       if ((i % 30 == 0)); then
         guard || { kill -TERM "$main_pid"; return 1; }
       fi
-      sleep 1
+      ((stopping == 0)) || return 0
+      sleep 1 || true
     done < cases.tmp
   done
 }
@@ -70,6 +73,7 @@ phase() {
     scan=$!
     wait "$scan"
     scan=
+    printf '{"event":"scan_end","phase":"%s","at_ms":%s}\n' "$name" "$(date +%s%3N)" >> phases.jsonl
   fi
   kill "$sampler" 2>/dev/null || true
   wait "$sampler" 2>/dev/null || true
