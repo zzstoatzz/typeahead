@@ -305,8 +305,13 @@ const Fixture = struct {
     fn expectIndexMatchesStore(self: *Fixture, live_bridge: *Bridge) !void {
         try settle(live_bridge);
         var live: u64 = 0;
+        var hidden: u64 = 0;
+        var avatars: u64 = 0;
         for (self.store.actors.values()) |actor| {
-            if (actor.status == .live and actor.handle.len > 0) live += 1;
+            if (actor.status != .live or actor.handle.len == 0) continue;
+            live += 1;
+            hidden += @intFromBool(actor.hidden);
+            avatars += @intFromBool(actor.avatar.len > 0);
         }
         const indexed = try self.indexedDids();
         const hashes_before = try self.documentHashes(indexed.keys());
@@ -322,6 +327,12 @@ const Fixture = struct {
 
         try self.expectStoredFieldsMatch();
         try testing.expectEqual(@as(i64, @intCast(live)), after.get("actor_count").?.integer);
+        const counted = (try self.getJson(self.public, "/corpus")).object.get("counts").?.object;
+        try testing.expectEqual(@as(i64, @intCast(live)), counted.get("live").?.integer);
+        try testing.expectEqual(@as(i64, @intCast(live - hidden)), counted.get("total").?.integer);
+        try testing.expectEqual(@as(i64, @intCast(live)), counted.get("with_handles").?.integer);
+        try testing.expectEqual(@as(i64, @intCast(hidden)), counted.get("hidden").?.integer);
+        try testing.expectEqual(@as(i64, @intCast(avatars)), counted.get("with_avatars").?.integer);
         try testing.expectEqual(@as(i64, @intCast(indexed.count() - live)), after.get("tombstone_count").?.integer);
         for (self.store.actors.keys()) |did| try testing.expect(indexed.contains(did));
 
@@ -385,14 +396,9 @@ test "the bridge keeps a real Tantivy server equal to the store through changes,
     try testing.expectEqualStrings("", read[1].object.get("description").?.string);
     try testing.expectEqual(false, read[1].object.get("profile_checked").?.bool);
 
-    // The store's corpus count, posted to the admin listener, is served.
-    const counted: wire.CorpusCount = .{ .live = actor_count + 5, .total = actor_count, .with_handles = actor_count, .with_avatars = actor_count, .hidden = 5, .scanned_at = 1_794_000_000 };
-    try testing.expectEqual(json.Value.null, (try f.getJson(f.public, "/corpus")).object.get("store").?);
-    try (wire.Client{ .transport = f.endpoint.transport() }).corpus(f.arena.allocator(), counted);
     const corpus = (try f.getJson(f.public, "/corpus")).object;
-    try testing.expectEqual(@as(i64, actor_count), corpus.get("store").?.object.get("total").?.integer);
-    try testing.expectEqual(@as(i64, 5), corpus.get("store").?.object.get("hidden").?.integer);
-    try testing.expectEqual(@as(i64, actor_count), corpus.get("index").?.object.get("actors").?.integer);
+    try testing.expectEqual(json.Value.null, corpus.get("store").?);
+    try testing.expectEqual(@as(i64, 1), corpus.get("index").?.object.get("statistics_version").?.integer);
 
     // Each kind of change, checked through /search.
     const did = f.id(1234);
@@ -523,8 +529,7 @@ test "the bridge keeps a real Tantivy server equal to the store through changes,
         kills,                                              failed_steps,
         final.get("actor_count").?.integer,                 final.get("tombstone_count").?.integer,
         final.get("source_observation_revision").?.integer, final.get("ready").?.bool,
-        final.get("sync_lag_s").?.integer,
-        json.fmt(final.get("reconciliation").?, .{}),
+        final.get("sync_lag_s").?.integer,                  json.fmt(final.get("reconciliation").?, .{}),
     });
 }
 
