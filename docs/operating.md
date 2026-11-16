@@ -457,11 +457,11 @@ retired `/admin` write endpoints answer 410.
 
 ## Statistics
 
-The local `/eval` work has a separate snapshot publisher and daily runner;
-it does not extend the app's statistics cron. Before its first rollout, import
-the retained history with `just eval-upload-remote`, then deploy and verify
-the page and run download. [Evaluation](evaluation.md#rollout-import) describes
-that import, the single-writer requirement and optional external scheduling.
+The unlisted `/eval` page has a separate snapshot publisher and daily runner;
+it does not extend the app's statistics cron. The initial history was imported
+and the page deployed on 2026-11-16; recurring collection is not active.
+[Evaluation](evaluation.md#rollout-import) describes subsequent imports,
+the single-writer requirement and optional external scheduling.
 
 `/stats` shows searches, apps, answers by endpoint and status, and account
 counts. `/stats?view=status` is the first place to look when something seems

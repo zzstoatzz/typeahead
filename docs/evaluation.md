@@ -4,6 +4,14 @@
 score, with dimensions, raw metrics and the test set available as drill-downs.
 The website reads saved snapshots; it never starts collection.
 
+Deployed unlisted on 2026-11-16 at [typeahead.waow.tech/eval](https://typeahead.waow.tech/eval)
+from commit `2e41970`, Worker version `aaf2ce60-05f9-4e56-97b6-9397d0f6d89c`.
+The initial run is imported. The live [run download](https://typeahead.waow.tech/eval/data.json?run=2026-11-16T07%3A25%3A35.153Z)
+was verified equal to the retained seed, with all 80 observations. API and image
+smoke checks passed; optional admin CRUD checks were not run without an admin
+secret. Navigation is unchanged and the page has `noindex`. No slot, transport,
+route or collection schedule was changed.
+
 ## Retained history
 
 The initial 2026-11-16 run is in
@@ -94,7 +102,8 @@ missing indexed snapshots fail visibly. The selector lists the latest 365 runs;
 older raw files and KV snapshots remain retained. Back up the data directory;
 there is no automatic raw-data deletion. KV propagation can delay visibility
 across locations, so check `/eval` and download the initial run after rollout.
-The importer has been exercised locally, not against production.
+The initial production import was verified on 2026-11-16; subsequent imports
+use the same idempotent path.
 
 ## Score definition
 
