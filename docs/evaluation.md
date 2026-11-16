@@ -292,3 +292,11 @@ public API and image smoke checks passed after deployment. Live desktop and
 390-pixel phone views showed all three providers and metadata coverage.
 README review confirmed its evaluation overview matches the final behavior;
 no additional README change was needed.
+
+The compact method disclosure and amber Tern palette shipped on 2026-11-16
+from `f409569`, public Worker `d2d721b0-2e29-463b-8ded-e6dd8dd83fc0`.
+All 246 Worker tests and 77 Python tests passed, along with type checking,
+lint and deployment smoke checks. Phone and desktop previews were checked
+in both themes, and the deployed disclosure was opened and checked. The
+collector, schedule, saved observations and backend were unchanged. README's
+existing evaluation overview remains accurate and needed no further change.
