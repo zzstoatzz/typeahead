@@ -1,0 +1,78 @@
+[
+  {
+    "service_name": "typeahead",
+    "span_name": "search.handle",
+    "start_timestamp": "2026-11-16T19:37:11.491Z",
+    "duration": 0.519999996,
+    "trace_id": "f6f51b9d2d18a76b7752798fffc22497",
+    "parent_span_id": "08f04b298fd279f2",
+    "span_id": "afc07efc8956d51b",
+    "requestId": "a5b8f2e6c9147a02"
+  },
+  {
+    "service_name": "typeahead",
+    "span_name": "search.cache.lookup",
+    "start_timestamp": "2026-11-16T19:37:11.491Z",
+    "duration": 0.005999995,
+    "trace_id": "f6f51b9d2d18a76b7752798fffc22497",
+    "parent_span_id": "afc07efc8956d51b",
+    "span_id": "47a2065514d5b914"
+  },
+  {
+    "service_name": "typeahead",
+    "span_name": "GET",
+    "start_timestamp": "2026-11-16T19:37:11.491Z",
+    "duration": 0.58,
+    "trace_id": "f6f51b9d2d18a76b7752798fffc22497",
+    "parent_span_id": null,
+    "span_id": "dfbbd28245561c71",
+    "cpuMs": 4
+  },
+  {
+    "service_name": "typeahead",
+    "span_name": "search.transport.headers",
+    "start_timestamp": "2026-11-16T19:37:11.497Z",
+    "duration": 0.514,
+    "trace_id": "f6f51b9d2d18a76b7752798fffc22497",
+    "parent_span_id": "afc07efc8956d51b",
+    "span_id": "d1542850f841f886"
+  },
+  {
+    "service_name": "typeahead-search-transport",
+    "span_name": "transport.handle",
+    "start_timestamp": "2026-11-16T19:37:11.501Z",
+    "duration": 0.507999999,
+    "trace_id": "f6f51b9d2d18a76b7752798fffc22497",
+    "parent_span_id": "3e05e4ed16a5b288",
+    "span_id": "38aaba1012798267",
+    "requestId": "a5b8f2e6c9147a02"
+  },
+  {
+    "service_name": "typeahead-search-transport",
+    "span_name": "transport.fly.headers",
+    "start_timestamp": "2026-11-16T19:37:11.501Z",
+    "duration": 0.507999992,
+    "trace_id": "f6f51b9d2d18a76b7752798fffc22497",
+    "parent_span_id": "38aaba1012798267",
+    "span_id": "28441c8b6b4e931a"
+  },
+  {
+    "service_name": "typeahead-search-transport",
+    "span_name": "GET",
+    "start_timestamp": "2026-11-16T19:37:11.501Z",
+    "duration": 0.508,
+    "trace_id": "f6f51b9d2d18a76b7752798fffc22497",
+    "parent_span_id": "7f2e8b98fdabc9b0",
+    "span_id": "3e05e4ed16a5b288",
+    "cpuMs": 1
+  },
+  {
+    "service_name": "typeahead-search-transport",
+    "span_name": "transport.route.validate",
+    "start_timestamp": "2026-11-16T19:37:11.501Z",
+    "duration": 0.008999998,
+    "trace_id": "f6f51b9d2d18a76b7752798fffc22497",
+    "parent_span_id": "38aaba1012798267",
+    "span_id": "4237c34756db4ea9"
+  }
+]

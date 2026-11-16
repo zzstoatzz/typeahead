@@ -1,0 +1,1208 @@
+{
+  "run": "2026-11-16T19:30:17.911Z",
+  "binary": "10999570a084bd6a7960db89a087b8874cd9963cf28996e62e02ead47c1ec2a6",
+  "p90Ms": 557,
+  "engineP90Ms": 498.398,
+  "observations": [
+    {
+      "q": "fig",
+      "round": 0,
+      "at": "2026-11-16T19:30:17.911Z",
+      "elapsedMs": 309,
+      "engineMs": 4.593,
+      "workerMs": 163,
+      "cacheMs": 22,
+      "transportMs": 113,
+      "routeMs": 11,
+      "cfRay": "a5b8e8ce48767a02-EWR"
+    },
+    {
+      "q": "fig (",
+      "round": 0,
+      "at": "2026-11-16T19:30:44.858Z",
+      "elapsedMs": 79,
+      "engineMs": 1.768,
+      "workerMs": 46,
+      "cacheMs": 6,
+      "transportMs": 17,
+      "routeMs": 11,
+      "cfRay": "a5b8e97688d27a02-EWR"
+    },
+    {
+      "q": "fig aka",
+      "round": 0,
+      "at": "2026-11-16T19:30:55.125Z",
+      "elapsedMs": 65,
+      "engineMs": 6.676,
+      "workerMs": 26,
+      "cacheMs": 6,
+      "transportMs": 17,
+      "routeMs": 10,
+      "cfRay": "a5b8e9b6a8107a02-EWR"
+    },
+    {
+      "q": "phil",
+      "round": 0,
+      "at": "2026-11-16T19:31:05.360Z",
+      "elapsedMs": 67,
+      "engineMs": 8.23,
+      "workerMs": 32,
+      "cacheMs": 11,
+      "transportMs": 17,
+      "routeMs": 7,
+      "cfRay": "a5b8e9f6aed67a02-EWR"
+    },
+    {
+      "q": "zzstoatzz",
+      "round": 0,
+      "at": "2026-11-16T19:31:31.046Z",
+      "elapsedMs": 81,
+      "engineMs": 7.939,
+      "workerMs": 29,
+      "cacheMs": 6,
+      "transportMs": 19,
+      "routeMs": 15,
+      "cfRay": "a5b8ea973e1f7a02-EWR"
+    },
+    {
+      "q": "zzstoatzz.io",
+      "round": 0,
+      "at": "2026-11-16T19:31:41.274Z",
+      "elapsedMs": 62,
+      "engineMs": 3.332,
+      "workerMs": 24,
+      "cacheMs": 5,
+      "transportMs": 13,
+      "routeMs": 9,
+      "cfRay": "a5b8ead71c7f7a02-EWR"
+    },
+    {
+      "q": "nate",
+      "round": 0,
+      "at": "2026-11-16T19:31:51.449Z",
+      "elapsedMs": 66,
+      "engineMs": 12.862,
+      "workerMs": 35,
+      "cacheMs": 7,
+      "transportMs": 23,
+      "routeMs": 8,
+      "cfRay": "a5b8eb16bfc27a02-EWR"
+    },
+    {
+      "q": "alex",
+      "round": 0,
+      "at": "2026-11-16T19:32:17.112Z",
+      "elapsedMs": 102,
+      "engineMs": 8.174,
+      "workerMs": 69,
+      "cacheMs": 6,
+      "transportMs": 25,
+      "routeMs": 7,
+      "cfRay": "a5b8ebb71eb57a02-EWR"
+    },
+    {
+      "q": "bob",
+      "round": 0,
+      "at": "2026-11-16T19:32:27.472Z",
+      "elapsedMs": 64,
+      "engineMs": 5.4,
+      "workerMs": 32,
+      "cacheMs": 6,
+      "transportMs": 18,
+      "routeMs": 11,
+      "cfRay": "a5b8ebf7df657a02-EWR"
+    },
+    {
+      "q": "aoc",
+      "round": 0,
+      "at": "2026-11-16T19:32:37.638Z",
+      "elapsedMs": 69,
+      "engineMs": 9.278,
+      "workerMs": 29,
+      "cacheMs": 5,
+      "transportMs": 20,
+      "routeMs": 10,
+      "cfRay": "a5b8ec37688b7a02-EWR"
+    },
+    {
+      "q": "car",
+      "round": 0,
+      "at": "2026-11-16T19:33:03.372Z",
+      "elapsedMs": 92,
+      "engineMs": 9.982,
+      "workerMs": 59,
+      "cacheMs": 6,
+      "transportMs": 28,
+      "routeMs": 7,
+      "cfRay": "a5b8ecd83e3a7a02-EWR"
+    },
+    {
+      "q": "Justin Fa",
+      "round": 0,
+      "at": "2026-11-16T19:33:14.139Z",
+      "elapsedMs": 61,
+      "engineMs": 9.643,
+      "workerMs": 29,
+      "cacheMs": 7,
+      "transportMs": 18,
+      "routeMs": 8,
+      "cfRay": "a5b8ed1b8fd57a02-EWR"
+    },
+    {
+      "q": "Justin Fag",
+      "round": 0,
+      "at": "2026-11-16T19:33:24.310Z",
+      "elapsedMs": 58,
+      "engineMs": 1.687,
+      "workerMs": 25,
+      "cacheMs": 7,
+      "transportMs": 13,
+      "routeMs": 12,
+      "cfRay": "a5b8ed5b1dc67a02-EWR"
+    },
+    {
+      "q": "paul frazee",
+      "round": 0,
+      "at": "2026-11-16T19:33:49.981Z",
+      "elapsedMs": 55,
+      "engineMs": 3.669,
+      "workerMs": 22,
+      "cacheMs": 5,
+      "transportMs": 13,
+      "routeMs": 9,
+      "cfRay": "a5b8edfb88f57a02-EWR"
+    },
+    {
+      "q": "jola.dev",
+      "round": 0,
+      "at": "2026-11-16T19:34:00.185Z",
+      "elapsedMs": 54,
+      "engineMs": 8.014,
+      "workerMs": 26,
+      "cacheMs": 6,
+      "transportMs": 16,
+      "routeMs": 9,
+      "cfRay": "a5b8ee3b4c657a02-EWR"
+    },
+    {
+      "q": "pfrazee.com",
+      "round": 0,
+      "at": "2026-11-16T19:34:10.353Z",
+      "elapsedMs": 55,
+      "engineMs": 4.734,
+      "workerMs": 24,
+      "cacheMs": 6,
+      "transportMs": 14,
+      "routeMs": 8,
+      "cfRay": "a5b8ee7ade8d7a02-EWR"
+    },
+    {
+      "q": "André",
+      "round": 0,
+      "at": "2026-11-16T19:34:36.028Z",
+      "elapsedMs": 56,
+      "engineMs": 7.66,
+      "workerMs": 26,
+      "cacheMs": 5,
+      "transportMs": 17,
+      "routeMs": 10,
+      "cfRay": "a5b8ef1b581c7a02-EWR"
+    },
+    {
+      "q": "東京",
+      "round": 0,
+      "at": "2026-11-16T19:34:46.268Z",
+      "elapsedMs": 59,
+      "engineMs": 5.885,
+      "workerMs": 28,
+      "cacheMs": 7,
+      "transportMs": 18,
+      "routeMs": 10,
+      "cfRay": "a5b8ef5b5b2a7a02-EWR"
+    },
+    {
+      "q": "na",
+      "round": 0,
+      "at": "2026-11-16T19:34:56.481Z",
+      "elapsedMs": 355,
+      "engineMs": 305.986,
+      "workerMs": 325,
+      "cacheMs": 6,
+      "transportMs": 314,
+      "routeMs": 8,
+      "cfRay": "a5b8ef9b2e117a02-EWR"
+    },
+    {
+      "q": "a",
+      "round": 0,
+      "at": "2026-11-16T19:35:22.400Z",
+      "elapsedMs": 459,
+      "engineMs": 356.773,
+      "workerMs": 414,
+      "cacheMs": 6,
+      "transportMs": 375,
+      "routeMs": 7,
+      "cfRay": "a5b8f03d3ae27a02-EWR"
+    },
+    {
+      "q": "fig",
+      "round": 1,
+      "at": "2026-11-16T19:35:38.011Z",
+      "elapsedMs": 658,
+      "engineMs": 562.522,
+      "workerMs": 581,
+      "cacheMs": 6,
+      "transportMs": 571,
+      "routeMs": 9,
+      "cfRay": "a5b8f09eb8987a02-EWR"
+    },
+    {
+      "q": "fig (",
+      "round": 1,
+      "at": "2026-11-16T19:35:48.784Z",
+      "elapsedMs": 55,
+      "engineMs": 3.221,
+      "workerMs": 24,
+      "cacheMs": 5,
+      "transportMs": 14,
+      "routeMs": 11,
+      "cfRay": "a5b8f0e21d0a7a02-EWR"
+    },
+    {
+      "q": "fig aka",
+      "round": 1,
+      "at": "2026-11-16T19:35:58.953Z",
+      "elapsedMs": 303,
+      "engineMs": 248.942,
+      "workerMs": 268,
+      "cacheMs": 4,
+      "transportMs": 258,
+      "routeMs": 12,
+      "cfRay": "a5b8f1219d537a02-EWR"
+    },
+    {
+      "q": "phil",
+      "round": 1,
+      "at": "2026-11-16T19:36:24.565Z",
+      "elapsedMs": 663,
+      "engineMs": 576.478,
+      "workerMs": 625,
+      "cacheMs": 10,
+      "transportMs": 592,
+      "routeMs": 6,
+      "cfRay": "a5b8f1c1bbb57a02-EWR"
+    },
+    {
+      "q": "zzstoatzz",
+      "round": 1,
+      "at": "2026-11-16T19:36:35.262Z",
+      "elapsedMs": 563,
+      "engineMs": 505.44,
+      "workerMs": 531,
+      "cacheMs": 5,
+      "transportMs": 518,
+      "routeMs": 12,
+      "cfRay": "a5b8f204888b7a02-EWR"
+    },
+    {
+      "q": "zzstoatzz.io",
+      "round": 1,
+      "at": "2026-11-16T19:36:45.940Z",
+      "elapsedMs": 150,
+      "engineMs": 96.216,
+      "workerMs": 122,
+      "cacheMs": 8,
+      "transportMs": 106,
+      "routeMs": 10,
+      "cfRay": "a5b8f2474f557a02-EWR"
+    },
+    {
+      "q": "nate",
+      "round": 1,
+      "at": "2026-11-16T19:37:11.463Z",
+      "elapsedMs": 557,
+      "engineMs": 498.398,
+      "workerMs": 520,
+      "cacheMs": 6,
+      "transportMs": 508,
+      "routeMs": 9,
+      "cfRay": "a5b8f2e6c9147a02-EWR"
+    },
+    {
+      "q": "alex",
+      "round": 1,
+      "at": "2026-11-16T19:37:22.049Z",
+      "elapsedMs": 60,
+      "engineMs": 9.19,
+      "workerMs": 27,
+      "cacheMs": 6,
+      "transportMs": 17,
+      "routeMs": 8,
+      "cfRay": "a5b8f328f82b7a02-EWR"
+    },
+    {
+      "q": "bob",
+      "round": 1,
+      "at": "2026-11-16T19:37:32.263Z",
+      "elapsedMs": 68,
+      "engineMs": 13.604,
+      "workerMs": 38,
+      "cacheMs": 10,
+      "transportMs": 23,
+      "routeMs": 8,
+      "cfRay": "a5b8f368cc457a02-EWR"
+    },
+    {
+      "q": "aoc",
+      "round": 1,
+      "at": "2026-11-16T19:37:57.721Z",
+      "elapsedMs": 67,
+      "engineMs": 9.772,
+      "workerMs": 31,
+      "cacheMs": 4,
+      "transportMs": 21,
+      "routeMs": 9,
+      "cfRay": "a5b8f407ebcf7a02-EWR"
+    },
+    {
+      "q": "car",
+      "round": 1,
+      "at": "2026-11-16T19:38:07.899Z",
+      "elapsedMs": 68,
+      "engineMs": 8.303,
+      "workerMs": 30,
+      "cacheMs": 5,
+      "transportMs": 17,
+      "routeMs": 9,
+      "cfRay": "a5b8f44788117a02-EWR"
+    },
+    {
+      "q": "Justin Fa",
+      "round": 1,
+      "at": "2026-11-16T19:38:18.088Z",
+      "elapsedMs": 59,
+      "engineMs": 9.374,
+      "workerMs": 29,
+      "cacheMs": 5,
+      "transportMs": 18,
+      "routeMs": 12,
+      "cfRay": "a5b8f4873a1a7a02-EWR"
+    },
+    {
+      "q": "Justin Fag",
+      "round": 1,
+      "at": "2026-11-16T19:38:43.713Z",
+      "elapsedMs": 214,
+      "engineMs": 161.333,
+      "workerMs": 182,
+      "cacheMs": 6,
+      "transportMs": 172,
+      "routeMs": 9,
+      "cfRay": "a5b8f527581f7a02-EWR"
+    },
+    {
+      "q": "paul frazee",
+      "round": 1,
+      "at": "2026-11-16T19:38:54.064Z",
+      "elapsedMs": 470,
+      "engineMs": 410.119,
+      "workerMs": 439,
+      "cacheMs": 6,
+      "transportMs": 426,
+      "routeMs": 29,
+      "cfRay": "a5b8f5680ee07a02-EWR"
+    },
+    {
+      "q": "jola.dev",
+      "round": 1,
+      "at": "2026-11-16T19:39:04.766Z",
+      "elapsedMs": 1664,
+      "engineMs": 1605.06,
+      "workerMs": 1632,
+      "cacheMs": 12,
+      "transportMs": 1616,
+      "routeMs": 9,
+      "cfRay": "a5b8f5aafabf7a02-EWR"
+    },
+    {
+      "q": "pfrazee.com",
+      "round": 1,
+      "at": "2026-11-16T19:39:31.827Z",
+      "elapsedMs": 86,
+      "engineMs": 7.975,
+      "workerMs": 56,
+      "cacheMs": 9,
+      "transportMs": 22,
+      "routeMs": 6,
+      "cfRay": "a5b8f654097b7a02-EWR"
+    },
+    {
+      "q": "André",
+      "round": 1,
+      "at": "2026-11-16T19:39:41.941Z",
+      "elapsedMs": 54,
+      "engineMs": 6.682,
+      "workerMs": 24,
+      "cacheMs": 5,
+      "transportMs": 15,
+      "routeMs": 8,
+      "cfRay": "a5b8f6934d4a7a02-EWR"
+    },
+    {
+      "q": "東京",
+      "round": 1,
+      "at": "2026-11-16T19:39:52.120Z",
+      "elapsedMs": 52,
+      "engineMs": 5.182,
+      "workerMs": 22,
+      "cacheMs": 5,
+      "transportMs": 14,
+      "routeMs": 8,
+      "cfRay": "a5b8f6d2e8247a02-EWR"
+    },
+    {
+      "q": "na",
+      "round": 1,
+      "at": "2026-11-16T19:40:17.496Z",
+      "elapsedMs": 91,
+      "engineMs": 8.253,
+      "workerMs": 58,
+      "cacheMs": 7,
+      "transportMs": 25,
+      "routeMs": 7,
+      "cfRay": "a5b8f77189787a02-EWR"
+    },
+    {
+      "q": "a",
+      "round": 1,
+      "at": "2026-11-16T19:40:27.621Z",
+      "elapsedMs": 58,
+      "engineMs": 5.834,
+      "workerMs": 25,
+      "cacheMs": 6,
+      "transportMs": 16,
+      "routeMs": 11,
+      "cfRay": "a5b8f7b0c8537a02-EWR"
+    }
+  ],
+  "windows": [
+    {
+      "end": "2026-11-16T19:29:15.000Z",
+      "user": 0.18333333333333332,
+      "system": 0.7,
+      "nice": 2.75,
+      "idle": 95,
+      "iowait": 0.15,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:29:30.000Z",
+      "user": 0.15,
+      "system": 0.5333333333333333,
+      "nice": 1.55,
+      "idle": 96.58333333333333,
+      "iowait": 0.15,
+      "steal": 0
+    },
+    {
+      "end": "2026-11-16T19:29:45.000Z",
+      "user": 0.16666666666666666,
+      "system": 0.5833333333333334,
+      "nice": 2.5,
+      "idle": 95.56666666666666,
+      "iowait": 0.11666666666666667,
+      "steal": 0.08333333333333333
+    },
+    {
+      "end": "2026-11-16T19:30:00.000Z",
+      "user": 0.18333333333333332,
+      "system": 0.4,
+      "nice": 1.7166666666666666,
+      "idle": 96.63333333333334,
+      "iowait": 0.1,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:30:15.000Z",
+      "user": 0.2833333333333333,
+      "system": 0.55,
+      "nice": 2.683333333333333,
+      "idle": 95.23333333333333,
+      "iowait": 0.18333333333333332,
+      "steal": 0.03333333333333333
+    },
+    {
+      "end": "2026-11-16T19:30:30.000Z",
+      "user": 0.21666666666666667,
+      "system": 0.6333333333333333,
+      "nice": 2,
+      "idle": 96.06666666666666,
+      "iowait": 0.15,
+      "steal": 0.03333333333333333
+    },
+    {
+      "end": "2026-11-16T19:30:45.000Z",
+      "user": 0.23333333333333334,
+      "system": 0.5,
+      "nice": 2.683333333333333,
+      "idle": 95.23333333333333,
+      "iowait": 0.16666666666666666,
+      "steal": 0.23333333333333334
+    },
+    {
+      "end": "2026-11-16T19:31:00.000Z",
+      "user": 0.6666666666666666,
+      "system": 0.5666666666666667,
+      "nice": 1.7,
+      "idle": 96.01666666666667,
+      "iowait": 0.11666666666666667,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:31:15.000Z",
+      "user": 0.16666666666666666,
+      "system": 0.6666666666666666,
+      "nice": 2.6333333333333333,
+      "idle": 95.01666666666667,
+      "iowait": 0.6666666666666666,
+      "steal": 0.03333333333333333
+    },
+    {
+      "end": "2026-11-16T19:31:30.000Z",
+      "user": 0.16666666666666666,
+      "system": 0.5666666666666667,
+      "nice": 1.65,
+      "idle": 96.41666666666667,
+      "iowait": 0.3,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:31:45.000Z",
+      "user": 0.23333333333333334,
+      "system": 0.5666666666666667,
+      "nice": 1.1,
+      "idle": 97.16666666666667,
+      "iowait": 0.16666666666666666,
+      "steal": 0.06666666666666667
+    },
+    {
+      "end": "2026-11-16T19:32:00.000Z",
+      "user": 0.26666666666666666,
+      "system": 0.48333333333333334,
+      "nice": 0.8833333333333333,
+      "idle": 97.38333333333334,
+      "iowait": 0.1,
+      "steal": 0
+    },
+    {
+      "end": "2026-11-16T19:32:15.000Z",
+      "user": 0.15,
+      "system": 0.4666666666666667,
+      "nice": 1.1666666666666667,
+      "idle": 97.33333333333333,
+      "iowait": 0.1,
+      "steal": 0
+    },
+    {
+      "end": "2026-11-16T19:32:30.000Z",
+      "user": 0.21666666666666667,
+      "system": 0.6333333333333333,
+      "nice": 1.8333333333333333,
+      "idle": 96.3,
+      "iowait": 0.16666666666666666,
+      "steal": 0.03333333333333333
+    },
+    {
+      "end": "2026-11-16T19:32:45.000Z",
+      "user": 0.23333333333333334,
+      "system": 0.55,
+      "nice": 0.9166666666666666,
+      "idle": 97.26666666666667,
+      "iowait": 0.15,
+      "steal": 0
+    },
+    {
+      "end": "2026-11-16T19:33:00.000Z",
+      "user": 0.21666666666666667,
+      "system": 0.4166666666666667,
+      "nice": 0.8833333333333333,
+      "idle": 97.41666666666667,
+      "iowait": 0.16666666666666666,
+      "steal": 0.05
+    },
+    {
+      "end": "2026-11-16T19:33:15.000Z",
+      "user": 0.38333333333333336,
+      "system": 0.5,
+      "nice": 1.2166666666666666,
+      "idle": 96.96666666666667,
+      "iowait": 0.18333333333333332,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:33:30.000Z",
+      "user": 0.26666666666666666,
+      "system": 0.85,
+      "nice": 1.0333333333333334,
+      "idle": 96.83333333333333,
+      "iowait": 0.15,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:33:45.000Z",
+      "user": 0.21666666666666667,
+      "system": 0.6,
+      "nice": 1.15,
+      "idle": 97.13333333333334,
+      "iowait": 0.15,
+      "steal": 0
+    },
+    {
+      "end": "2026-11-16T19:34:00.000Z",
+      "user": 0.18333333333333332,
+      "system": 0.36666666666666664,
+      "nice": 1.1333333333333333,
+      "idle": 97.33333333333333,
+      "iowait": 0.08333333333333333,
+      "steal": 0
+    },
+    {
+      "end": "2026-11-16T19:34:15.000Z",
+      "user": 0.23333333333333334,
+      "system": 0.6166666666666667,
+      "nice": 1.1833333333333333,
+      "idle": 96.86666666666666,
+      "iowait": 0.16666666666666666,
+      "steal": 0.06666666666666667
+    },
+    {
+      "end": "2026-11-16T19:34:30.000Z",
+      "user": 0.26666666666666666,
+      "system": 0.7,
+      "nice": 1.1166666666666667,
+      "idle": 97.1,
+      "iowait": 0.13333333333333333,
+      "steal": 0
+    },
+    {
+      "end": "2026-11-16T19:34:45.000Z",
+      "user": 0.35,
+      "system": 0.65,
+      "nice": 1.4833333333333334,
+      "idle": 96.33333333333333,
+      "iowait": 0.16666666666666666,
+      "steal": 0.08333333333333333
+    },
+    {
+      "end": "2026-11-16T19:35:00.000Z",
+      "user": 0.26666666666666666,
+      "system": 2.066666666666667,
+      "nice": 3.2,
+      "idle": 75.41666666666667,
+      "iowait": 17.85,
+      "steal": 0
+    },
+    {
+      "end": "2026-11-16T19:35:15.000Z",
+      "user": 0.3,
+      "system": 2.183333333333333,
+      "nice": 3.4833333333333334,
+      "idle": 57.28333333333333,
+      "iowait": 35.2,
+      "steal": 0.06666666666666667
+    },
+    {
+      "end": "2026-11-16T19:35:30.000Z",
+      "user": 0.26666666666666666,
+      "system": 1.9833333333333334,
+      "nice": 3.4166666666666665,
+      "idle": 55.06666666666667,
+      "iowait": 37.766666666666666,
+      "steal": 0.05
+    },
+    {
+      "end": "2026-11-16T19:35:45.000Z",
+      "user": 0.26666666666666666,
+      "system": 1.7333333333333334,
+      "nice": 3.2333333333333334,
+      "idle": 52.083333333333336,
+      "iowait": 41.28333333333333,
+      "steal": 0.05
+    },
+    {
+      "end": "2026-11-16T19:36:00.000Z",
+      "user": 0.4166666666666667,
+      "system": 2.1,
+      "nice": 3.533333333333333,
+      "idle": 56.05,
+      "iowait": 36.25,
+      "steal": 0.05
+    },
+    {
+      "end": "2026-11-16T19:36:15.000Z",
+      "user": 0.31666666666666665,
+      "system": 1.8666666666666667,
+      "nice": 3.4166666666666665,
+      "idle": 46.06666666666667,
+      "iowait": 46.86666666666667,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:36:30.000Z",
+      "user": 0.3333333333333333,
+      "system": 1.8833333333333333,
+      "nice": 3.4,
+      "idle": 55.8,
+      "iowait": 36.88333333333333,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:36:45.000Z",
+      "user": 0.3333333333333333,
+      "system": 2,
+      "nice": 3.183333333333333,
+      "idle": 47.36666666666667,
+      "iowait": 45.483333333333334,
+      "steal": 0.05
+    },
+    {
+      "end": "2026-11-16T19:37:00.000Z",
+      "user": 0.2,
+      "system": 1.65,
+      "nice": 3.466666666666667,
+      "idle": 57.583333333333336,
+      "iowait": 35.61666666666667,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:37:15.000Z",
+      "user": 0.43333333333333335,
+      "system": 1.85,
+      "nice": 3.566666666666667,
+      "idle": 54.016666666666666,
+      "iowait": 38.61666666666667,
+      "steal": 0.03333333333333333
+    },
+    {
+      "end": "2026-11-16T19:37:30.000Z",
+      "user": 0.2,
+      "system": 1.4,
+      "nice": 1.8166666666666667,
+      "idle": 75.33333333333333,
+      "iowait": 19.8,
+      "steal": 0.03333333333333333
+    },
+    {
+      "end": "2026-11-16T19:37:45.000Z",
+      "user": 0.23333333333333334,
+      "system": 0.7,
+      "nice": 1.1833333333333333,
+      "idle": 96.28333333333333,
+      "iowait": 0.5333333333333333,
+      "steal": 0
+    },
+    {
+      "end": "2026-11-16T19:38:00.000Z",
+      "user": 0.18333333333333332,
+      "system": 0.45,
+      "nice": 0.9166666666666666,
+      "idle": 97.03333333333333,
+      "iowait": 0.31666666666666665,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:38:15.000Z",
+      "user": 0.4166666666666667,
+      "system": 1.4666666666666666,
+      "nice": 23.65,
+      "idle": 67.21666666666667,
+      "iowait": 6.033333333333333,
+      "steal": 0.13333333333333333
+    },
+    {
+      "end": "2026-11-16T19:38:30.000Z",
+      "user": 0.23333333333333334,
+      "system": 1,
+      "nice": 25.433333333333334,
+      "idle": 71.95,
+      "iowait": 0.21666666666666667,
+      "steal": 0.1
+    },
+    {
+      "end": "2026-11-16T19:38:45.000Z",
+      "user": 0.23333333333333334,
+      "system": 1.2833333333333334,
+      "nice": 24.516666666666666,
+      "idle": 69.68333333333334,
+      "iowait": 3.0833333333333335,
+      "steal": 0.1
+    },
+    {
+      "end": "2026-11-16T19:39:00.000Z",
+      "user": 0.18333333333333332,
+      "system": 2.316666666666667,
+      "nice": 10.116666666666667,
+      "idle": 46.8,
+      "iowait": 39.03333333333333,
+      "steal": 0.08333333333333333
+    },
+    {
+      "end": "2026-11-16T19:39:15.000Z",
+      "user": 0.25,
+      "system": 1.7333333333333334,
+      "nice": 1.6333333333333333,
+      "idle": 64.26666666666667,
+      "iowait": 30.683333333333334,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:39:30.000Z",
+      "user": 0.25,
+      "system": 0.6333333333333333,
+      "nice": 1.15,
+      "idle": 96.78333333333333,
+      "iowait": 0.23333333333333334,
+      "steal": 0.06666666666666667
+    },
+    {
+      "end": "2026-11-16T19:39:45.000Z",
+      "user": 0.23333333333333334,
+      "system": 0.5333333333333333,
+      "nice": 1.25,
+      "idle": 96.66666666666667,
+      "iowait": 0.23333333333333334,
+      "steal": 0.03333333333333333
+    },
+    {
+      "end": "2026-11-16T19:40:00.000Z",
+      "user": 0.2,
+      "system": 0.45,
+      "nice": 1.0333333333333334,
+      "idle": 97.2,
+      "iowait": 0.18333333333333332,
+      "steal": 0.03333333333333333
+    },
+    {
+      "end": "2026-11-16T19:40:15.000Z",
+      "user": 0.25,
+      "system": 0.5833333333333334,
+      "nice": 1.3666666666666667,
+      "idle": 96.53333333333333,
+      "iowait": 0.16666666666666666,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:40:30.000Z",
+      "user": 0.08333333333333333,
+      "system": 0.55,
+      "nice": 0.9833333333333333,
+      "idle": 97.36666666666666,
+      "iowait": 0.11666666666666667,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:40:45.000Z",
+      "user": 0.18333333333333332,
+      "system": 0.5666666666666667,
+      "nice": 1.3833333333333333,
+      "idle": 96.71666666666667,
+      "iowait": 0.2,
+      "steal": 0.05
+    },
+    {
+      "end": "2026-11-16T19:41:00.000Z",
+      "user": 0.15,
+      "system": 0.45,
+      "nice": 1.0166666666666666,
+      "idle": 97.11666666666666,
+      "iowait": 0.25,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:41:15.000Z",
+      "user": 0.35,
+      "system": 0.6833333333333333,
+      "nice": 1.5666666666666667,
+      "idle": 96,
+      "iowait": 0.31666666666666665,
+      "steal": 0.03333333333333333
+    },
+    {
+      "end": "2026-11-16T19:41:30.000Z",
+      "user": 0.31666666666666665,
+      "system": 0.7666666666666667,
+      "nice": 1.2666666666666666,
+      "idle": 96.38333333333334,
+      "iowait": 0.2,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:41:45.000Z",
+      "user": 0.26666666666666666,
+      "system": 0.5333333333333333,
+      "nice": 1.65,
+      "idle": 96.5,
+      "iowait": 0.2,
+      "steal": 0.016666666666666666
+    },
+    {
+      "end": "2026-11-16T19:42:00.000Z",
+      "user": 0.25,
+      "system": 0.48333333333333334,
+      "nice": 1.1,
+      "idle": 97,
+      "iowait": 0.18333333333333332,
+      "steal": 0.016666666666666666
+    }
+  ],
+  "probes": [
+    {
+      "q": "jola.dev",
+      "serverTiming": "server-timing: search;dur=3.789",
+      "hydrationMs": 0.533,
+      "moderationMs": 0.022,
+      "visited": 2,
+      "segments": 8,
+      "handles": [
+        "jola.dev",
+        "jola.dev.web.brid.gy"
+      ]
+    },
+    {
+      "q": "nate",
+      "serverTiming": "server-timing: search;dur=14.892",
+      "hydrationMs": 1.459,
+      "moderationMs": 0.194,
+      "visited": 10,
+      "segments": 7,
+      "handles": [
+        "mnateshyamalan.bsky.social",
+        "natetice.bsky.social",
+        "nateatkins.bsky.social",
+        "nategrimes.bsky.social",
+        "natedhernandez.bsky.social",
+        "himmapaan.bsky.social",
+        "nateinnovates.bsky.social",
+        "nateo.bsky.social",
+        "beynate.bsky.social",
+        "natestetson.bsky.social"
+      ]
+    },
+    {
+      "q": "phil",
+      "serverTiming": "server-timing: search;dur=12.459",
+      "hydrationMs": 0.61,
+      "moderationMs": 0.032,
+      "visited": 13,
+      "segments": 8,
+      "handles": [
+        "phillewis.bsky.social",
+        "jaketapper.bsky.social",
+        "pbump.com",
+        "philplait.bsky.social",
+        "pgourevitch.bsky.social",
+        "philadelphiaeagles.bsky.social",
+        "philinvestigates.com",
+        "emophilips.bsky.social",
+        "thephilfoglio.bsky.social",
+        "govmurphy.bsky.social"
+      ]
+    },
+    {
+      "q": "jola.dev",
+      "serverTiming": "server-timing: search;dur=1.074",
+      "hydrationMs": 0.127,
+      "moderationMs": 0.015,
+      "visited": 2,
+      "segments": 7,
+      "handles": [
+        "jola.dev",
+        "jola.dev.web.brid.gy"
+      ]
+    },
+    {
+      "q": "aka",
+      "serverTiming": "server-timing: search;dur=7.138",
+      "hydrationMs": 0.676,
+      "moderationMs": 0.027,
+      "visited": 10,
+      "segments": 8,
+      "handles": [
+        "edsbs.bsky.social",
+        "akairiot.com",
+        "protip.altgov.info",
+        "akmkmk3.bsky.social",
+        "akakura1341.bsky.social",
+        "akanemnon.bsky.social",
+        "yournewdadxxx.bsky.social",
+        "akatan.bsky.social",
+        "artologica.net",
+        "fisherdanar.bsky.social"
+      ]
+    },
+    {
+      "q": "quill",
+      "serverTiming": "server-timing: search;dur=10.994",
+      "hydrationMs": 1.487,
+      "moderationMs": 0.054,
+      "visited": 14,
+      "segments": 7,
+      "handles": [
+        "quillmatiq.com",
+        "voice-quills.com",
+        "quillawrence.bsky.social",
+        "quillauthor.bsky.social",
+        "marcquill.bsky.social",
+        "ciaraquill.bsky.social",
+        "brakkaquilltusk.bsky.social",
+        "quillkukla.bsky.social",
+        "sonnetsmith.bsky.social",
+        "authorquillcelska.bsky.social"
+      ]
+    }
+  ],
+  "thread": {
+    "root": "at://did:plc:eob75vcjtmbaef2tn4evc4sl/app.bsky.feed.post/3n2gtmfdcek2q",
+    "count": 23,
+    "posts": [
+      {
+        "uri": "at://did:plc:eob75vcjtmbaef2tn4evc4sl/app.bsky.feed.post/3n2gtmfdcek2q",
+        "author": "aka.dad",
+        "replies": 8,
+        "returnedReplies": 8
+      },
+      {
+        "uri": "at://did:plc:xgvzy7ni6ig6ievcbls5jaxe/app.bsky.feed.post/3n2gub3uosy2f",
+        "author": "quillmatiq.com",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:stznz7qsokto2345qtdzogjb/app.bsky.feed.post/3n2gvbndhqc23",
+        "author": "psingletary.com",
+        "replies": 0,
+        "returnedReplies": 0
+      },
+      {
+        "uri": "at://did:plc:xbtmt2zjwlrfegqvch7fboei/app.bsky.feed.post/3n2gtvnuyc225",
+        "author": "zzstoatzz.io",
+        "replies": 2,
+        "returnedReplies": 2
+      },
+      {
+        "uri": "at://did:plc:eob75vcjtmbaef2tn4evc4sl/app.bsky.feed.post/3n2gtxy7oj22l",
+        "author": "aka.dad",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:xbtmt2zjwlrfegqvch7fboei/app.bsky.feed.post/3n2gtz6gwyc25",
+        "author": "zzstoatzz.io",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:eob75vcjtmbaef2tn4evc4sl/app.bsky.feed.post/3n2gu3xjrkc2q",
+        "author": "aka.dad",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:xbtmt2zjwlrfegqvch7fboei/app.bsky.feed.post/3n2gubn6hfs25",
+        "author": "zzstoatzz.io",
+        "replies": 0,
+        "returnedReplies": 0
+      },
+      {
+        "uri": "at://did:plc:bfp7n6e2rpr3yo7gpqdr2tfw/app.bsky.feed.post/3n2gvkj6wn22v",
+        "author": "orpach.neocities.org",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:xbtmt2zjwlrfegqvch7fboei/app.bsky.feed.post/3n2gvtpuwfk2m",
+        "author": "zzstoatzz.io",
+        "replies": 0,
+        "returnedReplies": 0
+      },
+      {
+        "uri": "at://did:plc:stznz7qsokto2345qtdzogjb/app.bsky.feed.post/3n2gvb3uync23",
+        "author": "psingletary.com",
+        "replies": 0,
+        "returnedReplies": 0
+      },
+      {
+        "uri": "at://did:plc:lcytlkvzs3wslcgbk7i3ygak/app.bsky.feed.post/3n2gtompl2c2y",
+        "author": "posts.ceo",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:eob75vcjtmbaef2tn4evc4sl/app.bsky.feed.post/3n2gtt36ews2l",
+        "author": "aka.dad",
+        "replies": 0,
+        "returnedReplies": 0
+      },
+      {
+        "uri": "at://did:plc:gfrmhdmjvxn2sjedzboeudef/app.bsky.feed.post/3n2h53d3vcs2y",
+        "author": "cameron.stream",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:eob75vcjtmbaef2tn4evc4sl/app.bsky.feed.post/3n2hcxh6hss2y",
+        "author": "aka.dad",
+        "replies": 0,
+        "returnedReplies": 0
+      },
+      {
+        "uri": "at://did:plc:6ayddqghxhciedbaofoxkcbs/app.bsky.feed.post/3n2gtr5r56s2s",
+        "author": "tynanpurdy.com",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:eob75vcjtmbaef2tn4evc4sl/app.bsky.feed.post/3n2gtso3qhc2l",
+        "author": "aka.dad",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:6ayddqghxhciedbaofoxkcbs/app.bsky.feed.post/3n2gttub5ec2s",
+        "author": "tynanpurdy.com",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:eob75vcjtmbaef2tn4evc4sl/app.bsky.feed.post/3n2gtywkun22l",
+        "author": "aka.dad",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:6ayddqghxhciedbaofoxkcbs/app.bsky.feed.post/3n2gu74ogs22s",
+        "author": "tynanpurdy.com",
+        "replies": 0,
+        "returnedReplies": 0
+      },
+      {
+        "uri": "at://did:plc:3zikshuogf27oc7phk7z4pa4/app.bsky.feed.post/3n2gx3qbeks2e",
+        "author": "akod.bsky.social",
+        "replies": 1,
+        "returnedReplies": 1
+      },
+      {
+        "uri": "at://did:plc:eob75vcjtmbaef2tn4evc4sl/app.bsky.feed.post/3n2gxco24bc2y",
+        "author": "aka.dad",
+        "replies": 0,
+        "returnedReplies": 0
+      },
+      {
+        "uri": "at://did:plc:3lniyejr2edlw5tzndmogckf/app.bsky.feed.post/3n2hd4lpgdc2r",
+        "author": "bof.fish",
+        "replies": 0,
+        "returnedReplies": 0
+      }
+    ]
+  }
+}
