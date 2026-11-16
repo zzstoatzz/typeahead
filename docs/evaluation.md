@@ -162,3 +162,7 @@ Agreement is DID intersection / union; two empty lists have no score. First-resu
 agreement uses nonempty pairs. Profile-field percentages count actor appearances,
 including repeats; avatar URLs are not fetched. These endpoints do not establish
 comparable corpus totals, traffic volume, moderation coverage or identity freshness.
+
+The [November 16 latency and Seek investigation](investigations/2026-11-16-seek.md)
+decomposes the initial saved run and compares the serving and index designs.
+Its additional diagnostic reads are separate from the scored eval dataset.

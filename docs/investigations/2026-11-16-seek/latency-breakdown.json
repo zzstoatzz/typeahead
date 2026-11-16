@@ -1,0 +1,672 @@
+{
+  "source": "data/eval/runs/2026-11-16T07-25-35.153Z.json",
+  "sha256": "ccef6d5a37fbf6155f5e2991c5b809fff6c39fd319d32951c7aaa8f755762abe",
+  "method": "Arithmetic means and nearest-rank percentiles. Outside worker is per-observation elapsed minus worker duration. Server-Timing values are rounded milliseconds; intervals are nested, not additive.",
+  "typeahead": {
+    "n": 40,
+    "mean": 142.8346104999981,
+    "p50": 123.47333299997263,
+    "p90": 186.11149999999907,
+    "max": 525.8248339999991
+  },
+  "bluesky": {
+    "n": 40,
+    "mean": 96.22985092499951,
+    "p50": 87.29670799999803,
+    "p90": 119.66754200000287,
+    "max": 205.6521659999853
+  },
+  "components": {
+    "cache": {
+      "n": 40,
+      "mean": 6.275,
+      "p50": 6,
+      "p90": 9,
+      "max": 15
+    },
+    "origin_headers": {
+      "n": 40,
+      "mean": 93.225,
+      "p50": 79,
+      "p90": 104,
+      "max": 485
+    },
+    "origin": {
+      "n": 40,
+      "mean": 93.3,
+      "p50": 79,
+      "p90": 104,
+      "max": 485
+    },
+    "search": {
+      "n": 40,
+      "mean": 99.575,
+      "p50": 84,
+      "p90": 111,
+      "max": 491
+    },
+    "worker": {
+      "n": 40,
+      "mean": 99.575,
+      "p50": 84,
+      "p90": 111,
+      "max": 491
+    },
+    "rate_limit": {
+      "n": 40,
+      "mean": 0,
+      "p50": 0,
+      "p90": 0,
+      "max": 0
+    }
+  },
+  "outsideWorker": {
+    "n": 40,
+    "mean": 43.259610499998104,
+    "p50": 37.5089169999992,
+    "p90": 59.67275000002701,
+    "max": 143.564208
+  },
+  "rows": [
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/0/typeahead",
+      "q": "fig",
+      "round": 0,
+      "ms": 236.564208,
+      "timing": {
+        "cache": 15,
+        "origin_headers": 78,
+        "origin": 78,
+        "search": 93,
+        "worker": 93,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 143.564208
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/1/typeahead",
+      "q": "fig (",
+      "round": 0,
+      "ms": 282.81174999999894,
+      "timing": {
+        "cache": 7,
+        "origin_headers": 247,
+        "origin": 247,
+        "search": 254,
+        "worker": 254,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 28.811749999998938
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/2/typeahead",
+      "q": "fig aka",
+      "round": 0,
+      "ms": 130.28949999999895,
+      "timing": {
+        "cache": 9,
+        "origin_headers": 79,
+        "origin": 79,
+        "search": 88,
+        "worker": 88,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 42.28949999999895
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/3/typeahead",
+      "q": "phil",
+      "round": 0,
+      "ms": 167.99891700000444,
+      "timing": {
+        "cache": 5,
+        "origin_headers": 115,
+        "origin": 116,
+        "search": 121,
+        "worker": 121,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 46.99891700000444
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/4/typeahead",
+      "q": "zzstoatzz",
+      "round": 0,
+      "ms": 110.60062499999913,
+      "timing": {
+        "cache": 7,
+        "origin_headers": 60,
+        "origin": 60,
+        "search": 67,
+        "worker": 67,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 43.60062499999913
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/5/typeahead",
+      "q": "zzstoatzz.io",
+      "round": 0,
+      "ms": 122.57437500000378,
+      "timing": {
+        "cache": 3,
+        "origin_headers": 80,
+        "origin": 80,
+        "search": 83,
+        "worker": 83,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 39.57437500000378
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/6/typeahead",
+      "q": "nate",
+      "round": 0,
+      "ms": 112.5089169999992,
+      "timing": {
+        "cache": 3,
+        "origin_headers": 72,
+        "origin": 72,
+        "search": 75,
+        "worker": 75,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 37.5089169999992
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/7/typeahead",
+      "q": "alex",
+      "round": 0,
+      "ms": 94.71954200000619,
+      "timing": {
+        "cache": 7,
+        "origin_headers": 55,
+        "origin": 56,
+        "search": 63,
+        "worker": 63,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 31.719542000006186
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/8/typeahead",
+      "q": "bob",
+      "round": 0,
+      "ms": 110.48308400000678,
+      "timing": {
+        "cache": 6,
+        "origin_headers": 74,
+        "origin": 74,
+        "search": 80,
+        "worker": 80,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 30.483084000006784
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/9/typeahead",
+      "q": "aoc",
+      "round": 0,
+      "ms": 525.8248339999991,
+      "timing": {
+        "cache": 6,
+        "origin_headers": 485,
+        "origin": 485,
+        "search": 491,
+        "worker": 491,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 34.8248339999991
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/10/typeahead",
+      "q": "car",
+      "round": 0,
+      "ms": 125.75141700000677,
+      "timing": {
+        "cache": 9,
+        "origin_headers": 79,
+        "origin": 80,
+        "search": 89,
+        "worker": 89,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 36.75141700000677
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/11/typeahead",
+      "q": "Justin Fa",
+      "round": 0,
+      "ms": 113.40120800001023,
+      "timing": {
+        "cache": 6,
+        "origin_headers": 67,
+        "origin": 67,
+        "search": 73,
+        "worker": 73,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 40.40120800001023
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/12/typeahead",
+      "q": "Justin Fag",
+      "round": 0,
+      "ms": 150.29004200000782,
+      "timing": {
+        "cache": 6,
+        "origin_headers": 79,
+        "origin": 79,
+        "search": 85,
+        "worker": 85,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 65.29004200000782
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/13/typeahead",
+      "q": "paul frazee",
+      "round": 0,
+      "ms": 93.60212500000489,
+      "timing": {
+        "cache": 8,
+        "origin_headers": 58,
+        "origin": 58,
+        "search": 66,
+        "worker": 66,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 27.60212500000489
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/14/typeahead",
+      "q": "jola.dev",
+      "round": 0,
+      "ms": 133.13416699998197,
+      "timing": {
+        "cache": 10,
+        "origin_headers": 98,
+        "origin": 98,
+        "search": 108,
+        "worker": 108,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 25.13416699998197
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/15/typeahead",
+      "q": "pfrazee.com",
+      "round": 0,
+      "ms": 128.8786250000121,
+      "timing": {
+        "cache": 6,
+        "origin_headers": 82,
+        "origin": 82,
+        "search": 88,
+        "worker": 88,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 40.87862500001211
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/16/typeahead",
+      "q": "André",
+      "round": 0,
+      "ms": 120.79274999999325,
+      "timing": {
+        "cache": 3,
+        "origin_headers": 86,
+        "origin": 86,
+        "search": 89,
+        "worker": 89,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 31.792749999993248
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/17/typeahead",
+      "q": "東京",
+      "round": 0,
+      "ms": 106.45658399999957,
+      "timing": {
+        "cache": 2,
+        "origin_headers": 74,
+        "origin": 74,
+        "search": 76,
+        "worker": 76,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 30.456583999999566
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/18/typeahead",
+      "q": "na",
+      "round": 0,
+      "ms": 125.41158400001586,
+      "timing": {
+        "cache": 5,
+        "origin_headers": 79,
+        "origin": 79,
+        "search": 84,
+        "worker": 84,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 41.411584000015864
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/0/19/typeahead",
+      "q": "a",
+      "round": 0,
+      "ms": 128.35862499999348,
+      "timing": {
+        "cache": 5,
+        "origin_headers": 83,
+        "origin": 83,
+        "search": 88,
+        "worker": 88,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 40.35862499999348
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/0/typeahead",
+      "q": "fig",
+      "round": 1,
+      "ms": 109.05183299997589,
+      "timing": {
+        "cache": 10,
+        "origin_headers": 58,
+        "origin": 58,
+        "search": 68,
+        "worker": 68,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 41.051832999975886
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/1/typeahead",
+      "q": "fig (",
+      "round": 1,
+      "ms": 75.67916699999478,
+      "timing": {
+        "cache": 6,
+        "origin_headers": 41,
+        "origin": 41,
+        "search": 47,
+        "worker": 47,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 28.679166999994777
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/2/typeahead",
+      "q": "fig aka",
+      "round": 1,
+      "ms": 78.34870800000499,
+      "timing": {
+        "cache": 5,
+        "origin_headers": 43,
+        "origin": 43,
+        "search": 48,
+        "worker": 48,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 30.34870800000499
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/3/typeahead",
+      "q": "phil",
+      "round": 1,
+      "ms": 109.57354199999827,
+      "timing": {
+        "cache": 5,
+        "origin_headers": 72,
+        "origin": 72,
+        "search": 77,
+        "worker": 77,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 32.57354199999827
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/4/typeahead",
+      "q": "zzstoatzz",
+      "round": 1,
+      "ms": 153.57287500001257,
+      "timing": {
+        "cache": 6,
+        "origin_headers": 88,
+        "origin": 88,
+        "search": 94,
+        "worker": 94,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 59.57287500001257
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/5/typeahead",
+      "q": "zzstoatzz.io",
+      "round": 1,
+      "ms": 82.89725000000908,
+      "timing": {
+        "cache": 4,
+        "origin_headers": 43,
+        "origin": 43,
+        "search": 47,
+        "worker": 47,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 35.89725000000908
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/6/typeahead",
+      "q": "nate",
+      "round": 1,
+      "ms": 109.17779099999461,
+      "timing": {
+        "cache": 4,
+        "origin_headers": 60,
+        "origin": 60,
+        "search": 64,
+        "worker": 64,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 45.17779099999461
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/7/typeahead",
+      "q": "alex",
+      "round": 1,
+      "ms": 125.96858299995074,
+      "timing": {
+        "cache": 6,
+        "origin_headers": 85,
+        "origin": 85,
+        "search": 91,
+        "worker": 91,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 34.96858299995074
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/8/typeahead",
+      "q": "bob",
+      "round": 1,
+      "ms": 127.51449999999022,
+      "timing": {
+        "cache": 5,
+        "origin_headers": 81,
+        "origin": 81,
+        "search": 86,
+        "worker": 86,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 41.51449999999022
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/9/typeahead",
+      "q": "aoc",
+      "round": 1,
+      "ms": 139.14675000001444,
+      "timing": {
+        "cache": 4,
+        "origin_headers": 84,
+        "origin": 84,
+        "search": 88,
+        "worker": 88,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 51.146750000014435
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/10/typeahead",
+      "q": "car",
+      "round": 1,
+      "ms": 139.04349999997066,
+      "timing": {
+        "cache": 5,
+        "origin_headers": 62,
+        "origin": 62,
+        "search": 67,
+        "worker": 67,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 72.04349999997066
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/11/typeahead",
+      "q": "Justin Fa",
+      "round": 1,
+      "ms": 136.7559589999728,
+      "timing": {
+        "cache": 7,
+        "origin_headers": 104,
+        "origin": 104,
+        "search": 111,
+        "worker": 111,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 25.75595899997279
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/12/typeahead",
+      "q": "Justin Fag",
+      "round": 1,
+      "ms": 159.672750000027,
+      "timing": {
+        "cache": 8,
+        "origin_headers": 92,
+        "origin": 92,
+        "search": 100,
+        "worker": 100,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 59.67275000002701
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/13/typeahead",
+      "q": "paul frazee",
+      "round": 1,
+      "ms": 123.47333299997263,
+      "timing": {
+        "cache": 5,
+        "origin_headers": 88,
+        "origin": 88,
+        "search": 93,
+        "worker": 93,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 30.473332999972627
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/14/typeahead",
+      "q": "jola.dev",
+      "round": 1,
+      "ms": 186.11149999999907,
+      "timing": {
+        "cache": 11,
+        "origin_headers": 68,
+        "origin": 68,
+        "search": 79,
+        "worker": 79,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 107.11149999999907
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/15/typeahead",
+      "q": "pfrazee.com",
+      "round": 1,
+      "ms": 119.49133399996208,
+      "timing": {
+        "cache": 8,
+        "origin_headers": 80,
+        "origin": 80,
+        "search": 88,
+        "worker": 88,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 31.49133399996208
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/16/typeahead",
+      "q": "André",
+      "round": 1,
+      "ms": 94.07037500001024,
+      "timing": {
+        "cache": 4,
+        "origin_headers": 47,
+        "origin": 47,
+        "search": 51,
+        "worker": 51,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 43.070375000010245
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/17/typeahead",
+      "q": "東京",
+      "round": 1,
+      "ms": 78.30283299996518,
+      "timing": {
+        "cache": 7,
+        "origin_headers": 42,
+        "origin": 42,
+        "search": 49,
+        "worker": 49,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 29.302832999965176
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/18/typeahead",
+      "q": "na",
+      "round": 1,
+      "ms": 341.1050000000396,
+      "timing": {
+        "cache": 7,
+        "origin_headers": 296,
+        "origin": 296,
+        "search": 303,
+        "worker": 303,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 38.10500000003958
+    },
+    {
+      "id": "2026-11-16T07:25:35.153Z/1/19/typeahead",
+      "q": "a",
+      "round": 1,
+      "ms": 103.97395800001686,
+      "timing": {
+        "cache": 6,
+        "origin_headers": 65,
+        "origin": 65,
+        "search": 71,
+        "worker": 71,
+        "rate_limit": 0
+      },
+      "outsideWorkerMs": 32.973958000016864
+    }
+  ]
+}
