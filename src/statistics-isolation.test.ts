@@ -14,8 +14,10 @@ test("serving statistics have no scanner, reporter, queue or filesystem enumerat
   expect(owner).not.toContain("countRange");
   expect(owner).not.toContain("countState");
   expect(owner).not.toContain("maintain.disk(");
+  expect(owner).not.toContain(".diskUsage(");
   const reads = source("services/tantivy/src/engine/read.rs");
   const corpus = reads.slice(reads.indexOf("pub fn corpus("), reads.indexOf("#[cfg(test)]"));
   for (const prohibited of [".search(", "Count", "segment_readers", "initialize_statistics"]) expect(corpus).not.toContain(prohibited);
   expect(source("services/tantivy/src/server.rs")).not.toContain('"/admin/corpus"');
+  expect(source("services/tantivy/src/server.rs")).not.toContain("initialize_statistics_offline");
 });
