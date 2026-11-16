@@ -271,3 +271,16 @@ Median elapsed times were 68 ms, 116 ms and 145 ms, respectively; Typeahead's
 557 ms p90 was worse than Bluesky's 156 ms and Tern's 234 ms. The faster median
 does not resolve the tail. The temporary operator request is removed and the
 15-minute trigger restored after public verification.
+
+Final rollout from `60f3542` deployed public Worker
+`4700bc4f-cc8b-4d07-8232-2b75f25155ae` and collector
+`fac59077-3ffa-497b-82c4-f7d716a53a47`. Cloudflare readback confirmed
+`2,17,32,47 * * * *`, no operator-request variable, and disabled public and
+preview subdomains. The trigger checks eligibility; normal collection is one
+40-request run per provider per day, within the 48-attempt rolling budget.
+The collector logged `eval_published` and `eval_visible` for all 120 observations.
+All 245 Worker tests, 77 Python tests and four deployment dry runs passed;
+public API and image smoke checks passed after deployment. Live desktop and
+390-pixel phone views showed all three providers and metadata coverage.
+README review confirmed its evaluation overview matches the final behavior;
+no additional README change was needed.
