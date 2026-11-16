@@ -88,7 +88,7 @@ export async function readRoute(bucket: RouteBucket, cache: boolean, source?: Ro
   try {
     let selected;
     if (cache && source) {
-      sharedRead = Promise.resolve().then(() => trace(ctx?.tracing, "route.authority.call", () => source.current())).then(({ route, validatedAt: claimed }) => {
+      sharedRead = Promise.resolve().then(() => trace(ctx?.tracing, "route.authority.call", async () => source.current())).then(({ route, validatedAt: claimed }) => {
         const validatedAt = Math.min(claimed, Date.now());
         if (Date.now() - validatedAt >= 1000) throw new Error("Shared route expired");
         return { route: parseRoute({ version: 1, current: route }), validatedAt };

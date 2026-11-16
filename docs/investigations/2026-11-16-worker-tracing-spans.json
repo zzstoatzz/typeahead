@@ -1,0 +1,742 @@
+{
+  "capturedAt": "2026-11-16T09:39:00Z",
+  "source": "Logfire waow/typeahead records",
+  "note": "Selected spans from three finite diagnostic requests. Separate native traces joined by typeahead.request_id; no cross-host one-way timing claim.",
+  "spans": [
+    {
+      "service_name": "typeahead",
+      "span_name": "worker.handle",
+      "trace_id": "4491717be41684ac3c9e18ee6ddb8c50",
+      "span_id": "28ecec613eb45dc3",
+      "parent_span_id": "260072f46efa91b5",
+      "start_timestamp": "2026-11-16T09:34:59.896Z",
+      "end_timestamp": "2026-11-16T09:34:59.983Z",
+      "ms": 86.99999899999999,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.handle",
+      "trace_id": "4491717be41684ac3c9e18ee6ddb8c50",
+      "span_id": "2a3db1f0bb1b18f4",
+      "parent_span_id": "28ecec613eb45dc3",
+      "start_timestamp": "2026-11-16T09:34:59.896Z",
+      "end_timestamp": "2026-11-16T09:34:59.983Z",
+      "ms": 86.999996,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902",
+        "typeahead.request_id": "a5b580c82c181d01",
+        "typeahead.tracing_available": true
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "GET",
+      "trace_id": "4491717be41684ac3c9e18ee6ddb8c50",
+      "span_id": "260072f46efa91b5",
+      "parent_span_id": null,
+      "start_timestamp": "2026-11-16T09:34:59.896Z",
+      "end_timestamp": "2026-11-16T09:35:00.016Z",
+      "ms": 120,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.ray_id": "a5b580c82c181d01",
+        "cloudflare.response.time_to_first_byte_ms": 87,
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902",
+        "cpu_time_ms": 7,
+        "server.address": "typeahead.waow.tech",
+        "wall_time_ms": 135
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "fetch",
+      "trace_id": "4491717be41684ac3c9e18ee6ddb8c50",
+      "span_id": "e66f6437d741a261",
+      "parent_span_id": "bedf9cce19173c51",
+      "start_timestamp": "2026-11-16T09:34:59.903Z",
+      "end_timestamp": "2026-11-16T09:34:59.983Z",
+      "ms": 79.999999,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.ray_id": "a5b580c8bd29e93c-IAD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902",
+        "server.address": "typeahead-search-transport.n8-3e9.workers.dev"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.transport.headers",
+      "trace_id": "4491717be41684ac3c9e18ee6ddb8c50",
+      "span_id": "bedf9cce19173c51",
+      "parent_span_id": "2a3db1f0bb1b18f4",
+      "start_timestamp": "2026-11-16T09:34:59.903Z",
+      "end_timestamp": "2026-11-16T09:34:59.983Z",
+      "ms": 80,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "GET",
+      "trace_id": "392fc222a5774ca0094fc326271a02bb",
+      "span_id": "ec7af0f00ec56500",
+      "parent_span_id": null,
+      "start_timestamp": "2026-11-16T09:34:59.925Z",
+      "end_timestamp": "2026-11-16T09:34:59.970Z",
+      "ms": 45,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.response.time_to_first_byte_ms": 45,
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "cpu_time_ms": 5,
+        "server.address": "typeahead-search-transport.n8-3e9.workers.dev",
+        "wall_time_ms": 36
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "jsRpcCall",
+      "trace_id": "392fc222a5774ca0094fc326271a02bb",
+      "span_id": "63cdfe3073645648",
+      "parent_span_id": "3f33ae8d6e59656c",
+      "start_timestamp": "2026-11-16T09:34:59.939Z",
+      "end_timestamp": "2026-11-16T09:34:59.950Z",
+      "ms": 10.999994000000001,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "jsrpc.method": "current"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "route.authority.call",
+      "trace_id": "392fc222a5774ca0094fc326271a02bb",
+      "span_id": "bd8bf195ca554b29",
+      "parent_span_id": "6b9da6b67b138a33",
+      "start_timestamp": "2026-11-16T09:34:59.939Z",
+      "end_timestamp": "2026-11-16T09:34:59.939Z",
+      "ms": null,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.handle",
+      "trace_id": "392fc222a5774ca0094fc326271a02bb",
+      "span_id": "8b03286bddf6503c",
+      "parent_span_id": "ec7af0f00ec56500",
+      "start_timestamp": "2026-11-16T09:34:59.939Z",
+      "end_timestamp": "2026-11-16T09:34:59.970Z",
+      "ms": 31,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "typeahead.hint_source": "shared",
+        "typeahead.request_id": "a5b580c82c181d01",
+        "typeahead.tracing_available": true
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.route.validate",
+      "trace_id": "392fc222a5774ca0094fc326271a02bb",
+      "span_id": "6b9da6b67b138a33",
+      "parent_span_id": "8b03286bddf6503c",
+      "start_timestamp": "2026-11-16T09:34:59.939Z",
+      "end_timestamp": "2026-11-16T09:34:59.950Z",
+      "ms": 10.999999,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.hint",
+      "trace_id": "392fc222a5774ca0094fc326271a02bb",
+      "span_id": "0f263f666f5d158e",
+      "parent_span_id": "8b03286bddf6503c",
+      "start_timestamp": "2026-11-16T09:34:59.939Z",
+      "end_timestamp": "2026-11-16T09:34:59.955Z",
+      "ms": 15.999998000000001,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.fly.headers",
+      "trace_id": "392fc222a5774ca0094fc326271a02bb",
+      "span_id": "f947848b11aa3d61",
+      "parent_span_id": "8b03286bddf6503c",
+      "start_timestamp": "2026-11-16T09:34:59.950Z",
+      "end_timestamp": "2026-11-16T09:34:59.970Z",
+      "ms": 19.999999000000003,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "server.address": "typeahead-slot-a.fly.dev"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "fetch",
+      "trace_id": "392fc222a5774ca0094fc326271a02bb",
+      "span_id": "ea08bb86e3f77d4c",
+      "parent_span_id": "f947848b11aa3d61",
+      "start_timestamp": "2026-11-16T09:34:59.950Z",
+      "end_timestamp": "2026-11-16T09:34:59.970Z",
+      "ms": 19.999998,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.ray_id": "a5b580c8bd29e93c-IAD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "server.address": "typeahead-slot-a.fly.dev"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.transport.body",
+      "trace_id": "4491717be41684ac3c9e18ee6ddb8c50",
+      "span_id": "b18ffd6d9b0e5cd8",
+      "parent_span_id": "2a3db1f0bb1b18f4",
+      "start_timestamp": "2026-11-16T09:34:59.983Z",
+      "end_timestamp": "2026-11-16T09:34:59.983Z",
+      "ms": null,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.response.process",
+      "trace_id": "4491717be41684ac3c9e18ee6ddb8c50",
+      "span_id": "1c1e723948442502",
+      "parent_span_id": "2a3db1f0bb1b18f4",
+      "start_timestamp": "2026-11-16T09:34:59.983Z",
+      "end_timestamp": "2026-11-16T09:34:59.983Z",
+      "ms": null,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.handle",
+      "trace_id": "750e3fc92dd3d33deb65013ecbb717c7",
+      "span_id": "49b3df3117d97f6f",
+      "parent_span_id": "2606c1874d891a3c",
+      "start_timestamp": "2026-11-16T09:35:05.137Z",
+      "end_timestamp": "2026-11-16T09:35:05.218Z",
+      "ms": 80.99999600000001,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902",
+        "typeahead.request_id": "a5b580e8fb0f1d01",
+        "typeahead.tracing_available": true
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "GET",
+      "trace_id": "750e3fc92dd3d33deb65013ecbb717c7",
+      "span_id": "c323d95fa6d11e0b",
+      "parent_span_id": null,
+      "start_timestamp": "2026-11-16T09:35:05.137Z",
+      "end_timestamp": "2026-11-16T09:35:05.247Z",
+      "ms": 110,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.ray_id": "a5b580e8fb0f1d01",
+        "cloudflare.response.time_to_first_byte_ms": 81,
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902",
+        "cpu_time_ms": 7,
+        "server.address": "typeahead.waow.tech",
+        "wall_time_ms": 124
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "worker.handle",
+      "trace_id": "750e3fc92dd3d33deb65013ecbb717c7",
+      "span_id": "2606c1874d891a3c",
+      "parent_span_id": "c323d95fa6d11e0b",
+      "start_timestamp": "2026-11-16T09:35:05.137Z",
+      "end_timestamp": "2026-11-16T09:35:05.218Z",
+      "ms": 80.999999,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.transport.headers",
+      "trace_id": "750e3fc92dd3d33deb65013ecbb717c7",
+      "span_id": "dee71d127f357f10",
+      "parent_span_id": "49b3df3117d97f6f",
+      "start_timestamp": "2026-11-16T09:35:05.146Z",
+      "end_timestamp": "2026-11-16T09:35:05.218Z",
+      "ms": 72,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "fetch",
+      "trace_id": "750e3fc92dd3d33deb65013ecbb717c7",
+      "span_id": "c426a6262959557a",
+      "parent_span_id": "dee71d127f357f10",
+      "start_timestamp": "2026-11-16T09:35:05.146Z",
+      "end_timestamp": "2026-11-16T09:35:05.218Z",
+      "ms": 71.99999899999999,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.ray_id": "a5b580e96d50989d-IAD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902",
+        "server.address": "typeahead-search-transport.n8-3e9.workers.dev"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "GET",
+      "trace_id": "c48fddcd16df7799be848da23f80fd1c",
+      "span_id": "bde376fc2ff74fd0",
+      "parent_span_id": null,
+      "start_timestamp": "2026-11-16T09:35:05.166Z",
+      "end_timestamp": "2026-11-16T09:35:05.201Z",
+      "ms": 35,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.response.time_to_first_byte_ms": 35,
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "cpu_time_ms": 7,
+        "server.address": "typeahead-search-transport.n8-3e9.workers.dev",
+        "wall_time_ms": 28
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "route.authority.call",
+      "trace_id": "c48fddcd16df7799be848da23f80fd1c",
+      "span_id": "18ea8335cb6f93ae",
+      "parent_span_id": "26ebe71a46922c79",
+      "start_timestamp": "2026-11-16T09:35:05.180Z",
+      "end_timestamp": "2026-11-16T09:35:05.180Z",
+      "ms": null,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.route.validate",
+      "trace_id": "c48fddcd16df7799be848da23f80fd1c",
+      "span_id": "26ebe71a46922c79",
+      "parent_span_id": "f001ad72395055a5",
+      "start_timestamp": "2026-11-16T09:35:05.180Z",
+      "end_timestamp": "2026-11-16T09:35:05.188Z",
+      "ms": 7.999999000000001,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.hint",
+      "trace_id": "c48fddcd16df7799be848da23f80fd1c",
+      "span_id": "8c2701502b57f919",
+      "parent_span_id": "f001ad72395055a5",
+      "start_timestamp": "2026-11-16T09:35:05.180Z",
+      "end_timestamp": "2026-11-16T09:35:05.184Z",
+      "ms": 3.999998,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.handle",
+      "trace_id": "c48fddcd16df7799be848da23f80fd1c",
+      "span_id": "f001ad72395055a5",
+      "parent_span_id": "bde376fc2ff74fd0",
+      "start_timestamp": "2026-11-16T09:35:05.180Z",
+      "end_timestamp": "2026-11-16T09:35:05.201Z",
+      "ms": 21,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "typeahead.hint_source": "shared",
+        "typeahead.request_id": "a5b580e8fb0f1d01",
+        "typeahead.tracing_available": true
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "jsRpcCall",
+      "trace_id": "c48fddcd16df7799be848da23f80fd1c",
+      "span_id": "3bd958d2311dfb43",
+      "parent_span_id": "3f4e3b4aedbb576c",
+      "start_timestamp": "2026-11-16T09:35:05.180Z",
+      "end_timestamp": "2026-11-16T09:35:05.188Z",
+      "ms": 7.999994,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "jsrpc.method": "current"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "fetch",
+      "trace_id": "c48fddcd16df7799be848da23f80fd1c",
+      "span_id": "1772723cb75b2e72",
+      "parent_span_id": "532f121ffc6efa09",
+      "start_timestamp": "2026-11-16T09:35:05.184Z",
+      "end_timestamp": "2026-11-16T09:35:05.201Z",
+      "ms": 16.999999,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.ray_id": "a5b580e96d50989d-IAD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "server.address": "typeahead-slot-a.fly.dev"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.fly.headers",
+      "trace_id": "c48fddcd16df7799be848da23f80fd1c",
+      "span_id": "532f121ffc6efa09",
+      "parent_span_id": "f001ad72395055a5",
+      "start_timestamp": "2026-11-16T09:35:05.184Z",
+      "end_timestamp": "2026-11-16T09:35:05.201Z",
+      "ms": 17,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "server.address": "typeahead-slot-a.fly.dev"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.transport.body",
+      "trace_id": "750e3fc92dd3d33deb65013ecbb717c7",
+      "span_id": "42574687f25de720",
+      "parent_span_id": "49b3df3117d97f6f",
+      "start_timestamp": "2026-11-16T09:35:05.218Z",
+      "end_timestamp": "2026-11-16T09:35:05.218Z",
+      "ms": null,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.response.process",
+      "trace_id": "750e3fc92dd3d33deb65013ecbb717c7",
+      "span_id": "8a8c31cc0cbb9126",
+      "parent_span_id": "49b3df3117d97f6f",
+      "start_timestamp": "2026-11-16T09:35:05.218Z",
+      "end_timestamp": "2026-11-16T09:35:05.218Z",
+      "ms": null,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.handle",
+      "trace_id": "093c56645bc4aebfc805a7b373d9efae",
+      "span_id": "817170e7240e7856",
+      "parent_span_id": "589fc6de0c32fd01",
+      "start_timestamp": "2026-11-16T09:35:10.373Z",
+      "end_timestamp": "2026-11-16T09:35:10.459Z",
+      "ms": 85.999996,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902",
+        "typeahead.request_id": "a5b58109bf371d01",
+        "typeahead.tracing_available": true
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "worker.handle",
+      "trace_id": "093c56645bc4aebfc805a7b373d9efae",
+      "span_id": "589fc6de0c32fd01",
+      "parent_span_id": "6dfbbc986461454c",
+      "start_timestamp": "2026-11-16T09:35:10.373Z",
+      "end_timestamp": "2026-11-16T09:35:10.459Z",
+      "ms": 85.99999899999999,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "GET",
+      "trace_id": "093c56645bc4aebfc805a7b373d9efae",
+      "span_id": "6dfbbc986461454c",
+      "parent_span_id": null,
+      "start_timestamp": "2026-11-16T09:35:10.373Z",
+      "end_timestamp": "2026-11-16T09:35:10.487Z",
+      "ms": 114,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.ray_id": "a5b58109bf371d01",
+        "cloudflare.response.time_to_first_byte_ms": 86,
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902",
+        "cpu_time_ms": 7,
+        "server.address": "typeahead.waow.tech",
+        "wall_time_ms": 127
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "fetch",
+      "trace_id": "093c56645bc4aebfc805a7b373d9efae",
+      "span_id": "87e3fb6f443e0d97",
+      "parent_span_id": "1cbd2ca5af5a7d99",
+      "start_timestamp": "2026-11-16T09:35:10.382Z",
+      "end_timestamp": "2026-11-16T09:35:10.459Z",
+      "ms": 76.999999,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.ray_id": "a5b5810a294332f0-IAD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902",
+        "server.address": "typeahead-search-transport.n8-3e9.workers.dev"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.transport.headers",
+      "trace_id": "093c56645bc4aebfc805a7b373d9efae",
+      "span_id": "1cbd2ca5af5a7d99",
+      "parent_span_id": "817170e7240e7856",
+      "start_timestamp": "2026-11-16T09:35:10.382Z",
+      "end_timestamp": "2026-11-16T09:35:10.459Z",
+      "ms": 77,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "GET",
+      "trace_id": "97864eaae8f63bda0f75c113ffa200f1",
+      "span_id": "2ca30bc86a10354d",
+      "parent_span_id": null,
+      "start_timestamp": "2026-11-16T09:35:10.404Z",
+      "end_timestamp": "2026-11-16T09:35:10.443Z",
+      "ms": 39,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.response.time_to_first_byte_ms": 39,
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "cpu_time_ms": 5,
+        "server.address": "typeahead-search-transport.n8-3e9.workers.dev",
+        "wall_time_ms": 31
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "jsRpcCall",
+      "trace_id": "97864eaae8f63bda0f75c113ffa200f1",
+      "span_id": "a77ed9400f77ec9a",
+      "parent_span_id": "5329e773e4fbfe3d",
+      "start_timestamp": "2026-11-16T09:35:10.417Z",
+      "end_timestamp": "2026-11-16T09:35:10.425Z",
+      "ms": 7.999994,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "jsrpc.method": "current"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "route.authority.call",
+      "trace_id": "97864eaae8f63bda0f75c113ffa200f1",
+      "span_id": "a119c1479aa78b53",
+      "parent_span_id": "384bd02c3fbddebe",
+      "start_timestamp": "2026-11-16T09:35:10.417Z",
+      "end_timestamp": "2026-11-16T09:35:10.417Z",
+      "ms": null,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.handle",
+      "trace_id": "97864eaae8f63bda0f75c113ffa200f1",
+      "span_id": "27da971b19e0d1cb",
+      "parent_span_id": "2ca30bc86a10354d",
+      "start_timestamp": "2026-11-16T09:35:10.417Z",
+      "end_timestamp": "2026-11-16T09:35:10.443Z",
+      "ms": 26,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "typeahead.hint_source": "shared",
+        "typeahead.request_id": "a5b58109bf371d01",
+        "typeahead.tracing_available": true
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.hint",
+      "trace_id": "97864eaae8f63bda0f75c113ffa200f1",
+      "span_id": "0e83d9052d426831",
+      "parent_span_id": "27da971b19e0d1cb",
+      "start_timestamp": "2026-11-16T09:35:10.417Z",
+      "end_timestamp": "2026-11-16T09:35:10.422Z",
+      "ms": 4.999998000000001,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.route.validate",
+      "trace_id": "97864eaae8f63bda0f75c113ffa200f1",
+      "span_id": "384bd02c3fbddebe",
+      "parent_span_id": "27da971b19e0d1cb",
+      "start_timestamp": "2026-11-16T09:35:10.417Z",
+      "end_timestamp": "2026-11-16T09:35:10.425Z",
+      "ms": 7.999999000000001,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "transport.fly.headers",
+      "trace_id": "97864eaae8f63bda0f75c113ffa200f1",
+      "span_id": "baf465d2fe64e135",
+      "parent_span_id": "27da971b19e0d1cb",
+      "start_timestamp": "2026-11-16T09:35:10.422Z",
+      "end_timestamp": "2026-11-16T09:35:10.443Z",
+      "ms": 21,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "server.address": "typeahead-slot-a.fly.dev"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead-search-transport",
+      "span_name": "fetch",
+      "trace_id": "97864eaae8f63bda0f75c113ffa200f1",
+      "span_id": "9293b47403ae3744",
+      "parent_span_id": "baf465d2fe64e135",
+      "start_timestamp": "2026-11-16T09:35:10.422Z",
+      "end_timestamp": "2026-11-16T09:35:10.443Z",
+      "ms": 20.999999,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.ray_id": "a5b5810a294332f0-IAD",
+        "cloudflare.script_version.id": "9cfc3613-4f5a-4ef0-9e19-8b6589f43778",
+        "server.address": "typeahead-slot-a.fly.dev"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.transport.body",
+      "trace_id": "093c56645bc4aebfc805a7b373d9efae",
+      "span_id": "ee81b79b9dcd22ea",
+      "parent_span_id": "817170e7240e7856",
+      "start_timestamp": "2026-11-16T09:35:10.459Z",
+      "end_timestamp": "2026-11-16T09:35:10.459Z",
+      "ms": null,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    },
+    {
+      "service_name": "typeahead",
+      "span_name": "search.response.process",
+      "trace_id": "093c56645bc4aebfc805a7b373d9efae",
+      "span_id": "649c02d50c010f9a",
+      "parent_span_id": "817170e7240e7856",
+      "start_timestamp": "2026-11-16T09:35:10.459Z",
+      "end_timestamp": "2026-11-16T09:35:10.459Z",
+      "ms": null,
+      "attributes": {
+        "cloudflare.colo": "ORD",
+        "cloudflare.script_version.id": "793ac2a7-1cca-430c-a6ec-851f6e54a902"
+      },
+      "otel_links": []
+    }
+  ]
+}
