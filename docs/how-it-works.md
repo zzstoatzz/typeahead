@@ -91,6 +91,10 @@ directory, the labeler and Bluesky's AppView, and write to none of them.
 
 Procedures: [operating](operating.md).
 
+The locally implemented [evaluation page](evaluation.md) reads saved benchmark
+snapshots. Its standalone collector and publisher are separate from the search
+and statistics paths; production import and scheduling are still rollout steps.
+
 ## Changing the pictures
 
 The five pictures are written by one script,

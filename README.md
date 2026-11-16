@@ -36,6 +36,9 @@ see [development](docs/development.md) for the Zig and Rust services, their
 tests and the deploy commands. local services need runtime configuration and
 credentials.
 
+The [evaluation](docs/evaluation.md) compares saved runs against Bluesky, with
+adjustable scoring, retained history and an isolated scheduled runner.
+
 ## docs
 
 [docs/](docs/README.md) has [how it works](docs/how-it-works.md) in five

@@ -3,6 +3,8 @@ import { GENERATION, controlStore } from "./control-d1-fixture";
 import type { SqlDb } from "./db";
 import { statsStores } from "./stats-d1-fixture";
 import type { Env } from "./types";
+import { publishReports } from "./eval/archive";
+import { reportSchema } from "./eval/model";
 
 // The request recorder wraps the router: every answer is counted under its
 // real status, and an UNCAUGHT throw — what the edge reports as 1101/500 —
@@ -61,6 +63,34 @@ test("records the real status of a served response", async () => {
   expect(tasks).toHaveLength(1);
   await Promise.all(tasks);
   expect(await recorded()).toEqual([{ domain: "plyr.fm", endpoint: "other", status: 404, hits: 1 }]);
+});
+
+test("/eval reads only saved observations, and both eval routes count as pages", async () => {
+  const env = fakeEnv({ ...ENV, KV: { get: async () => null, put: async () => {} } });
+  const c = ctx();
+  const page = await worker.fetch(new Request("https://typeahead.waow.tech/eval"), env, c.ctx);
+  expect(page.status).toBe(200);
+  expect(await page.text()).toContain("no sample collected yet");
+  const data = await worker.fetch(new Request("https://typeahead.waow.tech/eval/data.json"), env, c.ctx);
+  expect(await data.json()).toBeNull();
+  await Promise.all(c.tasks);
+  expect(await recorded()).toEqual([{ domain: "unknown", endpoint: "page", status: 200, hits: 2 }]);
+});
+
+test("the rollout seed renders through the Worker and exports the same observations", async () => {
+  const seed = reportSchema.parse(JSON.parse(await Bun.file(new URL("../data/eval/runs/2026-11-16T07-25-35.153Z.json", import.meta.url)).text()));
+  const values = new Map<string, string>();
+  const KV = { get: async (key: string) => values.get(key) ?? null, put: async (key: string, value: string) => { values.set(key, value); } };
+  await publishReports(KV, [seed]);
+  const env = fakeEnv({ ...ENV, KV });
+  const c = ctx();
+  const page = await worker.fetch(new Request("https://typeahead.waow.tech/eval"), env, c.ctx);
+  expect(await page.text()).toContain("typeahead benchmark score 94.9");
+  const data = await worker.fetch(new Request(`https://typeahead.waow.tech/eval/data.json?run=${encodeURIComponent(seed.run)}`), env, c.ctx);
+  expect(reportSchema.parse(JSON.parse(await data.text()))).toEqual(seed);
+  const missing = await worker.fetch(new Request("https://typeahead.waow.tech/eval?run=missing"), env, c.ctx);
+  expect(missing.status).toBe(404);
+  await Promise.all(c.tasks);
 });
 
 test("the slot control routes answer from the control database and are counted under one label", async () => {

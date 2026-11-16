@@ -457,6 +457,12 @@ retired `/admin` write endpoints answer 410.
 
 ## Statistics
 
+The local `/eval` work has a separate snapshot publisher and daily runner;
+it does not extend the app's statistics cron. Before its first rollout, import
+the retained history with `just eval-upload-remote`, then deploy and verify
+the page and run download. [Evaluation](evaluation.md#rollout-import) describes
+that import, the single-writer requirement and optional external scheduling.
+
 `/stats` shows searches, apps, answers by endpoint and status, and account
 counts. `/stats?view=status` is the first place to look when something seems
 wrong.

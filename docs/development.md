@@ -76,6 +76,12 @@ just bench-ranking  # ranking against Bluesky as the oracle
 
 [Repository instructions](../AGENTS.md) say which of these a change needs.
 
+Run `just eval-serve` and open `http://127.0.0.1:18790/eval` to inspect the
+retained initial run. `just eval-tick` performs a daily collection only when
+due, then prepares local snapshots. Viewing the charts sends no upstream
+queries. [Evaluation](evaluation.md) covers score weights, retained history,
+the isolated runner and the production import procedure.
+
 ## The pictures
 
 `docs/diagrams/build.py` writes the five SVG files in `docs/diagrams/`. Edit

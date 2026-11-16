@@ -22,6 +22,7 @@ import { docsPage } from "./pages/docs";
 import { llmsTxt } from "./pages/llms";
 import { reputationPage } from "./pages/reputation";
 import { RequestTiming } from "./request-timing";
+import { handleEval } from "./handlers/eval";
 
 /** Cloudflare kills a scheduled invocation at 15 minutes of wall time, with
  *  no exception and no log. A step is only started while this much of the
@@ -193,6 +194,9 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
   if (pathname === "/docs" && request.method === "GET") {
     return html(docsPage());
+  }
+  if ((pathname === "/eval" || pathname === "/eval/data.json") && request.method === "GET") {
+    return handleEval(request, env);
   }
   if (pathname === "/reputation" && request.method === "GET") {
     return html(reputationPage());

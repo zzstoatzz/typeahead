@@ -13,3 +13,4 @@ scripts/bench-results.json
 __pycache__/
 .logfire/
 .zig/
+.eval/

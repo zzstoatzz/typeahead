@@ -13,7 +13,7 @@ test:
 # oxlint with the anti-slop plugin (tools/oxlint/anti-slop, shared with plyr.fm
 # and doodl). Zero findings is the bar; never disable a rule to get there.
 lint:
-    bunx oxlint --deny-warnings src
+    bunx oxlint --deny-warnings src scripts/eval
 
 
 # admission and conditional routing writes for a store-fed slot, against an
@@ -144,6 +144,30 @@ deploy-worker-only: control-ready lint
     npx wrangler deploy
 
 # ─── benchmarking & health ───────────────────────────────────────────────
+eval-collect:
+    bun scripts/eval/collect.ts
+
+eval-serve:
+    bun scripts/eval/serve.ts
+
+eval-import path:
+    bun scripts/eval/import.ts {{quote(path)}}
+
+eval-publish:
+    bun scripts/eval/publish.ts
+
+eval-upload-local:
+    bun scripts/eval/upload.ts --local
+
+eval-upload-remote:
+    bun scripts/eval/upload.ts --remote
+
+eval-tick:
+    bun scripts/eval/schedule.ts
+
+eval-tick-remote:
+    bun scripts/eval/schedule.ts --remote
+
 # How to assess performance. Four layers, run from here. See AGENTS.md
 # "Performance & benchmarking" for what each measures and what "good" looks like.
 #

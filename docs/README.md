@@ -4,6 +4,7 @@
 - [Operating](operating.md): upgrade a slot, flip the route, roll back,
   moderation, index requests, statistics and what each alert means.
 - [Development](development.md): local setup, tests and deploy commands.
+- [Evaluation](evaluation.md): weighted comparisons with Bluesky, retained runs and the isolated collector.
 - [Costs](../COSTS.md): what the running resources are and what they cost.
 - [Repository instructions](../AGENTS.md): rules for changing the system.
 
