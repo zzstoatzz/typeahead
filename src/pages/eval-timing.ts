@@ -1,5 +1,5 @@
 import { escHtml as esc } from "../utils";
-import { cacheState, mean, type Report } from "../eval/model";
+import { cacheState, mean, reportProviders, type Report } from "../eval/model";
 import { timingSummary } from "../eval/timing";
 
 const ms = (n: number | null) => n === null ? "not captured" : `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })} ms`;
@@ -14,8 +14,12 @@ export function evalTiming(report: Report, params: URLSearchParams): string {
   const chosen = whole.samples.find(s => s.observation.id === params.get("sample"));
   const current = chosen ? timingSummary([chosen.observation]) : whole;
   const total = current.total;
-  const bluesky = mean(report.observations.filter(o => o.provider === "bluesky" && o.outcome === "ok" && (!chosen || (o.q === chosen.observation.q && o.round === chosen.observation.round))).flatMap(o => o.ms === null ? [] : [o.ms]));
-  const max = Math.max(total ?? 0, bluesky ?? 0, 1);
+  const references = reportProviders(report).filter(provider => provider !== "typeahead").map(provider => ({
+    name: provider === "tern" ? "Tern" : "Bluesky",
+    provider,
+    ms: mean(report.observations.filter(o => o.provider === provider && o.outcome === "ok" && (!chosen || (o.q === chosen.observation.q && o.round === chosen.observation.round))).flatMap(o => o.ms === null ? [] : [o.ms])),
+  }));
+  const max = Math.max(total ?? 0, ...references.map(p => p.ms ?? 0), 1);
   const hasBackend = current.samples.some(s => s.unknown === 0 && (s.values.has("origin") || cacheState(s.observation) === "hit"));
   const backend = hasBackend ? current.components.find(c => c.key === "backend")?.ms ?? null : null;
   const insideMax = Math.max(backend ?? 0, ...current.inside.map(c => c.ms ?? 0), 1);
@@ -23,13 +27,13 @@ export function evalTiming(report: Report, params: URLSearchParams): string {
   const logged = current.samples.filter(s => s.logged).length;
   const hidden = [...params].filter(([key]) => !["view", "sample"].includes(key)).map(([key, value]) => `<input type="hidden" name="${esc(key)}" value="${esc(value)}">`).join("");
   const components = current.components.filter(c => c.ms !== null && c.ms > 0);
-  return `<details class="drill" id="timing"${params.get("view") === "timing" ? " open" : ""}><summary>where time goes <span class="hint">${fraction === null ? "timing evidence" : `${fraction}% in the backend round trip`} · inspect the serving path</span></summary><div class="drill-content timing-view">
+  return `<details class="drill" id="timing"${params.get("view") === "timing" ? " open" : ""}><summary>where time goes <span class="hint">${fraction === null ? "timing evidence" : `${fraction}% in the backend round trip`}</span></summary><div class="drill-content timing-view">
   <form class="timing-pick" action="/eval#timing" method="get">${hidden}<input type="hidden" name="view" value="timing"><label for="timing-sample">measurement<select id="timing-sample" name="sample"><option value="mean">whole run · mean of ${whole.samples.length} successful requests</option>${whole.samples.map(s => `<option value="${esc(s.observation.id)}"${chosen?.observation.id === s.observation.id ? " selected" : ""}>${esc(s.observation.q)} · pass ${s.observation.round + 1} · ${ms(s.total)}</option>`).join("")}</select></label><button>inspect</button></form>
   ${total === null ? '<p class="timing-note">No successful native typeahead requests in this selection.</p>' : `
   <div class="timing-head"><h3>typeahead</h3><strong>${ms(total)}</strong></div>
   <div class="timing-stack" style="width:${100 * total / max}%" role="img" aria-label="${esc(components.map(c => `${c.label}: ${ms(c.ms)}`).join("; "))}">${components.map(c => `<div class="timing-part timing-${c.key}" style="width:${total ? 100 * (c.ms ?? 0) / total : 0}%">${(c.ms ?? 0) / max >= .22 ? `<span>${c.key === "backend" ? "backend" : c.key === "outside" ? "outside Worker" : c.label}</span><b>${ms(c.ms)}</b>` : ""}</div>`).join("")}</div>
   <div class="timing-legend">${components.map(c => `<span class="timing-key"><i class="timing-dot timing-${c.key}" aria-hidden="true"></i>${c.label} <b>${ms(c.ms)}</b></span>`).join("")}</div>
-  <div class="timing-head"><h3>Bluesky</h3><strong>${ms(bluesky)}</strong></div>${bluesky === null ? "" : `<div class="timing-reference" role="img" aria-label="Bluesky total ${ms(bluesky)}; internal stages unavailable" style="width:${100 * bluesky / max}%"></div>`}<div class="timing-axis" aria-hidden="true"><span>0 ms</span><span>${ms(max)}</span></div>
+  ${references.map(p => `<div class="timing-head"><h3>${p.name}</h3><strong>${ms(p.ms)}</strong></div>${p.ms === null ? "" : `<div class="timing-reference" role="img" aria-label="${p.name} total ${ms(p.ms)}" style="width:${100 * p.ms / max}%;background:var(--${p.provider === "tern" ? "violet" : "blue"})"></div>`}`).join("")}<div class="timing-axis" aria-hidden="true"><span>0 ms</span><span>${ms(max)}</span></div>
   <p class="timing-note">${chosen ? `Pass ${chosen.observation.round + 1} · cache ${cacheState(chosen.observation)}` : `${current.samples.length} successful typeahead requests · arithmetic means`} · same scale. Components show duration, not chronological order.</p>
   <section class="timing-nested" aria-label="backend timing detail"><div class="timing-head"><h3>inside the backend round trip</h3><strong>${ms(backend)}</strong></div><div class="timing-path">public Worker → transport Worker → Fly → Tantivy</div>
   ${current.inside.map(c => `<div class="timing-interval"><div class="timing-interval-label"><span>${c.label}</span><span>${ms(c.ms)}${c.n ? `<small> · ${c.n} / ${current.samples.length} requests</small>` : ""}</span></div>${c.ms === null ? "" : `<div class="timing-lane" role="img" aria-label="${esc(c.label)} ${ms(c.ms)}; duration scale up to ${ms(insideMax)}"><div style="width:${100 * c.ms / insideMax}%"></div></div>`}</div>`).join("")}

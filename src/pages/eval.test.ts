@@ -12,7 +12,7 @@ test("page renders measured values and safely escapes upstream profile text", ()
   const page = evalPage(reportSchema.parse(report));
   expect(page).toContain("100 ms");
   expect(page).toContain("200 ms");
-  expect(page).toContain("2 / 4 completed requests");
+  expect(page).toContain("2 / 4 requests");
   expect(page).toContain("&lt;script&gt;");
   expect(page).not.toContain('<script>alert("x")');
   expect(page).not.toContain("fetch(");
@@ -30,7 +30,7 @@ test("empty and fallback states don't imply native comparison evidence", () => {
   expect(evalPage(null)).toContain("no sample collected yet");
   const page = evalPage({ ...report, observations: [{ ...row, headers: { "x-typeahead-engine": "bluesky" } }, report.observations[1]] });
   expect(page).toContain("1 typeahead answers came from Bluesky fallback");
-  expect(page).toContain("0 successful pairs without fallback");
+  expect(page).toContain("0 matched cases");
 });
 
 test("aggregate stays on the whole run while queries are inspected; forms pin that run", () => {
@@ -55,4 +55,17 @@ test("timing drill-down stays collapsed, preserves provenance and marks missing 
   expect(selected).toContain('name="run" value="r"');
   expect(selected).toContain("Do not add the bars");
   expect(page).not.toContain("NaN");
+});
+
+test("three-provider runs show field coverage while old snapshots mark discarded fields unknown", () => {
+  expect(evalPage(report)).toContain("not captured");
+  const page = evalPage({ ...report, providers: ["typeahead", "bluesky", "tern"], actorFieldsVersion: 1, expected: 3,
+    observations: [...report.observations, { ...row, id: "tern", provider: "tern",
+      actors: [{ did: "did:plc:alice", handle: "alice.test", labels: [],
+        verification: { verifiedStatus: "none", trustedVerifierStatus: "none" } }] }] });
+  expect(page).toContain("Tern benchmark score");
+  expect(page).toContain("labels coverage");
+  expect(page).toContain("verification coverage");
+  expect(page).toContain("tern-text");
+  expect(page).not.toContain("not captured</td>");
 });

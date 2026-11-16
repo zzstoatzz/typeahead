@@ -5,7 +5,8 @@
   "compatibility_flags": ["global_fetch_strictly_public"],
   "workers_dev": false,
   "preview_urls": false,
-  "triggers": { "crons": ["2,17,32,47 * * * *"] },
+  "vars": { "EVAL_MANUAL_RUN": "2026-11-16-tern-comparison-1" },
+  "triggers": { "crons": ["* * * * *"] },
   "durable_objects": {
     "bindings": [{ "name": "EVAL_RUNNER", "class_name": "EvaluationSchedule" }]
   },

@@ -67,3 +67,15 @@ test("collector sends one identified request, preserves backoff and validates ac
   expect(redirect.outcome).toBe("network-error");
   expect(redirect.status).toBe(302);
 });
+
+test("sampling preserves empty metadata fields and reports returned verification states", async () => {
+  const actor = { did: "did:plc:alice", handle: "alice.test", labels: [],
+    createdAt: "2020-01-01T00:00:00Z",
+    verification: { verifiedStatus: "none", trustedVerifierStatus: "none", verifications: [] } };
+  const result = await sample(observation({ provider: "tern" }), async url => {
+    expect(new URL(url).hostname).toBe("typeahead.cove.town");
+    return Response.json({ actors: [actor, { did: "did:plc:bob", handle: "bob.test" }] });
+  });
+  expect(result.actors[0]).toEqual(actor);
+  expect(summarize([result])).toMatchObject({ labelsPct: 50, labeledPct: 0, verificationPct: 50, verifiedPct: 0, createdAtPct: 50 });
+});

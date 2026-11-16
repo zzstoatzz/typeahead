@@ -36,7 +36,7 @@ see [development](docs/development.md) for the Zig and Rust services, their
 tests and the deploy commands. local services need runtime configuration and
 credentials.
 
-The [evaluation](docs/evaluation.md) compares saved runs against Bluesky, with
+The [evaluation](docs/evaluation.md) compares saved runs against Bluesky and Tern, with
 adjustable scoring, serving-time breakdowns, retained history and an isolated
 runner scheduled independently of the public app.
 Worker serving traces use the existing Logfire project; see

@@ -1,4 +1,4 @@
-import { PROVIDERS, fallback, mean, type Observation, type Provider } from "./model";
+import { reportProviders, fallback, mean, type Observation, type Provider } from "./model";
 
 export const SCORE_VERSION = "service-v1";
 export const DIMENSIONS = [
@@ -29,18 +29,18 @@ function value(o: Observation, dimension: Dimension): number | null {
   }
 }
 
-export function score(observations: Observation[], weights: Weights = DEFAULT_WEIGHTS) {
+export function score(observations: Observation[], weights: Weights = DEFAULT_WEIGHTS, selectedProviders = reportProviders({ observations })) {
   const grouped = new Map<string, Partial<Record<Provider, Observation>>>();
   for (const o of observations) {
     const key = JSON.stringify([o.run, o.corpus, o.q, o.round]);
     grouped.set(key, { ...grouped.get(key), [o.provider]: o });
   }
   const matched = [...grouped.values()].flatMap(p => {
-    const a = p.typeahead, b = p.bluesky;
-    return a && b && a.outcome !== "pending" && b.outcome !== "pending" && !fallback(a) ? [a, b] : [];
+    const rows = selectedProviders.flatMap(provider => p[provider] ? [p[provider]] : []);
+    return rows.length === selectedProviders.length && rows.every(o => o.outcome !== "pending" && !fallback(o)) ? rows : [];
   });
   const totalWeight = DIMENSIONS.reduce((s, d) => s + weights[d.id], 0);
-  const providers = PROVIDERS.map(provider => {
+  const providers = selectedProviders.map(provider => {
     const rows = matched.filter(o => o.provider === provider);
     const dimensions = DIMENSIONS.map(d => {
       const byQuery = new Map<string, number[]>();
@@ -54,5 +54,5 @@ export function score(observations: Observation[], weights: Weights = DEFAULT_WE
     const ready = totalWeight > 0 && dimensions.every(d => d.weight === 0 || d.points !== null);
     return { provider, dimensions, total: ready ? dimensions.reduce((sum, d) => sum + (d.contribution ?? 0), 0) : null };
   });
-  return { providers, matched: matched.length / 2, excluded: grouped.size - matched.length / 2, queries: new Set(matched.map(o => o.q)).size };
+  return { providers, matched: matched.length / selectedProviders.length, excluded: grouped.size - matched.length / selectedProviders.length, queries: new Set(matched.map(o => o.q)).size };
 }

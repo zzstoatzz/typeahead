@@ -1,6 +1,6 @@
 # Actor-search evaluation
 
-`/eval` compares typeahead with Bluesky. The first view is a weighted benchmark
+`/eval` compares typeahead, Bluesky and Tern. The first view is a weighted benchmark
 score, with dimensions, raw metrics and the test set available as drill-downs.
 The website reads saved snapshots; it never starts collection.
 
@@ -206,11 +206,12 @@ inspection, so narrowing a drill-down does not change the headline score.
 The versioned corpus in `src/eval/model.ts` retains the eleven canonical queries
 from `scripts/bench.py`, plus exact handles, multiword names, Unicode and short
 prefixes. Every new report snapshots its query manifest. Twenty queries run
-twice with `limit=10`: 40 requests per provider. Provider order alternates.
+twice with `limit=10`: 40 requests per provider, 120 total. Provider order rotates.
 The endpoints are:
 
 - `https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors`
 - `https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead`
+- `https://typeahead.cove.town/xrpc/town.cove.actor.searchActorsTypeahead`
 
 There is at least a five-second global gap after each response. The persistent
 budget is 48 attempts per provider per rolling 24 hours, including failed and
@@ -238,3 +239,19 @@ comparable corpus totals, traffic volume, moderation coverage or identity freshn
 The [November 16 latency and Seek investigation](investigations/2026-11-16-seek.md)
 decomposes the initial saved run and compares the serving and index designs.
 Its additional diagnostic reads are separate from the scored eval dataset.
+
+## Actor-field coverage
+
+New reports preserve labels, verification state and account creation date, in
+addition to display names and avatar URLs. Reports carry `actorFieldsVersion`
+so older snapshots show “not captured” for fields the old collector discarded.
+Coverage counts returned actor appearances. A present empty labels array is
+distinct from a missing field. A returned unverified state is distinct from
+missing verification data. These are response-coverage metrics, with separate
+nonempty-label and verified-account counts. They do not establish metadata
+accuracy or freshness and do not change the service-v1 score.
+
+New reports list their provider manifest. Historical two-provider snapshots
+retain their original score. Three-provider scores use completed matched cases
+across all three providers, including failures as zero. Tern uses the same
+query set, request spacing and backoff policy as the other providers.

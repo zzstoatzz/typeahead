@@ -1,10 +1,11 @@
 import { z } from "zod";
 
-export const PROVIDERS = ["typeahead", "bluesky"] as const;
+export const PROVIDERS = ["typeahead", "bluesky", "tern"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 export const ENDPOINTS = {
   typeahead: "https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors",
   bluesky: "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead",
+  tern: "https://typeahead.cove.town/xrpc/town.cove.actor.searchActorsTypeahead",
 } satisfies Record<Provider, string>;
 export const CORPUS_VERSION = "actor-search-v1";
 export const LIMIT = 10;
@@ -38,6 +39,13 @@ export const actorSchema = z.object({
   handle: z.string().min(1).max(2048),
   displayName: z.string().max(4096).optional(),
   avatar: z.string().max(4096).optional(),
+  labels: z.array(z.json()).optional(),
+  createdAt: z.string().max(128).optional(),
+  verification: z.object({
+    verifiedStatus: z.string(),
+    trustedVerifierStatus: z.string(),
+    verifications: z.array(z.json()).optional(),
+  }).optional(),
 });
 export const responseSchema = z.object({ actors: z.array(actorSchema).max(LIMIT) })
   .refine(({ actors }) => new Set(actors.map(a => a.did)).size === actors.length, "duplicate DID");
@@ -55,6 +63,8 @@ export const reportSchema = z.object({
   version: z.literal(1), run: z.string(), corpus: z.string(), location: z.string(),
   startedAt: z.number(), updatedAt: z.number(), expected: z.number().int().positive(),
   queries: z.array(z.object({ q: z.string(), category: z.string() })).optional(),
+  providers: z.array(z.enum(PROVIDERS)).min(2).max(3).refine(values => new Set(values).size === values.length).optional(),
+  actorFieldsVersion: z.literal(1).optional(),
   observations: z.array(observationSchema),
 }).superRefine((report, ctx) => {
   const seen = new Set<string>();
@@ -69,6 +79,10 @@ export const reportSchema = z.object({
   if (report.observations.length > report.expected) ctx.addIssue({ code: "custom", message: "more observations than planned" });
 });
 export type Report = z.infer<typeof reportSchema>;
+
+export function reportProviders(report: Pick<Report, "providers" | "observations"> | null): Provider[] {
+  return report?.providers ?? PROVIDERS.filter(provider => provider !== "tern" || report?.observations.some(o => o.provider === provider));
+}
 
 export function fallback(o: Observation): boolean {
   return o.provider === "typeahead" && (o.headers["x-typeahead-engine"] === "bluesky" || !!o.headers["x-typeahead-failover"]);
@@ -104,6 +118,11 @@ export function summarize(observations: Observation[]) {
     results: mean(ok.map(o => o.actors.length)),
     displayPct: actors.length ? 100 * actors.filter(a => a.displayName?.trim()).length / actors.length : null,
     avatarPct: actors.length ? 100 * actors.filter(a => a.avatar).length / actors.length : null,
+    labelsPct: actors.length ? 100 * actors.filter(a => a.labels !== undefined).length / actors.length : null,
+    labeledPct: actors.length ? 100 * actors.filter(a => a.labels?.length).length / actors.length : null,
+    verificationPct: actors.length ? 100 * actors.filter(a => a.verification !== undefined).length / actors.length : null,
+    verifiedPct: actors.length ? 100 * actors.filter(a => a.verification?.verifiedStatus === "valid").length / actors.length : null,
+    createdAtPct: actors.length ? 100 * actors.filter(a => a.createdAt).length / actors.length : null,
     exactPct: exact.length ? 100 * exact.filter(o => o.actors[0]?.handle.toLowerCase() === o.q.toLowerCase()).length / exact.length : null,
     exactCount: exact.length, actorCount: actors.length,
     hits: completed.filter(o => cacheState(o) === "hit").length,

@@ -25,3 +25,11 @@ test("repeats don't overweight a query; missing exact checks don't silently redi
   expect(score(rows.slice(-2)).providers[0].total).toBeNull();
   expect(score(rows.slice(-2), { speed: 1, availability: 1, exact: 0 }).providers[0].total).toBe(50);
 });
+
+test("three-provider scores use the same completed cases and historical pairs still score", () => {
+  const tern: Observation = { ...a, id: "t", provider: "tern", ms: 100 };
+  const providers = ["typeahead", "bluesky", "tern"] as const;
+  expect(score([a, b, tern], undefined, [...providers]).providers.map(p => p.total)).toEqual([100, 60, 100]);
+  expect(score([a, b], undefined, [...providers])).toMatchObject({ matched: 0, excluded: 1 });
+  expect(score([a, b]).providers.map(p => p.total)).toEqual([100, 60]);
+});

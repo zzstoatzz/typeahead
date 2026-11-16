@@ -73,9 +73,10 @@ test("the seed gates collection and a daily run survives eviction, follows the r
   expect(f.samples).toHaveLength(0);
 
   await f.bootstrap(due);
-  for (let i = 0; i < 81; i++) await f.runAlarm();
-  expect(f.samples).toHaveLength(80);
+  for (let i = 0; i < 121; i++) await f.runAlarm();
+  expect(f.samples).toHaveLength(120);
   expect(f.samples.filter(s => s.host === "public.api.bsky.app")).toHaveLength(40);
+  expect(f.samples.filter(s => s.host === "typeahead.cove.town")).toHaveLength(40);
   expect(f.samples.slice(1).every((s, i) => s.at - f.samples[i].at >= GAP_MS)).toBe(true);
   const { report, runs } = await readSnapshot(f.snapshots, null);
   expect(runs).toHaveLength(2);
@@ -87,7 +88,7 @@ test("the seed gates collection and a daily run survives eviction, follows the r
   await f.bootstrap(due + 20 * 60_000);
   await f.runAlarm();
   expect(f.alarm()).toBeNull();
-  expect(f.samples).toHaveLength(80);
+  expect(f.samples).toHaveLength(120);
 });
 
 test("a Bluesky 429 archives the partial run and does not retry collection", async () => {
@@ -138,11 +139,11 @@ test("an explicit manual request runs once before the daily gate and survives ob
   await publishReports(f.snapshots, [seed]);
   const now = seed.startedAt + 60_000;
   await f.bootstrap(now);
-  for (let i = 0; i < 82; i++) await f.runAlarm();
-  expect(f.samples).toHaveLength(80);
+  for (let i = 0; i < 122; i++) await f.runAlarm();
+  expect(f.samples).toHaveLength(120);
   expect((await readSnapshot(f.snapshots, null)).report?.location).toContain("Cloudflare Workers");
   await f.bootstrap(now + 3_600_000);
   await f.runAlarm();
-  expect(f.samples).toHaveLength(80);
+  expect(f.samples).toHaveLength(120);
   expect(f.alarm()).toBeNull();
 });

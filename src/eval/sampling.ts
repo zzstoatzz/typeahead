@@ -1,4 +1,4 @@
-import { CORPUS_VERSION, ENDPOINTS, LIMIT, PROVIDERS, QUERIES, cooldown, responseSchema, type Observation, type Report } from "./model";
+import { CORPUS_VERSION, ENDPOINTS, LIMIT, PROVIDERS, QUERIES, cooldown, reportProviders, responseSchema, type Observation, type Report } from "./model";
 
 const HEADERS = ["server-timing", "cdn-cache", "age", "cache-control", "retry-after", "ratelimit-limit", "ratelimit-remaining", "ratelimit-reset", "x-typeahead-engine", "x-typeahead-failover", "x-typeahead-build", "x-typeahead-binary-sha256", "cf-ray"];
 
@@ -55,16 +55,17 @@ export function nextRunAt(lastStart: number | null): number {
 
 export function newRun(startedAt: number, location: string): Report {
   return { version: 1, run: new Date(startedAt).toISOString(), corpus: CORPUS_VERSION, location,
-    startedAt, updatedAt: startedAt, expected: QUERIES.length * PROVIDERS.length * 2, queries: [...QUERIES], observations: [] };
+    startedAt, updatedAt: startedAt, expected: QUERIES.length * PROVIDERS.length * 2, queries: [...QUERIES], providers: [...PROVIDERS], actorFieldsVersion: 1, observations: [] };
 }
 
 export function reservation(run: Report, startedAt: number): Observation | undefined {
   const index = run.observations.length;
   const queries = run.queries ?? QUERIES;
+  const providers = reportProviders(run);
   if (index >= run.expected) return;
-  const round = Math.floor(index / (queries.length * PROVIDERS.length));
-  const i = Math.floor(index / PROVIDERS.length) % queries.length;
-  const provider = PROVIDERS[(round + i + index % PROVIDERS.length) % PROVIDERS.length];
+  const round = Math.floor(index / (queries.length * providers.length));
+  const i = Math.floor(index / providers.length) % queries.length;
+  const provider = providers[(round + i + index % providers.length) % providers.length];
   return { id: `${run.run}/${round}/${i}/${provider}`, run: run.run, corpus: run.corpus, provider,
     ...queries[i], round, startedAt, finishedAt: null, ms: null, outcome: "pending", status: null,
     actors: [], headers: {}, error: null, cooldownUntil: 0 };
