@@ -7,6 +7,7 @@ import { json, sanitize } from "../utils";
 import { recordMetric, recordCacheHit, recordTrafficSource } from "../metrics";
 import { recordStats } from "../stats-store";
 import { retainedBackendTiming } from "../server-timing";
+import { trace } from "../worker-tracing";
 
 async function blueskyFallback(term: string, limit: number, mode: "manual" | "automatic"): Promise<Response> {
   const headers = { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store",
@@ -51,6 +52,13 @@ export async function handleSearch(
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
+  return trace(ctx.tracing, "search.handle", span => search(request, env, ctx, span));
+}
+
+async function search(request: Request, env: Env, ctx: ExecutionContext, span?: Span): Promise<Response> {
+  const requestId = request.headers.get("CF-Ray") ?? crypto.randomUUID();
+  span?.setAttribute("typeahead.request_id", requestId);
+  span?.setAttribute("typeahead.tracing_available", !!ctx.tracing);
   const url = new URL(request.url);
   const q = url.searchParams.get("q") || url.searchParams.get("term") || "";
   const limitRaw = url.searchParams.get("limit");
@@ -86,7 +94,7 @@ export async function handleSearch(
     return json({ actors: [] });
   }
 
-  const fallback = (mode: "manual" | "automatic") => blueskyFallback(term, limit, mode);
+  const fallback = (mode: "manual" | "automatic") => trace(ctx.tracing, "search.bluesky-fallback", () => blueskyFallback(term, limit, mode));
   if (env.EMERGENCY_PROXY_BSKY || !env.SEARCH_BACKEND_URL) {
     counted(recordMetric);
     return fallback(env.EMERGENCY_PROXY_BSKY ? "manual" : "automatic");
@@ -105,10 +113,11 @@ export async function handleSearch(
     request
   );
   const cache = caches.default;
-  const cached = await cache.match(cacheKey);
+  const cached = await trace(ctx.tracing, "search.cache.lookup", () => cache.match(cacheKey));
+  span?.setAttribute("typeahead.cache", cached ? "hit" : "miss");
   if (cached) {
     counted(recordCacheHit);
-    const response = await filterIdentityResponse(cached, "actors");
+    const response = await trace(ctx.tracing, "search.cache.response", () => filterIdentityResponse(cached, "actors"));
     response.headers.set("Server-Timing", `cache;desc="hit";dur=${Date.now() - t0}`);
     return response;
   }
@@ -125,10 +134,10 @@ export async function handleSearch(
       backendRouteClass = parsedBackend.origin === "https://typeahead-search-transport.n8-3e9.workers.dev" ? "routed"
         : parsedBackend.hostname.endsWith(".fly.dev") ? "direct" : "other";
       const backendStart = Date.now();
-      const init = { signal: AbortSignal.timeout(3000) };
-      const backendRes = env.SEARCH_TRANSPORT
-        ? await env.SEARCH_TRANSPORT.fetch(backendUrl, init)
-        : await fetch(backendUrl, init);
+      const init = { signal: AbortSignal.timeout(3000), headers: { "X-Typeahead-Request-Id": requestId } };
+      const backendRes = await trace(ctx.tracing, "search.transport.headers", () => env.SEARCH_TRANSPORT
+        ? env.SEARCH_TRANSPORT.fetch(backendUrl, init)
+        : fetch(backendUrl, init));
       backendStrategy = backendRes.headers.get("X-Typeahead-Route-Strategy") === "proof" ? "proof" : "retained";
       if (backendRes.status === 400) {
         await backendRes.body?.cancel().catch(() => {});
@@ -145,9 +154,11 @@ export async function handleSearch(
       }
       {
         const headersMs = Date.now() - backendStart;
-        const upstreamBody = await backendRes.text();
-        validateBackendBody(upstreamBody, limit);
-        const body = filterIdentityBody(upstreamBody, "actors");
+        const upstreamBody = await trace(ctx.tracing, "search.transport.body", () => backendRes.text());
+        const body = trace(ctx.tracing, "search.response.process", () => {
+          validateBackendBody(upstreamBody, limit);
+          return filterIdentityBody(upstreamBody, "actors");
+        });
         const backendMs = Date.now() - backendStart;
 
         let empty = false;

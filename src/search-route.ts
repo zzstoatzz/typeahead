@@ -1,4 +1,5 @@
 import * as z from "zod/mini";
+import { trace } from "./worker-tracing";
 
 export const ROUTE_KEY = "control/search-routing.json";
 
@@ -78,7 +79,7 @@ async function readBucketRoute(bucket: RouteBucket) {
 /** After this, race a direct R2 read against the still-pending shared copy. */
 export const SHARED_ROUTE_WAIT_MS = 50;
 
-export async function readRoute(bucket: RouteBucket, cache: boolean, source?: RouteSource, ctx?: Pick<ExecutionContext, "waitUntil">) {
+export async function readRoute(bucket: RouteBucket, cache: boolean, source?: RouteSource, ctx?: Pick<ExecutionContext, "waitUntil"> & Partial<Pick<ExecutionContext, "tracing">>) {
   if (cache && cachedRoute && Date.now() < cachedRoute.expiresAt) return cachedRoute.route;
   const before = cachedRoute;
   let sharedRead: ReturnType<typeof readBucketRoute> | undefined;
@@ -87,7 +88,7 @@ export async function readRoute(bucket: RouteBucket, cache: boolean, source?: Ro
   try {
     let selected;
     if (cache && source) {
-      sharedRead = Promise.resolve().then(() => source.current()).then(({ route, validatedAt: claimed }) => {
+      sharedRead = Promise.resolve().then(() => trace(ctx?.tracing, "route.authority.call", () => source.current())).then(({ route, validatedAt: claimed }) => {
         const validatedAt = Math.min(claimed, Date.now());
         if (Date.now() - validatedAt >= 1000) throw new Error("Shared route expired");
         return { route: parseRoute({ version: 1, current: route }), validatedAt };
@@ -96,7 +97,7 @@ export async function readRoute(bucket: RouteBucket, cache: boolean, source?: Ro
         const begin = () => {
           if (bucketRead) return;
           clearTimeout(timer);
-          bucketRead = readBucketRoute(bucket);
+          bucketRead = trace(ctx?.tracing, "route.r2.fallback", () => readBucketRoute(bucket));
           resolve(bucketRead);
         };
         timer = setTimeout(begin, SHARED_ROUTE_WAIT_MS);
@@ -104,7 +105,7 @@ export async function readRoute(bucket: RouteBucket, cache: boolean, source?: Ro
       });
       selected = await Promise.race([sharedRead.catch(() => fallback), fallback]);
     } else {
-      selected = await readBucketRoute(bucket);
+      selected = await trace(ctx?.tracing, "route.r2.read", () => readBucketRoute(bucket));
     }
     const { route, validatedAt } = selected;
     cachedRoute = { route, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };

@@ -8,5 +8,5 @@
   "durable_objects": { "bindings": [{ "name": "ROUTE_AUTHORITY", "class_name": "RouteAuthority" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RouteAuthority"] }],
   "placement": { "region": "aws:us-east-1" },
-  "observability": { "enabled": true, "head_sampling_rate": 1, "traces": { "enabled": true } }
+  "observability": { "enabled": true, "head_sampling_rate": 1, "traces": { "enabled": true, "destinations": ["logfire-typeahead-traces"] } }
 }

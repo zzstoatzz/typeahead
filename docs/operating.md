@@ -501,6 +501,14 @@ Route validation and Fly fetch can overlap; never add their durations.
 The [eval timing disclosure](evaluation.md#where-time-goes) documents the
 timer boundaries and displays saved measurements without running probes.
 
+The public Worker and transport export native Cloudflare traces to Logfire's
+`waow/typeahead` project through `logfire-typeahead-traces`. Custom spans cover
+handler execution, cache, transport headers/body, route validation and Fly
+requests. Use the explicit handler spans to exclude background `waitUntil`
+work, and follow parent spans rather than adding overlapping durations.
+[Worker serving traces](investigations/2026-11-16-worker-tracing.md) lists the
+boundaries, export configuration and runtime limitations.
+
 ## Alerts
 
 Alerts come from three places.

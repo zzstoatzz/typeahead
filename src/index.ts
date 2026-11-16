@@ -22,6 +22,7 @@ import { docsPage } from "./pages/docs";
 import { llmsTxt } from "./pages/llms";
 import { reputationPage } from "./pages/reputation";
 import { RequestTiming } from "./request-timing";
+import { trace } from "./worker-tracing";
 import { handleEval } from "./handlers/eval";
 
 /** Cloudflare kills a scheduled invocation at 15 minutes of wall time, with
@@ -116,30 +117,34 @@ export default {
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    console.log(JSON.stringify({ event: "worker_request_start", cf_ray: request.headers.get("CF-Ray"),
-      ingress_colo: request.cf?.colo ?? "unknown", clock_ms: Date.now() }));
-    const timing = new RequestTiming();
-    // Count every answer, including the ones that are not a Response at all:
-    // an uncaught throw is what Cloudflare turns into a 1101/500 at the edge,
-    // and it was invisible to anything we own for at least a day (2026-08-23).
-    // Rethrown unchanged — this hook observes, it does not handle.
-    let status = 500;
-    try {
-      const response = request.method === "OPTIONS"
-        ? new Response(null, { status: 204, headers: CORS_HEADERS })
-        : await route(request, env, ctx, timing);
-      status = response.status;
-      return timing.response(response);
-    } finally {
-      const endpoint = endpointLabel(new URL(request.url).pathname);
-      console.log(JSON.stringify({ event: "worker_request_timing", endpoint, method: request.method,
-        status, ingress_colo: request.cf?.colo ?? "unknown", cf_ray: request.headers.get("CF-Ray"),
-        worker_ms: timing.elapsedMs(), rate_limit_ms: timing.rateLimitMs }));
-      if (request.method !== "OPTIONS") {
-        const domain = trafficDomain(request);
-        recordStats(ctx, env, (store, now) => recordRequest(store, domain, endpoint, status, now));
+    return trace(ctx.tracing, "worker.handle", async span => {
+      console.log(JSON.stringify({ event: "worker_request_start", cf_ray: request.headers.get("CF-Ray"),
+        ingress_colo: request.cf?.colo ?? "unknown", clock_ms: Date.now() }));
+      const timing = new RequestTiming(ctx.tracing);
+      span?.setAttribute("http.route", endpointLabel(new URL(request.url).pathname));
+      // Count every answer, including the ones that are not a Response at all:
+      // an uncaught throw is what Cloudflare turns into a 1101/500 at the edge,
+      // and it was invisible to anything we own for at least a day (2026-08-23).
+      // Rethrown unchanged — this hook observes, it does not handle.
+      let status = 500;
+      try {
+        const response = request.method === "OPTIONS"
+          ? new Response(null, { status: 204, headers: CORS_HEADERS })
+          : await route(request, env, ctx, timing);
+        status = response.status;
+        return timing.response(response);
+      } finally {
+        const endpoint = endpointLabel(new URL(request.url).pathname);
+        span?.setAttribute("http.response.status_code", status);
+        console.log(JSON.stringify({ event: "worker_request_timing", endpoint, method: request.method,
+          status, ingress_colo: request.cf?.colo ?? "unknown", cf_ray: request.headers.get("CF-Ray"),
+          worker_ms: timing.elapsedMs(), rate_limit_ms: timing.rateLimitMs }));
+        if (request.method !== "OPTIONS") {
+          const domain = trafficDomain(request);
+          recordStats(ctx, env, (store, now) => recordRequest(store, domain, endpoint, status, now));
+        }
       }
-    }
+    });
   },
 };
 

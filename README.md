@@ -39,6 +39,8 @@ credentials.
 The [evaluation](docs/evaluation.md) compares saved runs against Bluesky, with
 adjustable scoring, serving-time breakdowns, retained history and an isolated
 runner. No recurring collection schedule is currently installed.
+Worker serving traces use the existing Logfire project; see
+[timing boundaries](docs/investigations/2026-11-16-worker-tracing.md).
 
 ## docs
 

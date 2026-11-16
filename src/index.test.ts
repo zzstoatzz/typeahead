@@ -51,8 +51,7 @@ function ctx() {
   const tasks: Promise<unknown>[] = [];
   const c = { waitUntil: (p: Promise<unknown>) => { tasks.push(p); }, passThroughOnException() {} };
   // SAFETY: the worker's fetch handler uses the context only via waitUntil and
-  // passThroughOnException; the runtime-owned members (exports, props, tracing)
-  // are never read.
+  // passThroughOnException; tracing is optional on the pinned local runtime.
   return { ctx: c as ExecutionContext, tasks };
 }
 
