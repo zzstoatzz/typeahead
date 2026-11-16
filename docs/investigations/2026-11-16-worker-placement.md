@@ -57,3 +57,16 @@ physical execution datacenter from the inherited `request.cf.colo` value.
 [pre-experiment admission](2026-11-16-placement-admission.json) retain evidence.
 The production transport configuration now uses default placement. Its route
 validation, speculative fetch, identity checking and fallback paths are unchanged.
+
+The production transport was deployed as `0d1a8dfa-d0a9-460c-bfa2-23830645da8e`.
+Settings readback reported an empty placement configuration and smoke passed.
+Six public requests before and after, each a cache miss, retained identical
+DID lists and build IDs. Their median caller/transport residual fell from
+25 ms to 5 ms, Worker time from 60 ms to 45.5 ms, and client elapsed time
+from 161 ms to 103 ms. The client comparison is sequential and includes
+connection effects. The paired residual is the narrower verification.
+[Before](2026-11-16-placement-public-before.json) and
+[after](2026-11-16-placement-public-after.json) preserve all observations.
+
+All three temporary Workers were deleted after capture. No trial process
+remains. README was reviewed and its architecture overview remains accurate.

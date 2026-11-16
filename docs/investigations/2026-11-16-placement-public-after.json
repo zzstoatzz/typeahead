@@ -1,0 +1,110 @@
+[
+  {
+    "phase": "after",
+    "q": "zzstoatzz.io",
+    "limit": 6,
+    "at": "2026-11-16T19:15:40.169Z",
+    "clientMs": 186,
+    "ray": "a5b8d36109ea1dfb-ATL",
+    "timing": "cache;desc=\"miss\";dur=8, origin_headers;dur=37;desc=\"01M7JWJP6KQ3H6CPKSK01D7AYX-iad\", origin;dur=37, search;dur=45, engine;dur=1.97, transport_route;dur=25, transport_origin_headers;dur=31, transport_total;dur=31, transport_hint_wait;dur=0, transport_origin_start;dur=0, worker;dur=45, rate_limit;dur=0",
+    "build": "b1794463531-cp-edfe0f3fd1",
+    "dids": [
+      "did:plc:xbtmt2zjwlrfegqvch7fboei",
+      "did:plc:65sucjiel52gefhcdcypynsr",
+      "did:plc:ehr2oix3bkhbxsqen4wav2bp",
+      "did:plc:3cr6uc547ot7j3nysnxmnrsl"
+    ]
+  },
+  {
+    "phase": "after",
+    "q": "na",
+    "limit": 6,
+    "at": "2026-11-16T19:15:45.457Z",
+    "clientMs": 104,
+    "ray": "a5b8d3818b201dfb-ATL",
+    "timing": "cache;desc=\"miss\";dur=8, origin_headers;dur=38;desc=\"01M7JWJV95GEK22X2QT6BVP536-iad\", origin;dur=38, search;dur=46, engine;dur=3.487, transport_route;dur=27, transport_origin_headers;dur=33, transport_total;dur=33, transport_hint_wait;dur=0, transport_origin_start;dur=0, worker;dur=46, rate_limit;dur=0",
+    "build": "b1794463531-cp-edfe0f3fd1",
+    "dids": [
+      "did:plc:gocmmddhwq22kyammex4ixfm",
+      "did:plc:dst5a7uf7wtatmp66p5ygzmw",
+      "did:plc:qtjpurf5fsptp3dhi52kksl6",
+      "did:plc:jyctnrcv5dznuu67bkjjlf3t",
+      "did:plc:wuhkj7cjrak4zghdgunoprur",
+      "did:plc:5xrlqsoaevk2twhthqsi4b5n"
+    ]
+  },
+  {
+    "phase": "after",
+    "q": "aoc",
+    "limit": 6,
+    "at": "2026-11-16T19:15:50.663Z",
+    "clientMs": 108,
+    "ray": "a5b8d3a21f8a1dfb-ATL",
+    "timing": "cache;desc=\"miss\";dur=13, origin_headers;dur=36;desc=\"01M7JWK0C3XERVHMES6KNM3CMH-iad\", origin;dur=36, search;dur=49, engine;dur=1.36, transport_route;dur=28, transport_origin_headers;dur=32, transport_total;dur=32, transport_hint_wait;dur=0, transport_origin_start;dur=0, worker;dur=49, rate_limit;dur=0",
+    "build": "b1794463531-cp-edfe0f3fd1",
+    "dids": [
+      "did:plc:p7gxyfr5vii5ntpwo7f6dhe2",
+      "did:plc:p4xczyizf4brxchyzcib67xu",
+      "did:plc:4bw6b645ia4klodsswjabidi",
+      "did:plc:b3ywwig5fqs6ak4h2sagksdz",
+      "did:plc:ekbkedzu2gx3fsli4uu45ilh",
+      "did:plc:2zczbhjby3mgvbcynmnghfn2"
+    ]
+  },
+  {
+    "phase": "after",
+    "q": "zzstoatzz.io",
+    "limit": 8,
+    "at": "2026-11-16T19:15:55.872Z",
+    "clientMs": 88,
+    "ray": "a5b8d3c2accb1dfb-ATL",
+    "timing": "cache;desc=\"miss\";dur=9, origin_headers;dur=35;desc=\"01M7JWK5E4FEKY2FMGVD3TYVGS-iad\", origin;dur=35, search;dur=44, engine;dur=2.047, transport_route;dur=30, transport_origin_headers;dur=30, transport_total;dur=30, transport_hint_wait;dur=0, transport_origin_start;dur=0, worker;dur=44, rate_limit;dur=0",
+    "build": "b1794463531-cp-edfe0f3fd1",
+    "dids": [
+      "did:plc:xbtmt2zjwlrfegqvch7fboei",
+      "did:plc:65sucjiel52gefhcdcypynsr",
+      "did:plc:ehr2oix3bkhbxsqen4wav2bp",
+      "did:plc:3cr6uc547ot7j3nysnxmnrsl"
+    ]
+  },
+  {
+    "phase": "after",
+    "q": "na",
+    "limit": 8,
+    "at": "2026-11-16T19:16:01.062Z",
+    "clientMs": 100,
+    "ray": "a5b8d3e31d2a1dfb-ATL",
+    "timing": "cache;desc=\"miss\";dur=6, origin_headers;dur=34;desc=\"01M7JWKAGT9TA1RGHHKM3W0F4T-iad\", origin;dur=34, search;dur=40, engine;dur=3.42, transport_route;dur=30, transport_origin_headers;dur=31, transport_total;dur=31, transport_hint_wait;dur=0, transport_origin_start;dur=0, worker;dur=40, rate_limit;dur=0",
+    "build": "b1794463531-cp-edfe0f3fd1",
+    "dids": [
+      "did:plc:gocmmddhwq22kyammex4ixfm",
+      "did:plc:dst5a7uf7wtatmp66p5ygzmw",
+      "did:plc:qtjpurf5fsptp3dhi52kksl6",
+      "did:plc:jyctnrcv5dznuu67bkjjlf3t",
+      "did:plc:wuhkj7cjrak4zghdgunoprur",
+      "did:plc:5xrlqsoaevk2twhthqsi4b5n",
+      "did:plc:oor5a4qdwj2srkc55xocuuym",
+      "did:plc:227vbwa4l4m3nbyjjsgylvop"
+    ]
+  },
+  {
+    "phase": "after",
+    "q": "aoc",
+    "limit": 8,
+    "at": "2026-11-16T19:16:06.264Z",
+    "clientMs": 102,
+    "ray": "a5b8d4039d6d1dfb-ATL",
+    "timing": "cache;desc=\"miss\";dur=12, origin_headers;dur=51;desc=\"01M7JWKFKDQG11W8QQ9DAQQQXS-iad\", origin;dur=51, search;dur=63, engine;dur=2.673, transport_route;dur=26, transport_origin_headers;dur=46, transport_total;dur=46, transport_hint_wait;dur=0, transport_origin_start;dur=0, worker;dur=63, rate_limit;dur=0",
+    "build": "b1794463531-cp-edfe0f3fd1",
+    "dids": [
+      "did:plc:p7gxyfr5vii5ntpwo7f6dhe2",
+      "did:plc:p4xczyizf4brxchyzcib67xu",
+      "did:plc:4bw6b645ia4klodsswjabidi",
+      "did:plc:b3ywwig5fqs6ak4h2sagksdz",
+      "did:plc:ekbkedzu2gx3fsli4uu45ilh",
+      "did:plc:2zczbhjby3mgvbcynmnghfn2",
+      "did:plc:epmdxssimtexi4kipy42lfjn",
+      "did:plc:44ybs5faslu2zf6ayq5iyric"
+    ]
+  }
+]
