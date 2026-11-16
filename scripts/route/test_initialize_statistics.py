@@ -1,5 +1,7 @@
+import copy
 import json
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import initialize_statistics as initialize
@@ -15,6 +17,25 @@ class StatisticsInitialization(unittest.TestCase):
         with self.assertRaises(initialize.route.Refused):
             initialize.guard(fixture.SLOT_A, world.get)
 
+    def test_empty_init_is_restored_explicitly_despite_fly_merge_semantics(self):
+        current = {'init': {}, 'image': 'fixture', 'env': {'A': '1'}}
+        updates = []
+        def run(args):
+            if 'status' in args:
+                return json.dumps(current)
+            if 'update' in args:
+                path = args[args.index('--machine-config') + 1]
+                wanted = json.loads(Path(path).read_text())
+                updates.append(copy.deepcopy(wanted))
+                current['init'].update(wanted['init'])
+                return ''
+            return '{"statistics_initialized":true}'
+        with patch.object(initialize, 'guard'), patch.object(initialize, 'run', side_effect=run):
+            result = initialize.initialize('typeahead-slot-a', 'fixture', True)
+        self.assertTrue(result['written'])
+        self.assertEqual(updates[0]['init']['cmd'], ['/bin/sleep', 'infinity'])
+        self.assertEqual(current['init']['cmd'], ['/app/supervise'])
+
     def test_failure_restores_standby_config(self):
         config = {'init': {}, 'image': 'fixture', 'env': {'A': '1'}}
         calls = []
@@ -24,6 +45,9 @@ class StatisticsInitialization(unittest.TestCase):
                 return json.dumps(config)
             if 'console' in args:
                 raise RuntimeError('initializer failed')
+            if 'update' in args:
+                wanted = json.loads(Path(args[args.index('--machine-config') + 1]).read_text())
+                config['init'].update(wanted['init'])
             return ''
         with patch.object(initialize, 'guard'), patch.object(initialize, 'run', side_effect=run):
             with self.assertRaisesRegex(RuntimeError, 'initializer failed'):

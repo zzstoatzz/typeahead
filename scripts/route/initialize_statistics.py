@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --no-project
-"""Initialize index counters with the standby stopped; restore its exact config."""
+"""Initialize index counters with the standby stopped; restore its supervisor and verify the effective config."""
 import argparse
 import copy
 import json
@@ -30,8 +30,11 @@ def initialize(app, machine, write=False):
         raise route.Refused('not a store slot')
     guard(origin)
     config = json.loads(run(['fly', 'machine', 'status', machine, '-a', app, '--display-config']))
-    if config.get('init', {}).get('cmd'):
-        raise route.Refused('machine already has a command override')
+    command = config.get('init', {}).get('cmd')
+    if command not in (None, [], ['/app/supervise']):
+        raise route.Refused('machine has an unexpected command override')
+    # Fly merges init objects: an empty object cannot clear the sleep command.
+    config.setdefault('init', {})['cmd'] = ['/app/supervise']
     if not write:
         return {'operation': 'initialize-statistics', 'app': app, 'machine': machine, 'written': False}
     idle = copy.deepcopy(config)
@@ -52,10 +55,10 @@ def initialize(app, machine, write=False):
             if json.loads(result).get('statistics_initialized') is not True:
                 raise route.Refused('initializer did not acknowledge success')
         finally:
-            run(['fly', 'machine', 'update', machine, '-a', app, '--machine-config', paths[0], '--yes'])
+            run(['fly', 'machine', 'update', machine, '-a', app, '--machine-config', paths[0], '--skip-health-checks', '--yes'])
             restored = json.loads(run(['fly', 'machine', 'status', machine, '-a', app, '--display-config']))
             if restored != config:
-                raise route.Refused('standby config did not restore exactly; stop and inspect it')
+                raise route.Refused('standby supervisor/config did not restore; stop and inspect it')
     return {'operation': 'initialize-statistics', 'app': app, 'machine': machine, 'written': True}
 
 

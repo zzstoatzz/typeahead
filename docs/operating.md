@@ -514,7 +514,9 @@ uv run --no-project scripts/route/initialize_statistics.py --app <standby app> -
 
 The helper checks the live route and serving health, temporarily replaces the
 standby's command with sleep, runs the initializer, and restores and verifies
-its original machine configuration even after initialization failure. The
+its effective machine configuration even after initialization failure. Fly merges
+`init` overrides, so restoration explicitly sets `/app/supervise` rather than
+writing an empty object; all other settings must match. The
 initializer requires an explicit acknowledgement and an exclusive index writer
 lock; it never runs from startup, cron, health or a request. Its commit disables
 merging. No index rewrite or format change is needed. Wait for fresh admission
