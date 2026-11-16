@@ -1,0 +1,825 @@
+{
+  "verifiedAt": "2026-11-16T22:26:20.791Z",
+  "implementationCommit": "8354e5a0346d2ff443669f207e0e7d0f9762c067",
+  "helperFixCommit": "2ffebf17b0d0ffd24b38fe9d33219735b5b75555",
+  "testFixCommit": "69f277283e2379ff2b5863f8c84b3cb7d8a0ab5a",
+  "workerVersion": "28abe765-0b0d-4e30-ab8b-d91a8d3e29d4",
+  "slots": {
+    "a": {
+      "id": "83e401a7974668",
+      "state": "started",
+      "version": "01M7K6VK0C1PP46YF3ZW69TTGX",
+      "image": "sha256:b015bfaed4c025d94e7c3159152872ad44452367cdeb6b6e61acaf3acf1adff5",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 4,
+        "memory_mb": 2048
+      },
+      "init": {
+        "cmd": [
+          "/app/supervise"
+        ]
+      }
+    },
+    "b": {
+      "id": "781e7e3ad11068",
+      "state": "started",
+      "version": "01M7K64284839A6D0154V50W01",
+      "image": "sha256:b015bfaed4c025d94e7c3159152872ad44452367cdeb6b6e61acaf3acf1adff5",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 4,
+        "memory_mb": 2048
+      },
+      "init": {
+        "cmd": [
+          "/app/supervise"
+        ]
+      }
+    }
+  },
+  "indexBinarySha256": "47080fed8fb8c252a6b78007fdcc07e11847bbed55181645ef87651192a0b531",
+  "routeAfter": {
+    "engine": "tantivy",
+    "origin": "https://typeahead-slot-b.fly.dev",
+    "build_id": "b1794463531-cp-edfe0f3fd1",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "admission_sha256": "8a621b5d5858d8a18f954d0efac68b723225cfd6c2c69c2e20fbdbbaccd186ea",
+    "binary_sha256": "47080fed8fb8c252a6b78007fdcc07e11847bbed55181645ef87651192a0b531",
+    "retrieval_strategy": "global-merge"
+  },
+  "cutover": {
+    "operation": "cutover",
+    "written": true,
+    "expected_etag": "\"d57e949d18056d229751732d4594ff37\"",
+    "admission": {
+      "schema_version": 1,
+      "kind": "store-slot-route-admission",
+      "admitted_at": 1794867028,
+      "target": {
+        "engine": "tantivy",
+        "origin": "https://typeahead-slot-b.fly.dev",
+        "build_id": "b1794463531-cp-edfe0f3fd1",
+        "format": "tantivy-0.27-f32-did-expiry-v4",
+        "binary_sha256": "47080fed8fb8c252a6b78007fdcc07e11847bbed55181645ef87651192a0b531",
+        "retrieval_strategy": "global-merge"
+      },
+      "gates": {
+        "sync_lag_s": 1,
+        "policy_age_s": 1,
+        "policy_sha256": "1247e2ceddd6e3bdae5471a69fb01e32c806e1a0f2f11c5a5124129193d46cd5",
+        "policy_compared_with_serving": true,
+        "canonical_rules_source_sha256": "ab36e3fbb399429b5f8c770e22f56e0e0b259b7ba0a62b742f5243908627e5f0",
+        "rules_compared_with_serving": true,
+        "reconciliation_age_s": 209687,
+        "reconciliation_duration_s": 2684,
+        "source_policy": "store-change-log-v1",
+        "source_id": "typeahead-slot-b-store",
+        "source_cursor_sha256": "849b46433bda26a687da27d8fef22598ef8c19dc0165716359994bac81193a6e",
+        "source_observation_revision": 238467,
+        "normalize_version": "v2-cjk-bigram",
+        "plan_version": "complete-prefix-groups-v1",
+        "actor_count": 13307567,
+        "serving_actor_count": 13307567,
+        "serving_origin": "https://typeahead-slot-a.fly.dev",
+        "serving_healthy": true,
+        "serving_unhealthy_reasons": [],
+        "compared_with_serving": true,
+        "machine_id": "781e7e3ad11068"
+      },
+      "prior_route": {
+        "version": 1,
+        "current": {
+          "engine": "tantivy",
+          "origin": "https://typeahead-slot-a.fly.dev",
+          "build_id": "b1794463531-cp-edfe0f3fd1",
+          "format": "tantivy-0.27-f32-did-expiry-v4",
+          "binary_sha256": "10999570a084bd6a7960db89a087b8874cd9963cf28996e62e02ead47c1ec2a6",
+          "retrieval_strategy": "global-merge",
+          "admission_sha256": "022ab111f559447ab7c5fce915315542f54f56fc2cd0e2ca63abc3c2856fd943"
+        },
+        "previous": {
+          "engine": "tantivy",
+          "origin": "https://typeahead-slot-b.fly.dev",
+          "build_id": "b1794463531-cp-edfe0f3fd1",
+          "format": "tantivy-0.27-f32-did-expiry-v4",
+          "binary_sha256": "10999570a084bd6a7960db89a087b8874cd9963cf28996e62e02ead47c1ec2a6",
+          "retrieval_strategy": "global-merge",
+          "admission_sha256": "e0cf3cf757f219bc196dd1e6dc26f93fd3f7bf84c107be532c8596608128c4fa"
+        }
+      }
+    },
+    "route": {
+      "version": 1,
+      "current": {
+        "engine": "tantivy",
+        "origin": "https://typeahead-slot-b.fly.dev",
+        "build_id": "b1794463531-cp-edfe0f3fd1",
+        "format": "tantivy-0.27-f32-did-expiry-v4",
+        "binary_sha256": "47080fed8fb8c252a6b78007fdcc07e11847bbed55181645ef87651192a0b531",
+        "retrieval_strategy": "global-merge",
+        "admission_sha256": "8a621b5d5858d8a18f954d0efac68b723225cfd6c2c69c2e20fbdbbaccd186ea"
+      },
+      "previous": {
+        "engine": "tantivy",
+        "origin": "https://typeahead-slot-a.fly.dev",
+        "build_id": "b1794463531-cp-edfe0f3fd1",
+        "format": "tantivy-0.27-f32-did-expiry-v4",
+        "binary_sha256": "10999570a084bd6a7960db89a087b8874cd9963cf28996e62e02ead47c1ec2a6",
+        "retrieval_strategy": "global-merge",
+        "admission_sha256": "022ab111f559447ab7c5fce915315542f54f56fc2cd0e2ca63abc3c2856fd943"
+      }
+    },
+    "etag": "\"48e0ef63dcbd79596873c9c6d89212fb\""
+  },
+  "initialization": {
+    "a": {
+      "operation": "initialize-statistics",
+      "app": "typeahead-slot-a",
+      "machine": "83e401a7974668",
+      "written": true
+    },
+    "b": {
+      "initialized": true,
+      "originalRestorationFailed": true,
+      "manuallyRestoredWithOnlyExplicitSupervisorCommand": true
+    },
+    "servingMachineUnchangedDuringStandbyInitialization": true
+  },
+  "finalHealth": {
+    "a": {
+      "statistics_version": 1,
+      "corpusReportPresent": false,
+      "queueTotalsPresent": false,
+      "filesystemTotalsPresent": false,
+      "writesPending": 0,
+      "bridgeLag": 0,
+      "observedAtEpoch": 1794867856
+    },
+    "b": {
+      "statistics_version": 1,
+      "corpusReportPresent": false,
+      "queueTotalsPresent": false,
+      "filesystemTotalsPresent": false,
+      "writesPending": 0,
+      "bridgeLag": 0,
+      "observedAtEpoch": 1794867846
+    }
+  },
+  "finalAdmission": {
+    "operation": "standby",
+    "written": false,
+    "fit": true,
+    "serving": {
+      "engine": "tantivy",
+      "origin": "https://typeahead-slot-b.fly.dev",
+      "build_id": "b1794463531-cp-edfe0f3fd1",
+      "format": "tantivy-0.27-f32-did-expiry-v4",
+      "admission_sha256": "8a621b5d5858d8a18f954d0efac68b723225cfd6c2c69c2e20fbdbbaccd186ea",
+      "binary_sha256": "47080fed8fb8c252a6b78007fdcc07e11847bbed55181645ef87651192a0b531",
+      "retrieval_strategy": "global-merge"
+    },
+    "serving_healthy": true,
+    "serving_unhealthy_reasons": [],
+    "standby": [
+      {
+        "origin": "https://typeahead-slot-a.fly.dev",
+        "fit": true,
+        "cutover_needs_serving_slot_unhealthy": false,
+        "binary_sha256_expected_from": "operator",
+        "target": {
+          "engine": "tantivy",
+          "origin": "https://typeahead-slot-a.fly.dev",
+          "build_id": "b1794463531-cp-edfe0f3fd1",
+          "format": "tantivy-0.27-f32-did-expiry-v4",
+          "binary_sha256": "47080fed8fb8c252a6b78007fdcc07e11847bbed55181645ef87651192a0b531",
+          "retrieval_strategy": "global-merge"
+        },
+        "gates": {
+          "sync_lag_s": 14,
+          "policy_age_s": 14,
+          "policy_sha256": "1247e2ceddd6e3bdae5471a69fb01e32c806e1a0f2f11c5a5124129193d46cd5",
+          "policy_compared_with_serving": true,
+          "canonical_rules_source_sha256": "ab36e3fbb399429b5f8c770e22f56e0e0b259b7ba0a62b742f5243908627e5f0",
+          "rules_compared_with_serving": true,
+          "reconciliation_age_s": 209718,
+          "reconciliation_duration_s": 3331,
+          "source_policy": "store-change-log-v1",
+          "source_id": "typeahead-slot-a-store",
+          "source_cursor_sha256": "9b9aaf786627169103ece9b5c7e748c316c1a952aa5ef94202874a0caabb9864",
+          "source_observation_revision": 238909,
+          "normalize_version": "v2-cjk-bigram",
+          "plan_version": "complete-prefix-groups-v1",
+          "actor_count": 13307587,
+          "serving_actor_count": 13307658,
+          "serving_origin": "https://typeahead-slot-b.fly.dev",
+          "serving_healthy": true,
+          "serving_unhealthy_reasons": [],
+          "compared_with_serving": true,
+          "machine_id": "83e401a7974668"
+        }
+      }
+    ]
+  },
+  "protectionRefusals": {
+    "oldBinary": {
+      "operation": "cutover",
+      "written": false,
+      "refused": [
+        "candidate lacks bounded statistics capability"
+      ]
+    },
+    "activeInitialization": {
+      "operation": "check",
+      "written": false,
+      "refused": [
+        "candidate lacks bounded statistics capability",
+        "candidate /index/status answered TimeoutError: The read operation timed out",
+        "candidate does not report a valid build id"
+      ]
+    },
+    "servingInitializer": "slot_route.Refused: statistics initialization cannot target the serving slot"
+  },
+  "qualification": {
+    "bInitial": {
+      "at": "2026-11-16T22:04:40.773Z",
+      "origin": "https://typeahead-slot-b.fly.dev",
+      "requests": 36,
+      "failures": 4,
+      "identicalOrderedResults": 32,
+      "p50SuccessfulEngineMs": 0.957,
+      "p90SuccessfulEngineMs": 1496.428,
+      "maxSuccessfulEngineMs": 2484.172,
+      "rounds": [
+        {
+          "round": 0,
+          "failures": 4,
+          "maxSuccessfulEngineMs": 2484.172
+        },
+        {
+          "round": 1,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 1.202
+        },
+        {
+          "round": 2,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 1.071
+        }
+      ],
+      "statsReads": 12,
+      "statsFailures": 0,
+      "firstCounts": {
+        "counts": {
+          "hidden": 5533,
+          "live": 13307285,
+          "scanned_at": 1794866616,
+          "total": 13301752,
+          "with_avatars": 9973256,
+          "with_handles": 13307285
+        },
+        "index": {
+          "actors": 13307285,
+          "handle_invalid": 16753,
+          "quarantined": 1755782,
+          "searchable": 13285008,
+          "statistics_version": 1,
+          "watermark": 1794866614
+        },
+        "store": null
+      },
+      "lastCounts": {
+        "counts": {
+          "hidden": 5533,
+          "live": 13307285,
+          "scanned_at": 1794866672,
+          "total": 13301752,
+          "with_avatars": 9973256,
+          "with_handles": 13307285
+        },
+        "index": {
+          "actors": 13307285,
+          "handle_invalid": 16753,
+          "quarantined": 1755782,
+          "searchable": 13285008,
+          "statistics_version": 1,
+          "watermark": 1794866672
+        },
+        "store": null
+      },
+      "rawSha256": "e70e335b6706ed7569a45dceaba95c5d28e55a465bcaf63170fbea99d984cb48"
+    },
+    "bBeforeSettling": {
+      "at": "2026-11-16T22:06:15.847Z",
+      "origin": "https://typeahead-slot-b.fly.dev",
+      "requests": 36,
+      "failures": 0,
+      "identicalOrderedResults": 36,
+      "p50SuccessfulEngineMs": 1.187,
+      "p90SuccessfulEngineMs": 594.222,
+      "maxSuccessfulEngineMs": 797.851,
+      "rounds": [
+        {
+          "round": 0,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 797.851
+        },
+        {
+          "round": 1,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 1.307
+        },
+        {
+          "round": 2,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 1.699
+        }
+      ],
+      "statsReads": 12,
+      "statsFailures": 0,
+      "firstCounts": {
+        "counts": {
+          "hidden": 5533,
+          "live": 13307285,
+          "scanned_at": 1794866710,
+          "total": 13301752,
+          "with_avatars": 9973256,
+          "with_handles": 13307285
+        },
+        "index": {
+          "actors": 13307285,
+          "handle_invalid": 16753,
+          "quarantined": 1755782,
+          "searchable": 13285008,
+          "statistics_version": 1,
+          "watermark": 1794866707
+        },
+        "store": null
+      },
+      "lastCounts": {
+        "counts": {
+          "hidden": 5538,
+          "live": 13307379,
+          "scanned_at": 1794866769,
+          "total": 13301841,
+          "with_avatars": 9973316,
+          "with_handles": 13307379
+        },
+        "index": {
+          "actors": 13307379,
+          "handle_invalid": 16759,
+          "quarantined": 1755782,
+          "searchable": 13285091,
+          "statistics_version": 1,
+          "watermark": 1794866769
+        },
+        "store": null
+      },
+      "rawSha256": "c713ae2c04b8bfd591cc9d716104e53f97777c6ba27c83248c9a72bc7e28c39f"
+    },
+    "bSettled": {
+      "at": "2026-11-16T22:09:51.687Z",
+      "origin": "https://typeahead-slot-b.fly.dev",
+      "requests": 36,
+      "failures": 0,
+      "identicalOrderedResults": 36,
+      "p50SuccessfulEngineMs": 1.088,
+      "p90SuccessfulEngineMs": 1.257,
+      "maxSuccessfulEngineMs": 1.876,
+      "rounds": [
+        {
+          "round": 0,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 1.352
+        },
+        {
+          "round": 1,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 1.876
+        },
+        {
+          "round": 2,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 1.178
+        }
+      ],
+      "statsReads": 12,
+      "statsFailures": 0,
+      "firstCounts": {
+        "counts": {
+          "hidden": 5535,
+          "live": 13307533,
+          "scanned_at": 1794866951,
+          "total": 13301998,
+          "with_avatars": 9973488,
+          "with_handles": 13307533
+        },
+        "index": {
+          "actors": 13307533,
+          "handle_invalid": 16759,
+          "quarantined": 1755782,
+          "searchable": 13285248,
+          "statistics_version": 1,
+          "watermark": 1794866951
+        },
+        "store": null
+      },
+      "lastCounts": {
+        "counts": {
+          "hidden": 5535,
+          "live": 13307548,
+          "scanned_at": 1794866986,
+          "total": 13302013,
+          "with_avatars": 9973501,
+          "with_handles": 13307548
+        },
+        "index": {
+          "actors": 13307548,
+          "handle_invalid": 16759,
+          "quarantined": 1755782,
+          "searchable": 13285263,
+          "statistics_version": 1,
+          "watermark": 1794866986
+        },
+        "store": null
+      },
+      "rawSha256": "045d4d72ee8161300d04c75aadb340e7c76bd5a93ccb173a7e92557a2fc1c165"
+    },
+    "aInitial": {
+      "at": "2026-11-16T22:17:22.550Z",
+      "origin": "https://typeahead-slot-a.fly.dev",
+      "requests": 36,
+      "failures": 7,
+      "identicalOrderedResults": 29,
+      "p50SuccessfulEngineMs": 1.506,
+      "p90SuccessfulEngineMs": 1272.021,
+      "maxSuccessfulEngineMs": 2316.697,
+      "rounds": [
+        {
+          "round": 0,
+          "failures": 7,
+          "maxSuccessfulEngineMs": 2316.697
+        },
+        {
+          "round": 1,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 2.098
+        },
+        {
+          "round": 2,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 3.124
+        }
+      ],
+      "statsReads": 12,
+      "statsFailures": 0,
+      "firstCounts": {
+        "counts": {
+          "hidden": 5542,
+          "live": 13307587,
+          "scanned_at": 1794867373,
+          "total": 13302045,
+          "with_avatars": 9973545,
+          "with_handles": 13307587
+        },
+        "index": {
+          "actors": 13307587,
+          "handle_invalid": 16767,
+          "quarantined": 1755782,
+          "searchable": 13285287,
+          "statistics_version": 1,
+          "watermark": 1794867373
+        },
+        "store": null
+      },
+      "lastCounts": {
+        "counts": {
+          "hidden": 5542,
+          "live": 13307586,
+          "scanned_at": 1794867414,
+          "total": 13302044,
+          "with_avatars": 9973544,
+          "with_handles": 13307586
+        },
+        "index": {
+          "actors": 13307586,
+          "handle_invalid": 16767,
+          "quarantined": 1755782,
+          "searchable": 13285286,
+          "statistics_version": 1,
+          "watermark": 1794867408
+        },
+        "store": null
+      },
+      "rawSha256": "6ccee9a9b8f8cb6bca1893613bf1428b1f172a2639a0162b8f5074f11a140a47"
+    },
+    "aSettled": {
+      "at": "2026-11-16T22:22:39.180Z",
+      "origin": "https://typeahead-slot-a.fly.dev",
+      "requests": 36,
+      "failures": 0,
+      "identicalOrderedResults": 36,
+      "p50SuccessfulEngineMs": 1.69,
+      "p90SuccessfulEngineMs": 4.983,
+      "maxSuccessfulEngineMs": 7.56,
+      "rounds": [
+        {
+          "round": 0,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 7.56
+        },
+        {
+          "round": 1,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 2.254
+        },
+        {
+          "round": 2,
+          "failures": 0,
+          "maxSuccessfulEngineMs": 1.807
+        }
+      ],
+      "statsReads": 12,
+      "statsFailures": 0,
+      "firstCounts": {
+        "counts": {
+          "hidden": 5546,
+          "live": 13307735,
+          "scanned_at": 1794867719,
+          "total": 13302189,
+          "with_avatars": 9973667,
+          "with_handles": 13307735
+        },
+        "index": {
+          "actors": 13307735,
+          "handle_invalid": 16780,
+          "quarantined": 1755782,
+          "searchable": 13285418,
+          "statistics_version": 1,
+          "watermark": 1794867719
+        },
+        "store": null
+      },
+      "lastCounts": {
+        "counts": {
+          "hidden": 5546,
+          "live": 13307745,
+          "scanned_at": 1794867754,
+          "total": 13302199,
+          "with_avatars": 9973677,
+          "with_handles": 13307745
+        },
+        "index": {
+          "actors": 13307745,
+          "handle_invalid": 16781,
+          "quarantined": 1755782,
+          "searchable": 13285427,
+          "statistics_version": 1,
+          "watermark": 1794867754
+        },
+        "store": null
+      },
+      "rawSha256": "f07857d009073d5b9879eed7c6849b847db12ae76697efbbb63237215dd1df2c"
+    }
+  },
+  "queryBaseline": [
+    {
+      "q": "nate",
+      "dids": [
+        "did:plc:dst5a7uf7wtatmp66p5ygzmw",
+        "did:plc:kgihv26oznpn6cu3p45jzydp",
+        "did:plc:jehkz3ubrqvdnq7rqp67pweo",
+        "did:plc:bqltstbdzc7keycyhdqtqhk2",
+        "did:plc:twd4pvmds7pyvvgrjsgoscdk",
+        "did:plc:pffxichc3l3hnvyysin3zjbi",
+        "did:plc:zp4hh7r3nl66qzcemmjw5chi",
+        "did:plc:2qwpeisxhznwdjfylihurdp4",
+        "did:plc:gn3jcqukhjkzvfoyuymof7hl",
+        "did:plc:mec5dce2ymb4ya3q3veb4xjw"
+      ],
+      "engineMs": 101.548
+    },
+    {
+      "q": "jola",
+      "dids": [
+        "did:plc:32j74bozuuvd2tsbkg5gqln3",
+        "did:plc:7kjc7zzv54jl6yxuyjkpdvbx",
+        "did:plc:bwfoa55douqoor7t4jtbuvda",
+        "did:plc:t7ps2liha2sbfgm64xgiyfyk",
+        "did:plc:ekpjxtus2pcbqoxvwba7joyp",
+        "did:plc:mahv73jpyv22r6bpaakh3w2z",
+        "did:plc:zgsk3xylatdiexnkhlvejszy",
+        "did:plc:ocws5djvmjrupysale63fiuf",
+        "did:plc:lmueutl343z2z6equvjesvnm",
+        "did:plc:psic54zsdga3g7vo2udykzqf"
+      ],
+      "engineMs": 33.64
+    },
+    {
+      "q": "fig",
+      "dids": [
+        "did:plc:cg7prwkuboy5dm7bvlcwsqsn",
+        "did:plc:p42p6sf72zmlx3bwukcvoiuy",
+        "did:plc:fisw6ovjx44jzajsn2j5wftx",
+        "did:plc:bdwgpq3lauwdvyv6ogxmpbjt",
+        "did:plc:v7qxgsaicycbiy7kyjjkqkx7",
+        "did:plc:lgqd56jpj3rglnd6jkentbu5",
+        "did:plc:je2fqxd6eq5nszrsizfehcin",
+        "did:plc:btc3rrfafbv4xqsv3v3533p6",
+        "did:plc:z7mxys3ms5slfb26r5vmtve2",
+        "did:plc:qo3obram42go2naow7ioqzs2"
+      ],
+      "engineMs": 27.908
+    },
+    {
+      "q": "zzstoatzz.io",
+      "dids": [
+        "did:plc:xbtmt2zjwlrfegqvch7fboei",
+        "did:plc:65sucjiel52gefhcdcypynsr",
+        "did:plc:ehr2oix3bkhbxsqen4wav2bp",
+        "did:plc:3cr6uc547ot7j3nysnxmnrsl"
+      ],
+      "engineMs": 15.35
+    },
+    {
+      "q": "aka",
+      "dids": [
+        "did:plc:e3cyxeqboiqsybc3u6wvzysz",
+        "did:plc:rgzxi423l4nxslvanpyalf23",
+        "did:plc:keibqmradxozzxoyslj4lkko",
+        "did:plc:s6ffymr4g634xhuhnacrxje5",
+        "did:plc:erwiftypcifnkgdmjr66p4y7",
+        "did:plc:vsumtgv5yra3pprohbaxa663",
+        "did:plc:ypszrzkvhivsuhfmlvv4v2ao",
+        "did:plc:25pi264y4gkoh6nry6ytx3x2",
+        "did:plc:l6arnocvhn2zrll2gn6xlxn2",
+        "did:plc:yurczx5d7ii3laavi2mneulv"
+      ],
+      "engineMs": 23.456
+    },
+    {
+      "q": "aka.",
+      "dids": [
+        "did:plc:n4trpbfeo2x6j7lthgq4xnvp",
+        "did:plc:eob75vcjtmbaef2tn4evc4sl",
+        "did:plc:6lao5zlt3nqtmo6ss5faxvfx",
+        "did:plc:ru4klhizfnl64w7yipecukco",
+        "did:plc:2m457k7yz3ykq4yka4nvjdaz",
+        "did:plc:ghebqfyuybtwlr7ti2ubf6gr",
+        "did:plc:24jpp2ntgoeqgij4rqpptxxt",
+        "did:plc:wpj6zgjkfp57lfxp5lgpuvzv",
+        "did:plc:5bvdelyezxg4wxugtdevdhxq",
+        "did:plc:62lw4eynais34r5f6ds3mgpg"
+      ],
+      "engineMs": 16.818
+    },
+    {
+      "q": "aka.dad",
+      "dids": [
+        "did:plc:eob75vcjtmbaef2tn4evc4sl"
+      ],
+      "engineMs": 6.725
+    },
+    {
+      "q": "jay",
+      "dids": [
+        "did:plc:oky5czdrnfjpqslsw2a5iclo",
+        "did:plc:3t37x6vfigdzzp2gjcfnzlz4",
+        "did:plc:bpna2qi2e44fafbhhtqjak3x",
+        "did:plc:27eihnclsnjw3h55w53g2ur2",
+        "did:plc:27jrcf2nmsofvwqcf6ztcnxy",
+        "did:plc:3xomcphegzclnbkat3ylyrrn",
+        "did:plc:eh4cpzk37xp24bc7g4xgpbw2",
+        "did:plc:bhyw5vijeeq7n7ikgchxmwid",
+        "did:plc:5v2dih6vrgbwcregngr2ecz4",
+        "did:plc:qfe2ticzu772ge2rzwfbrlz3"
+      ],
+      "engineMs": 15.657
+    },
+    {
+      "q": "alice",
+      "dids": [
+        "did:plc:5onh7ko2ux7bjjesmbeayjel",
+        "did:plc:nayn64p7dqdnuntl2bszhvhc",
+        "did:plc:patacy5oe26ctakf4nymr4dq",
+        "did:plc:65kss3ewg5ida5mjyuk73v5r",
+        "did:plc:an2e3qjrwpfizkms3k2li23v",
+        "did:plc:by3jhwdqgbtrcc7q4tkkv3cf",
+        "did:plc:f3zavfnovukapwsa24zuraap",
+        "did:plc:f5azbajpc6ymlu5r6fbrrd3h",
+        "did:plc:rdbqbsfdeda6ztu6vnvz6lvn",
+        "did:plc:foalrmuwpoiopyshy2izpz3u"
+      ],
+      "engineMs": 18.073
+    },
+    {
+      "q": "bsky",
+      "dids": [
+        "did:plc:z72i7hdynmk6r22z27h6tvur",
+        "did:plc:p7gxyfr5vii5ntpwo7f6dhe2",
+        "did:plc:y5xyloyy7s4a2bwfeimj7r3b",
+        "did:plc:4lx6nur5wstwoc4wtgj56kyu",
+        "did:plc:4u3hwe3p7oy3hoy3amlw7rp2",
+        "did:plc:oqr5mp25r7z3vfr3igeerxbw",
+        "did:plc:e62gb2ushvtvjvqcbrxeaw2n",
+        "did:plc:kqbyr4gqt6p2l57htlsa4nha",
+        "did:plc:vocg5apjrlm7dfptvy6qbrfy",
+        "did:plc:x4qyokjtdzgl7gmqhsw4ajqj"
+      ],
+      "engineMs": 24.142
+    },
+    {
+      "q": "tern",
+      "dids": [
+        "did:plc:xbej4wuit73u4ee2kjva74vm",
+        "did:plc:vaevyimmc6eat2rqyupxarhy",
+        "did:plc:5ilvnpglefbtl7v6edorc57t",
+        "did:plc:xlvxkvdxpufi2pbvso435vs7",
+        "did:plc:gt4fag2u2757uijhiqakpjuy",
+        "did:plc:366geb3jlltcyvgnx7irwl32",
+        "did:plc:4lapg2sjwzjtjfjwcch2bhyc",
+        "did:plc:7wdtrfzyhusady2eimoj5ldc",
+        "did:plc:4k2vda6ubvbnpzpshpajnjxq",
+        "did:plc:diy4iikw3evgff5qwef3blbb"
+      ],
+      "engineMs": 28.905
+    },
+    {
+      "q": "\u65e5\u672c",
+      "dids": [
+        "did:plc:ry3hbexak5ytsum7aazhpkbv",
+        "did:plc:xdf662yqsuhn7oura2zdrqgi",
+        "did:plc:a62d6gt7y5ya2pkesufdporv",
+        "did:plc:giajjrywi3zw6ezgh6a5s73x",
+        "did:plc:sfm5gudftsnpgb5fsozw4a7y",
+        "did:plc:276l2t3zl4cajx55culswo73",
+        "did:plc:3p7tb7rae4cfj4wgwbjpgccj",
+        "did:plc:k3amyq6ynxpklaayscca7kmy",
+        "did:plc:cqq3sm2yhgtdswpweuygw4v4",
+        "did:plc:4uovplwasqersqhsff3q3u7f"
+      ],
+      "engineMs": 13.7
+    }
+  ],
+  "publicPages": [
+    {
+      "path": "/stats",
+      "status": 200,
+      "bytes": 674880
+    },
+    {
+      "path": "/eval",
+      "status": 200,
+      "bytes": 232246
+    },
+    {
+      "path": "/eval/data.json",
+      "status": 200,
+      "bytes": 399669
+    }
+  ],
+  "knownRankingGap": "[parity] Bluesky's top fightinglabs.bsky.social absent from our top 8 for fig; no structural failures",
+  "scope": {
+    "newInfrastructure": false,
+    "newSchedules": false,
+    "searchOrIndexFormatChanged": false,
+    "countersDescribe": "indexed live actors; previous store counts also included roughly 850 live actors without handles",
+    "statsPersistence": "existing Worker -> D1/KV; eval collector and saved reports unchanged"
+  },
+  "localChecks": {
+    "workerTests": 248,
+    "routingTests": 59,
+    "offlineHelperTests": 3,
+    "supervisorTests": 14,
+    "smokeTests": 5,
+    "zigTests": 334,
+    "indexLibraryTests": 24,
+    "bridgeTests": 141,
+    "mutantsDetected": [
+      "avatar contributions omitted",
+      "deleted actors counted"
+    ],
+    "counterHistorySeed": 20261116
+  },
+  "ci": {
+    "id": "3n2hkv4p5xa22",
+    "commit": "69f277283e2379ff2b5863f8c84b3cb7d8a0ab5a",
+    "workflows": [
+      {
+        "name": "deploy.yml",
+        "status": "success",
+        "error": null
+      },
+      {
+        "name": "route-tools.yml",
+        "status": "success",
+        "error": null
+      },
+      {
+        "name": "tantivy.yml",
+        "status": "success",
+        "error": null
+      }
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 # Statistics must not scan serving data
 
 Assessment requested November 16, 2026, after the standby experiment began.
-Implementation and rollout are in progress; see current status below.
+The replacement is deployed to both slots; see verified status below.
 The paced reader is an experiment, not the architectural fix.
 
 ## What the history says
@@ -93,8 +93,8 @@ permission for load tests against a serving target.
 | Boundary | Required check |
 | --- | --- |
 | Production build | The store role cannot import a scanner; the index server cannot invoke the offline initializer. Scan-enabling configuration is rejected, not silently accepted. |
-| Store transitions | Replay generated histories against an independent count model, covering abort, crash/reopen, duplicate events, multi-update batches, moderation, disappearance/reactivation and pruning. |
-| Read cost | Instrument storage reads: `/corpus` and health statistics perform a fixed amount of work as fixture size grows. Missing/invalid counters perform no scan. |
+| Counter transitions | Independent index and bridge models cover replacement, replay, rejection, hidden/deleted/restored actors, crash/reopen and reconciliation. Tombstone pruning contributes zero. |
+| Read cost | Metadata-only `/corpus` and health snapshots; structural regression guards reject scanner imports, count queries, queue enumeration and filesystem walks. Missing/invalid counters perform no scan. |
 | Index counts | Differential tests cover live/deleted/replaced documents and changed moderation without posting-list enumeration on reads. |
 | Isolation | Hung/unavailable collectors, D1, KV and telemetry do not delay search; missing stats remain unknown. |
 | Admission | Reject active audits, uninitialized required capabilities and old binaries that can silently resume observational scans; include an unavailable serving slot in recovery tests. |
@@ -105,35 +105,96 @@ The categorical guarantee is that statistics cannot initiate corpus-size work
 or share a full audit's resource demand with serving. Merely reducing scan
 priority, scan frequency or per-page speed does not satisfy these gates.
 
-## Current status
+## Verified rollout
 
-2026-11-16: implementation is locally qualified; rollout has not begun.
-The serving slot A is unchanged. B still has the temporary scan-disable setting.
+Verified 2026-11-16 at 22:26 UTC. Slot B serves; A is a fit standby. Both run
+image `sha256:b015bfaed4c025d94e7c3159152872ad44452367cdeb6b6e61acaf3acf1adff5`
+and index binary `47080fed8fb8c252a6b78007fdcc07e11847bbed55181645ef87651192a0b531`.
+The public Worker is `28abe765-0b0d-4e30-ab8b-d91a8d3e29d4`. The implementation
+was published as `8354e5a` before deployment. The helper restoration fix is
+`2ffebf1`; `69f2772` adds the bridge counter/recovery checks.
 
-The index counters intentionally describe indexed live actors. The former store
-scan included roughly 850 live actors without handles, which the bridge maps to
-index tombstones. Historical snapshots remain intact; new snapshots will use the
-indexed population. No search result or indexing eligibility changes.
+Both stores report `statistics_version: 1`, no corpus report, no observational
+queue/filesystem totals, zero pending writes and zero bridge lag at the recorded
+health samples. Both indexes have initialized counters that continue advancing
+with live commits. The normalizer, plan, index format, machine sizes and storage
+roles are unchanged. B still carries the harmless retired scan-disable setting;
+A has no such override, and the scanner is absent from both serving roles.
 
-Local evidence:
+The [machine-readable rollout record](2026-11-16-statistics-isolation-rollout.json)
+retains identities, admission and refusal evidence, counts, query baselines and
+all qualification attempts. No new infrastructure or schedule was introduced.
+The existing Worker saves snapshots in D1/KV; the isolated eval runner and its
+saved reports are unchanged. `/stats`, `/eval` and saved eval data returned 200.
+Historical snapshots remain intact. New counts describe indexed live actors;
+the previous store scan also included roughly 850 live actors without handles.
 
-- `just check`: typecheck/lint, 248 Bun tests, 59 routing tests, two offline
-  helper tests, supervisor/smoke tests and all four Worker deployment builds.
-- `just test-services`: 334 tests, including real kill/reopen and bounded
-  control/enrichment backlog behavior. Health does not enumerate queues/files.
-- `just --no-dotenv test-tantivy`: 24 library tests, normalization/differential,
+### Rollout and qualification
+
+The compatible Worker deployed first and passed smoke/image checks. B then
+received the image and one offline initialization. The first helper version
+incorrectly assumed Fly would clear an init override when given an empty object.
+Initialization succeeded, but restoration left B asleep. The route stayed on A.
+B was restored with an explicit `/app/supervise` command; every other machine
+setting matched. The corrected helper restores that command explicitly, tests
+Fly's merge behavior and failure recovery, and completed A's initialization and
+configuration verification without intervention.
+
+Initial post-restart probes are retained: B's first 36 searches had four
+timeouts; a second attempt had no failures but a 594 ms p90. A's first attempt
+had seven timeouts. Neither cold nor repeated warm samples were used to waive
+the latency gate. B was promoted only after catch-up drained, I/O settled, and
+a fresh round after idle passed. A remained on standby through its warm-up.
+
+| Settled slot | Searches | Successful / same ordered results | Engine p50 | Engine p90 | Maximum | Interleaved stats reads |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| B | 36 | 36 / 36 | 1.088 ms | 1.257 ms | 1.876 ms | 12, all successful |
+| A | 36 | 36 / 36 | 1.690 ms | 4.983 ms | 7.560 ms | 12, all successful |
+
+These are qualification measurements over 12 retained queries on the real
+corpus, not capacity estimates or an unbiased production latency distribution.
+B's earlier baseline already had its scanner disabled, so these before/after
+numbers are not a causal estimate of the scanner removal's speedup. The
+[isolated scan experiment](2026-11-16-standby-scan.md) establishes that mechanism.
+Startup warming and ingestion maintenance still cost resources; predictable
+statistics do not eliminate those costs.
+
+The live old-binary admission was refused. Offline B could not pass admission,
+and the initializer refused serving A before issuing a machine mutation. The
+route was changed only through the conditional route tool. Public smoke checks
+passed after the flip. Ranking checks passed all structural criteria and retained
+one existing parity miss: Bluesky's `fightinglabs.bsky.social` result for `fig`
+is absent from our top eight. There was no retrieval change or result-order
+regression in the retained query cases. Once A was upgraded, its fresh admission
+was checked; recovery should use a fresh cutover to A, since the previous route
+record names its old binary.
+
+### Regression evidence
+
+- `just check`: typecheck/lint, 248 Bun tests, 59 routing tests, three helper
+  tests, 14 supervisor tests, five smoke tests and four deployment builds.
+- `just test-services`: 334 tests, including kill/reopen and bounded
+  control/enrichment backlog behavior.
+- `just --no-dotenv test-tantivy`: 24 library tests plus normalization,
   HTTP, reconciliation, policy, PDS, crash/retry and merge checks.
+- `just --no-dotenv test-bridge`: 141 tests; corpus counters match the source
+  model through generated mutations, bridge kills and real server restarts.
 - Counter history seed `20261116`: 160 actor replacements plus replay,
   deletion/reactivation, avatars, hidden flags and excluded handles; four
   reopens and an offline recount match an independent map oracle. Missing and
   malformed counts remain unknown while actor changes continue.
 - Disposable planted avatar-count and deletion-count bugs both fail the history
-  oracle. The HTTP check refuses initialization alongside a running index writer.
-- Structural regression guards prohibit scanner imports/reporting in the store
-  role, count queries on `/corpus`, and the old reporting endpoint.
+  oracle. The HTTP check refuses initialization beside a running index writer.
 
-These are bounded tests, not a general claim that observational I/O cannot ever
-fail. Request traffic counters still write asynchronously to D1. Existing engine
-metadata, cursors and ingestion maintenance retain their normal resource costs.
-No new service, database or schedule was added. Production rollout and standby
-latency evidence will be recorded here after verification.
+CI caught a stale integration fixture calling the removed reporting endpoint;
+it was replaced with the stronger counter oracle. CI also caught the timing
+fixture crossing a rate-limit window at 22:05:59.957–22:06:00.135 UTC. Its limiter
+is now deterministic; production rate limiting is unchanged. Both fixes passed
+their local suites before publication. Worker, route-tool and index/bridge CI
+all passed on code commit `69f2772` (pipeline `3n2hkv4p5xa22`).
+
+No trial servers or corpus copies remain. Temporary terminals were closed after
+logs were retained. These are bounded checks, not a general guarantee against
+all I/O contention: request counters still write asynchronously to D1, and
+normal ingestion, search warming and maintained storage metadata retain their
+existing resource costs.
