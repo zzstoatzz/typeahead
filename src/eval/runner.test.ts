@@ -2,7 +2,7 @@ import { afterEach, expect, setSystemTime, test } from "bun:test";
 import { publishReports, readSnapshot, type SnapshotStore } from "./archive";
 import { GAP_MS } from "./model";
 import { EvalRunner } from "./runner";
-import { newRun } from "./sampling";
+import { newRun, reservation } from "./sampling";
 
 afterEach(() => setSystemTime());
 
@@ -130,6 +130,11 @@ test("a crash after reserving an attempt never causes the query to be sent twice
 test("an explicit manual request runs once before the daily gate and survives object eviction", async () => {
   const f = fixture("requested-run");
   const seed = newRun(Date.UTC(2026, 10, 16), "seed");
+  for (let i = 0; i < seed.expected; i++) {
+    const attempt = reservation(seed, seed.startedAt);
+    if (!attempt) throw new Error("missing seed reservation");
+    seed.observations.push({ ...attempt, finishedAt: seed.startedAt, ms: 1, outcome: "ok", status: 200 });
+  }
   await publishReports(f.snapshots, [seed]);
   const now = seed.startedAt + 60_000;
   await f.bootstrap(now);

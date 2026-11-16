@@ -67,6 +67,16 @@ the rolling window for this run, including the preceding run. Request spacing
 and upstream cooldowns still apply. Ordinary scheduled runs retain the 48-attempt
 budget. Remove the variable after the requested run has completed and verified.
 
+The requested cloud run on 2026-11-16 started at 18:41:19 UTC and published
+80 successful observations, 40 per provider, with a minimum observed gap of
+5,000 ms. Collector version `2ace934a-e247-4b46-9b16-87da8761ad62` logged
+`eval_published` and `eval_visible`. Public readback confirmed that the default
+page selected the Cloudflare run and retained both laptop runs. Its report hash
+is `e07080188f0c1a0f8896167f2b074d52bdf070e894bd4c92742cb3c4cd557871`.
+Median elapsed times were 84 ms for Typeahead and 114 ms for Bluesky from this
+runner. These locations have separate observations. The one-time request is
+removed and the normal 15-minute trigger restored after completion.
+
 The latest archived run sets the initial 24-hour gate. A reservation is written
 before each request. If the runner restarts with an unresolved reservation,
 it archives the partial run and leaves that attempt pending. Retrying publication
