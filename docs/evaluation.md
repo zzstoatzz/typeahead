@@ -68,6 +68,14 @@ or public verification does not send more search requests. The publisher logs
 and the default page show the run. A failed readback leaves the checkpoint
 available for an alarm retry or the next cron.
 
+On 2026-11-16, commit `05168f8` was deployed as collector version
+`6d2daa2b-85dc-49d5-9af0-472a104a1001`. Cloudflare readback confirmed the
+15-minute trigger and disabled public and preview subdomains. The live page
+and JSON still agreed with the 80-observation seed. The first eligible cron
+tick was scheduled for 07:32 UTC on 2026-11-17. A local workerd check verified
+Durable Object alarm execution, 429 backoff and KV publication against a
+fixture. The production run remained pending at rollout.
+
 Deploy the collector independently after publishing the code:
 
 ```sh
@@ -75,10 +83,8 @@ bunx wrangler deploy -c deploy/eval/wrangler.jsonc --dry-run
 bunx wrangler deploy -c deploy/eval/wrangler.jsonc
 ```
 
-The cron expression is in the collector configuration. To pause collection,
-remove the cron in that configuration and deploy it after the active run
-finishes. Removing the trigger alone does not cancel an alarm already scheduled
-by the Durable Object.
+To pause collection, set `triggers.crons` to `[]` in the collector configuration
+and deploy. Allow any active run to finish through its already scheduled alarms.
 
 For self-hosting, use the same portable Bun entry points:
 
