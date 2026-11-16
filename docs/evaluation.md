@@ -60,6 +60,13 @@ request. It uses the same sampling, corpus, quotas, backoff and snapshot
 format as the Bun runner. The public Worker only reads the published snapshots
 from KV.
 
+An operator-requested full run can set a new `EVAL_MANUAL_RUN` identifier on
+the collector deployment. Each identifier is consumed once in durable state.
+It bypasses daily eligibility and permits up to 80 attempts per provider in
+the rolling window for this run, including the preceding run. Request spacing
+and upstream cooldowns still apply. Ordinary scheduled runs retain the 48-attempt
+budget. Remove the variable after the requested run has completed and verified.
+
 The latest archived run sets the initial 24-hour gate. A reservation is written
 before each request. If the runner restarts with an unresolved reservation,
 it archives the partial run and leaves that attempt pending. Retrying publication

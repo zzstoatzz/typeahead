@@ -133,10 +133,10 @@ export function pairs(observations: Observation[]) {
   });
 }
 
-export function nextAllowed(observations: readonly AttemptTiming[], provider: Provider, now: number): number {
+export function nextAllowed(observations: readonly AttemptTiming[], provider: Provider, now: number, dailyBudget = DAILY_BUDGET): number {
   const recent = observations.filter(o => o.provider === provider && o.startedAt > now - 86_400_000)
     .sort((a, b) => a.startedAt - b.startedAt);
-  const budget = recent.length >= DAILY_BUDGET ? recent[recent.length - DAILY_BUDGET].startedAt + 86_400_000 : 0;
+  const budget = recent.length >= dailyBudget ? recent[recent.length - dailyBudget].startedAt + 86_400_000 : 0;
   return observations.reduce((next, o) => Math.max(next, o.provider === provider ? o.cooldownUntil : 0,
     Math.max(o.startedAt, o.finishedAt ?? o.startedAt) + GAP_MS), budget);
 }

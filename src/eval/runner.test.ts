@@ -6,7 +6,7 @@ import { newRun } from "./sampling";
 
 afterEach(() => setSystemTime());
 
-function fixture() {
+function fixture(manualRequest?: string) {
   const entries = new Map<string, unknown>();
   const records = new Map<string, string>();
   let alarm: number | null = null;
@@ -45,7 +45,7 @@ function fixture() {
     writesInterrupted = interruptAfterFetch;
     return failure ?? Response.json({ actors: [] });
   };
-  let runner = new EvalRunner(state, snapshots, request);
+  let runner = new EvalRunner(state, snapshots, request, Date.now, manualRequest);
   return {
     snapshots, samples,
     fail: (response: Response) => { failure = response; },
@@ -56,7 +56,7 @@ function fixture() {
       if (alarm === null) throw new Error("no alarm");
       setSystemTime(alarm);
       alarm = null;
-      runner = new EvalRunner(state, snapshots, request);
+      runner = new EvalRunner(state, snapshots, request, Date.now, manualRequest);
       await runner.tick();
     },
     alarm: () => alarm,
@@ -125,4 +125,19 @@ test("a crash after reserving an attempt never causes the query to be sent twice
   expect(f.samples).toHaveLength(1);
   const { report } = await readSnapshot(f.snapshots, null);
   expect(report?.observations.map(o => o.outcome)).toEqual(["pending"]);
+});
+
+test("an explicit manual request runs once before the daily gate and survives object eviction", async () => {
+  const f = fixture("requested-run");
+  const seed = newRun(Date.UTC(2026, 10, 16), "seed");
+  await publishReports(f.snapshots, [seed]);
+  const now = seed.startedAt + 60_000;
+  await f.bootstrap(now);
+  for (let i = 0; i < 82; i++) await f.runAlarm();
+  expect(f.samples).toHaveLength(80);
+  expect((await readSnapshot(f.snapshots, null)).report?.location).toContain("Cloudflare Workers");
+  await f.bootstrap(now + 3_600_000);
+  await f.runAlarm();
+  expect(f.samples).toHaveLength(80);
+  expect(f.alarm()).toBeNull();
 });

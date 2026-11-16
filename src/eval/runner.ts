@@ -6,6 +6,7 @@ type ActiveRun = {
   report: Report;
   previous: AttemptTiming[];
   phase: "collect" | "publish" | "verify";
+  manualRequest?: string;
 };
 interface Journal extends Pick<DurableObjectStorage, "setAlarm" | "getAlarm"> {
   get<T>(key: string): Promise<T | undefined>;
@@ -25,6 +26,7 @@ export class EvalRunner {
     private readonly snapshots: SnapshotStore,
     private readonly request: (url: string, init: RequestInit) => Promise<Response>,
     private readonly clock = Date.now,
+    private readonly manualRequest?: string,
   ) {}
 
   async wake() {
@@ -47,7 +49,7 @@ export class EvalRunner {
         const next = reservation(report, this.clock());
         if (next && latest?.outcome !== "pending" && (!latest || latest.cooldownUntil === 0)) {
           const now = this.clock();
-          const due = nextAllowed([...active.previous, ...observations], next.provider, now);
+          const due = nextAllowed([...active.previous, ...observations], next.provider, now, active.manualRequest ? 80 : undefined);
           if (due <= now) {
             const key = attemptKey(observations.length);
             await this.state.put(key, next);
@@ -74,6 +76,7 @@ export class EvalRunner {
       }
       await this.verify(report);
       await this.state.put("lastStart", report.startedAt);
+      if (active.manualRequest) await this.state.put("lastManualRequest", active.manualRequest);
       await this.state.delete([...attempts.keys(), "active"]);
     } finally {
       this.busy = false;
@@ -82,11 +85,13 @@ export class EvalRunner {
 
   private async begin(): Promise<ActiveRun | undefined> {
     const lastStart = await this.state.get<number>("lastStart") ?? null;
-    if (this.clock() < nextRunAt(lastStart)) return;
+    const manualRequest = this.manualRequest && this.manualRequest !== await this.state.get<string>("lastManualRequest")
+      ? this.manualRequest : undefined;
+    if (!manualRequest && this.clock() < nextRunAt(lastStart)) return;
     const { report: previous } = await readSnapshot(this.snapshots, null);
     if (!previous) throw new Error("seed evaluation must be present before scheduling");
     const due = nextRunAt(previous.startedAt);
-    if (this.clock() < due) {
+    if (!manualRequest && this.clock() < due) {
       await this.verify(previous);
       await this.state.put("lastStart", previous.startedAt);
       console.log({ event: "eval_not_due", eligibleAt: new Date(due).toISOString() });
@@ -98,6 +103,7 @@ export class EvalRunner {
       previous: previous.observations.map(({ provider, startedAt, finishedAt, cooldownUntil }) =>
         ({ provider, startedAt, finishedAt, cooldownUntil })),
       phase: "collect",
+      manualRequest,
     };
     await this.state.put("active", active);
     return active;
