@@ -2,7 +2,7 @@ import { percentileFromQuantiles, queryLabelers } from "../labelers";
 import { json, computeAuthorityScoreBreakdown, avatarUrl, avatarFallbackUrl } from "../utils";
 import { BSKY_MOD_DID, MOD_HIDE_VALS, resolveHidden } from "../moderation";
 import type { Env } from "../types";
-import { controlDb } from "../control-store";
+import { controlDb } from "../control/control-store";
 import { slotActors, SlotReadError, type SlotActor } from "../slot-read";
 
 interface ScorePercentile {

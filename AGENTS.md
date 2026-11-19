@@ -205,7 +205,7 @@ regression is pinned). Extend it, don't prune it.
   Statistics writers go through `recordStats`/`writeStats` (`src/stats/stats-store.ts`) and
   statistics reads go through `statsDb`, the `STATS_DB` D1 database.
 - moderation overrides, blocked domains and indexing requests have one source of truth, the
-  `typeahead-control` D1 database, written only through `src/control-store.ts` (every policy
+  `typeahead-control` D1 database, written only through `src/control/control-store.ts` (every policy
   write raises the revision in the same transaction). Store slots pull it; nothing pushes to a
   slot.
 - profiles, the reputation report and the corpus counts on `/stats` are read from the routed

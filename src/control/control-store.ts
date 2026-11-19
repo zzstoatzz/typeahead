@@ -1,5 +1,5 @@
-import { d1Db, rowsAs, type SqlDb, type Stmt } from "./db";
-import type { Env } from "./types";
+import { d1Db, rowsAs, type SqlDb, type Stmt } from "../db";
+import type { Env } from "../types";
 
 /** The control record: what an operator or a user asked for that every store
  *  slot must come to hold. It lives in the `typeahead-control` D1 database and

@@ -1,6 +1,6 @@
 import { afterAll, expect, test } from "bun:test";
-import { GENERATION, controlStore } from "../control-d1-fixture";
-import { NEW_GENERATION_SQL, blockDomain, clearOverride, recordIndexRequest, setOverride } from "../control-store";
+import { GENERATION, controlStore } from "../control/control-d1-fixture";
+import { NEW_GENERATION_SQL, blockDomain, clearOverride, recordIndexRequest, setOverride } from "../control/control-store";
 import { handleSlotIndexRequests, handleSlotPolicy } from "./slot-control";
 
 const { d1, control, dispose } = await controlStore();

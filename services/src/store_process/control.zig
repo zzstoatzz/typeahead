@@ -2,7 +2,7 @@
 //! by this slot and applied to its own store.
 //!
 //! A slot takes no inbound control. The Worker keeps a durable control record
-//! (`src/control-store.ts`, the `typeahead-control` D1 database) and serves
+//! (`src/control/control-store.ts`, the `typeahead-control` D1 database) and serves
 //! it read-only at `/slot/control/*`; every slot asks for it on its own
 //! schedule. So a change reaches any number of slots, a slot that was down
 //! when it was made, and a slot bootstrapped afterwards.
@@ -247,7 +247,7 @@ fn visibleAscii(text: []const u8) bool {
 }
 
 /// The subject of an override. The Worker applies the same rule before it
-/// writes one (`src/control-rules.ts`), because a snapshot is refused whole
+/// writes one (`src/control/control-rules.ts`), because a snapshot is refused whole
 /// over a single subject that fails it; `src/control-rule-vectors.json`
 /// holds values both must judge alike.
 pub fn validDid(did: []const u8) bool {

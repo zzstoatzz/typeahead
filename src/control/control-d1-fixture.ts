@@ -1,9 +1,9 @@
 import { Miniflare } from "miniflare";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
-import { d1Db } from "./db";
+import { d1Db } from "../db";
 
-const MIGRATIONS = new URL("../migrations/control-d1/", import.meta.url).pathname;
+const MIGRATIONS = new URL("../../migrations/control-d1/", import.meta.url).pathname;
 
 /** The generation the fixture gives its database, in place of the random one
  *  the migration seeded, so tests can state whole answers. */

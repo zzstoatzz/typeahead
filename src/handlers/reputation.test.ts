@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, expect, test } from "bun:test";
-import { controlStore } from "../control-d1-fixture";
-import { blockDomain, setOverride } from "../control-store";
+import { controlStore } from "../control/control-d1-fixture";
+import { blockDomain, setOverride } from "../control/control-store";
 import type { SlotActor } from "../slot-read";
 import type { Env } from "../types";
 import { handleReputation } from "./reputation";

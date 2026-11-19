@@ -1,5 +1,5 @@
 import { controlDb, controlMeta } from "./control-store";
-import type { Env } from "./types";
+import type { Env } from "../types";
 
 /** Whether the control database can be used, and the last time a write to it
  *  failed. The admin endpoints fail loudly when it cannot; `/request-indexing`

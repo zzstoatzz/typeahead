@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { z } from "zod";
 import { validBlockedDomain, validOverrideDid } from "./control-rules";
-import raw from "./control-rule-vectors.json";
+import raw from "../control-rule-vectors.json";
 
 /** One value: literal, or a long one written as its parts. */
 const value = z.union([

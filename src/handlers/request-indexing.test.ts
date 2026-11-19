@@ -1,8 +1,8 @@
 import { afterAll, afterEach, expect, test } from "bun:test";
-import { controlStore } from "../control-d1-fixture";
-import { blockDomain, clearOverride, indexRequestsAfter, setOverride, unblockDomain } from "../control-store";
+import { controlStore } from "../control/control-d1-fixture";
+import { blockDomain, clearOverride, indexRequestsAfter, setOverride, unblockDomain } from "../control/control-store";
 import type { Env } from "../types";
-import { CONTROL_FAILURE_KEY, handleControlHealth, noteControlFailure } from "../control-health";
+import { CONTROL_FAILURE_KEY, handleControlHealth, noteControlFailure } from "../control/control-health";
 import { BSKY_MOD_DID } from "../moderation";
 import { handleRequestIndexing } from "./admin";
 

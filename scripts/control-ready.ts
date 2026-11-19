@@ -7,7 +7,7 @@
 // a control database without its schema fails every admin policy change and
 // logs no indexing request. D1 is read through wrangler.
 
-import { META_QUERY, schemaProblem } from "../src/control-ready";
+import { META_QUERY, schemaProblem } from "../src/control/control-ready";
 
 const DATABASE = "typeahead-control";
 

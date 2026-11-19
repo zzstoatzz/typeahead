@@ -1,6 +1,6 @@
 import { afterAll, expect, test } from "bun:test";
-import { GENERATION, controlStore } from "../control-d1-fixture";
-import { policySnapshot } from "../control-store";
+import { GENERATION, controlStore } from "../control/control-d1-fixture";
+import { policySnapshot } from "../control/control-store";
 import { BSKY_MOD_DID } from "../moderation";
 import type { SlotActor } from "../slot-read";
 import type { Env } from "../types";
