@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { parseRoute } from "./search-route";
 import { validatedSearch } from "./validated-search";
-import { timingDurations } from "./server-timing";
+import { timingDurations } from "../server-timing";
 
 const first = parseRoute({ version: 1, current: {
   engine: "tantivy", origin: "https://typeahead-slot-a.fly.dev", build_id: "b1792908655-cp-first",

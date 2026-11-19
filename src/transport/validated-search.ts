@@ -1,5 +1,5 @@
 import { routeIdentity, responseMatchesRoute, type SearchRoute as Route } from "./search-route";
-import { timingDurations } from "./server-timing";
+import { timingDurations } from "../server-timing";
 
 type OriginFetch = (route: Route, signal: AbortSignal) => Promise<Response>;
 

@@ -1,4 +1,4 @@
-import { ROUTE_KEY, parseRoute, type SearchRoute } from "../../src/search-route";
+import { ROUTE_KEY, parseRoute, type SearchRoute } from "../../src/transport/search-route";
 
 /** Test fixture. Writes the route record from inside workerd the way the
  *  route tool writes it to R2: only if the record still has the etag the

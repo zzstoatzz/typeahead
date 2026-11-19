@@ -168,7 +168,7 @@ regression is pinned). Extend it, don't prune it.
   `wrangler deploy` **then** the smoke suite. A deploy that breaks shape, ranking, or the admin API fails loudly
   here. `deploy-worker-only` skips smoke but still requires `control-ready` and lint.
 - `just deploy-search-transport` deploys the transport, then runs the smoke suite. A slot's
-  origin must be in `src/search-route.ts` and deployed before a route record can name it.
+  origin must be in `src/transport/search-route.ts` and deployed before a route record can name it.
 - `just deploy-image-renderer` deploys the private PNG renderer, then validates
   fresh public images. Keep `workers-og` and its Wasm imports exclusive to that
   Worker. Deploy the renderer before introducing its public service binding.

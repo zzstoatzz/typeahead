@@ -446,7 +446,7 @@ schema, which it reads through wrangler. Without the schema every admin
 policy change fails and no indexing request is logged.
 
 Deploy the renderer before a public Worker that changes how it calls it. The
-transport accepts only the slot origins listed in `src/search-route.ts`; a
+transport accepts only the slot origins listed in `src/transport/search-route.ts`; a
 new slot's origin has to be deployed there before a record can name it.
 
 The public Worker's settings are in `wrangler.jsonc`. Profiles, the

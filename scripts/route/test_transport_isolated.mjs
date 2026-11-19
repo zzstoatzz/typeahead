@@ -115,7 +115,7 @@ try {
   try {
     const entry = join(temporary, 'worker.ts');
     const bundle = join(temporary, 'worker.mjs');
-    writeFileSync(entry, `import { validatedSearch } from ${JSON.stringify(resolve('src/validated-search.ts'))};
+    writeFileSync(entry, `import { validatedSearch } from ${JSON.stringify(resolve('src/transport/validated-search.ts'))};
       const route = ${JSON.stringify(a)} as const;
       export default { fetch() { return validatedSearch(Promise.resolve(route), route,
         (_route, signal) => fetch('http://127.0.0.1:${address.port}/search', { signal })); } };`);

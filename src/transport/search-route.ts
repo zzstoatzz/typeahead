@@ -1,5 +1,5 @@
 import * as z from "zod/mini";
-import { trace } from "./worker-tracing";
+import { trace } from "../worker-tracing";
 
 export const ROUTE_KEY = "control/search-routing.json";
 

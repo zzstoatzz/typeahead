@@ -45,10 +45,10 @@ const wait = async condition => {
 try {
   const entry = join(temporary, 'worker.ts');
   const bundle = join(temporary, 'worker.mjs');
-  writeFileSync(entry, `import worker from ${JSON.stringify(resolve('src/search-transport.ts'))};
-    import { parseRoute } from ${JSON.stringify(resolve('src/search-route.ts'))};
-    import { HINT_CACHE, HINT_KEY, readSharedHint } from ${JSON.stringify(resolve('src/shared-route-hint.ts'))};
-    import { validatedSearch } from ${JSON.stringify(resolve('src/validated-search.ts'))};
+  writeFileSync(entry, `import worker from ${JSON.stringify(resolve('src/transport/search-transport.ts'))};
+    import { parseRoute } from ${JSON.stringify(resolve('src/transport/search-route.ts'))};
+    import { HINT_CACHE, HINT_KEY, readSharedHint } from ${JSON.stringify(resolve('src/transport/shared-route-hint.ts'))};
+    import { validatedSearch } from ${JSON.stringify(resolve('src/transport/validated-search.ts'))};
     export default { async fetch(request, env, ctx) {
       const path = new URL(request.url).pathname;
       if (path.startsWith('/__fixture/')) {
