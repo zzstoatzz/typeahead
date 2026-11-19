@@ -2,9 +2,9 @@
 
 ## The Workers
 
-The public API and website, the search transport and the image renderer are
-Cloudflare Workers in `src/`. Install [Bun](https://bun.sh/) and
-[just](https://just.systems/):
+The public API and website, the search transport, the image renderer and the
+eval collector are Cloudflare Workers in `src/`. Install [Bun](https://bun.sh/)
+and [just](https://just.systems/):
 
 ```sh
 bun install
@@ -14,7 +14,7 @@ just check
 
 `just check` is what CI runs: type-check, lint, `bun test`, the route tool's
 tests, the slot supervisor's tests, the smoke suite's own tests, and a dry-run
-build of all three Workers. It needs `python3`, `jq` and bash 5.2 or newer
+build of the four production Workers. It needs `python3`, `jq` and bash 5.2 or newer
 (on macOS, `brew install bash`). It contacts nothing remote.
 
 For preview cards and PNG icons locally, run the renderer in another terminal.
@@ -23,6 +23,28 @@ Wrangler connects the public Worker's `IMAGE_RENDERER` binding to it.
 ```sh
 bunx wrangler dev -c deploy/image-renderer/wrangler.jsonc --port 8788
 ```
+
+## Where Worker code lives
+
+| path | what it holds | deployed by |
+| --- | --- | --- |
+| `src/index.ts`, `src/handlers/`, `src/pages/` | the public Worker: routes, the cron, endpoint handlers and HTML pages | `wrangler.jsonc` |
+| `src/transport/` | the search transport: route record, route cache and Durable Object, validated search | `deploy/search-transport/` |
+| `src/image-renderer/` | the PNG renderer, the only code that imports `workers-og` | `deploy/image-renderer/` |
+| `src/eval/` | the eval collector and the report model the `/eval` page and `scripts/eval/` share | `deploy/eval/` |
+| `src/stats/` | everything that reads or writes the `typeahead-stats` database | part of the public Worker |
+| `src/control/` | everything that reads or writes the `typeahead-control` database | part of the public Worker |
+| `src/experiments/` | the Worker placement probes | `deploy/placement-probe/` |
+
+The rest of `src/` is flat on purpose: modules more than one of those use
+(`types.ts`, `utils.ts`, `db.ts`, `slot-read.ts`, tracing and timing), and
+moderation and identity policy. `moderation-regexes.json`,
+`identity-quarantine.json` and `control-rule-vectors.json` are also read by the
+Zig and Rust builds at those paths, so moving one is a slot image change.
+
+Tests sit beside the module they test. `handlers/` and `pages/` are the only
+directories named for a kind of file. A new directory is for a new Worker or
+for a store with a single owning module.
 
 ## The slot's programs
 

@@ -183,6 +183,9 @@ regression is pinned). Extend it, don't prune it.
 
 ## conventions
 
+- `src/` has a directory for each Worker other than the public one and for each store the
+  public Worker owns; the rest is flat. [Where Worker code lives](docs/development.md#where-worker-code-lives)
+  is the map. Add a directory only for a new Worker or a store with one owning module.
 - worker tests: `bun test`. zig tests: `just test-services` (or `cd services && zig build test`).
   Retrieval changes also require `just --no-dotenv test-tantivy`, run by CI on main.
 - never run work proportional to the corpus on the request/cron path (see the invariant above).
