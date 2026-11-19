@@ -1,6 +1,6 @@
 {
   "name": "typeahead-eval-collector",
-  "main": "../../src/eval-scheduler.ts",
+  "main": "../../src/eval/eval-scheduler.ts",
   "compatibility_date": "2026-11-16",
   "compatibility_flags": ["global_fetch_strictly_public"],
   "workers_dev": false,

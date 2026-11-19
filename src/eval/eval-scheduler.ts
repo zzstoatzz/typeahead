@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { EvalRunner } from "./eval/runner";
+import { EvalRunner } from "./runner";
 
 interface EvalEnv {
   EVAL_RUNNER: DurableObjectNamespace<EvaluationSchedule>;
