@@ -49,9 +49,15 @@ test-supervise-image:
 test-smoke:
     python3 -W error -m unittest scripts.test_smoke_failures scripts.test_smoke_overrides
 
+# Planning, the guards and the tag, against scratch repositories; no network.
+[doc('the release script')]
+[group('check')]
+test-release:
+    python3 -W error -m unittest scripts.test_release
+
 # what CI runs, locally
 [group('check')]
-check: typecheck lint test test-route test-supervise test-smoke
+check: typecheck lint test test-route test-supervise test-smoke test-release
     bunx wrangler deploy --dry-run
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
     bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run
@@ -189,6 +195,20 @@ deploy-worker-only: published control-ready lint typecheck
 [group('production')]
 smoke-images url=WORKER_URL:
     python3 scripts/smoke-images.py --url {{url}}
+
+# A release tag (YYYY.MMDD.HHMMSS, UTC) names a commit of origin/main whose
+# Workers are deployed and passed smoke. `--plan` prints what would deploy and
+# stops; `--all` deploys every Worker; `--yes` does not ask. Slots are never
+# deployed from here.
+[doc('deploy the Workers that changed since the last release, then tag the commit')]
+[group('deploy')]
+release *ARGS:
+    ./scripts/release.py {{ARGS}}
+
+# commits on this checkout since the last release
+[group('deploy')]
+changelog:
+    @git log --oneline "$(git tag --merged HEAD --list '[0-9][0-9][0-9][0-9].[0-9][0-9][0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]' | sort | tail -n 1)..HEAD"
 
 # [Evaluation](docs/evaluation.md) says what each of these reads and writes.
 

@@ -5,9 +5,11 @@ engine: microvm
 image: nixos
 dependencies:
   - python3
+  - git
 steps:
   - name: verify
     command: |
       set -eu
       python3 -W error::ResourceWarning -m unittest scripts.test_smoke_failures
       python3 -W error -m unittest scripts/route/test_slot_route.py
+      python3 -W error -m unittest scripts.test_release

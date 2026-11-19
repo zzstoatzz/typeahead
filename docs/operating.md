@@ -428,7 +428,37 @@ miss requests logged under positions they have passed.
 Migrations are in `migrations/control-d1`:
 `bunx wrangler d1 migrations apply typeahead-control --remote`.
 
+## Release
+
+A release tag is `YYYY.MMDD.HHMMSS` in UTC. It names a commit of `origin/main`
+whose Workers are deployed and passed their smoke suites; the newest one is
+what the Workers run.
+
+```sh
+just release --plan   # what would deploy, and nothing else
+just release          # the plan, a prompt, the deploys, the tag
+just changelog        # commits since the last release
+```
+
+`just release` refuses anything but a clean checkout of `origin/main`. It
+deploys only the Workers whose bundle inputs changed since the last release
+tag, read from each Worker's esbuild metafile along with its configuration,
+`package.json` and `bun.lock`. `--all` deploys every Worker. The order is
+transport, renderer, eval collector, public Worker, each through its own
+recipe below. A release with no earlier tag deploys all four.
+
+The tag is created and pushed only after every deploy passes. When one fails,
+the Workers before it are already deployed and nothing is tagged: fix it and
+release again.
+
+Slots are never deployed from here. When files in the slot image's build
+context changed, the plan lists them and the release still tags the commit;
+[upgrade the slots](#upgrade-the-slots) from that tag if the image differs.
+Changes to nothing but documentation, tests or scripts are not a release.
+
 ## Deploy the Workers
+
+A release runs these. Run one by hand to deploy a single Worker without a tag.
 
 ```sh
 just deploy-worker            # public Worker, then the API and image smoke suites

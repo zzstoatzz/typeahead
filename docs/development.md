@@ -13,7 +13,8 @@ just check
 ```
 
 `just check` is what CI runs: type-check, lint, `bun test`, the route tool's
-tests, the slot supervisor's tests, the smoke suite's own tests, and a dry-run
+tests, the slot supervisor's tests, the smoke suite's and the release script's
+own tests, and a dry-run
 build of the four production Workers. It needs `python3`, `jq` and bash 5.2 or newer
 (on macOS, `brew install bash`). It contacts nothing remote.
 
@@ -74,6 +75,7 @@ docker build --platform linux/amd64 -f deploy/slot/Dockerfile -t typeahead-slot:
 ## Deploying
 
 ```sh
+just release                  # deploy the Workers that changed, then tag the commit
 just deploy-worker            # public Worker, then smoke
 just deploy-search-transport  # transport, then smoke
 just deploy-image-renderer    # renderer, then image smoke
@@ -82,7 +84,8 @@ fly deploy . --config deploy/slot/fly.toml -a <standby app>
 ```
 
 The recipes refuse anything but a clean checkout of `origin/main`. Deploys
-are run by hand; CI builds and tests only. A slot image
+are run by hand; CI builds and tests only. [Release](operating.md#release)
+says what a release tag means. A slot image
 goes to the standby first and reaches the serving slot only after a flip:
 [operating](operating.md#upgrade-the-slots) has the steps.
 

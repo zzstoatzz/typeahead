@@ -164,6 +164,11 @@ regression is pinned). Extend it, don't prune it.
 
 ## deploys (smoke-gated)
 
+- `just release` deploys the Workers whose bundle inputs changed since the last release
+  tag, through the recipes below, then tags the commit `YYYY.MMDD.HHMMSS` (UTC) and pushes
+  the tag. A release tag means that commit's Workers are deployed and passed smoke; it never
+  deploys a slot. Every deploy recipe refuses anything but a clean checkout of `origin/main`.
+  [Release](docs/operating.md#release) has the details.
 - `just deploy-worker` — `control-ready` (the control database has its schema), lint and type-check, then
   `wrangler deploy` **then** the smoke suite. A deploy that breaks shape, ranking, or the admin API fails loudly
   here. `deploy-worker-only` skips smoke but still requires `control-ready`, lint and the type-check.
