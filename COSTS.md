@@ -11,13 +11,21 @@ estimate, not an invoice. The source for each is named beside it.
 | `typeahead-slot-a`, volume | 40 GB | $6.00 | hub snapshot: $0.15 per GB |
 | `typeahead-slot-b`, compute | the same machine | $13.25 | same shape as slot A |
 | `typeahead-slot-b`, volume | 40 GB | $6.00 | $0.15 per GB |
-| volume snapshots, both slots | daily, kept 2 days, about 40 GB each | about $13 | $0.08 per GB stored, after Fly's 10 GB free tier |
-| **the two slots** | | **about $51** | |
+| volume snapshots, slot B only | daily, kept 2 days, about 62 GiB stored | about $5 | $0.08 per GB stored, after Fly's 10 GB free tier |
+| **the two slots** | | **about $44** | |
 
-Fly snapshots every volume daily. Retention was 5 days until 2026-11-14, which
-at about 40 GB a snapshot would have come to about $32 a month; it is 2 days
-now (`fly volumes update <volume id> --snapshot-retention 2`). The snapshot
-figure is an estimate until a hub snapshot shows the steady state.
+Only slot B's volume is snapshotted, daily, with 2 days kept. Slot A's
+schedule was turned off on 2026-11-19
+(`fly volumes update <volume id> --scheduled-snapshots=false`): either slot's
+snapshot rebuilds either slot, so the second set was a duplicate. With both
+slots snapshotted the hub snapshot of 2026-11-19 showed $10.87 a month for
+about 72 GB stored on each. Slot A's last two snapshots expire by 2026-11-21,
+and the $5 is arithmetic from slot B's stored size until a hub snapshot shows
+the steady state. Retention was 5 days until 2026-11-14.
+
+Each snapshot stores far more than the 11.5 GB a slot's `/data` holds,
+because it covers every block the volume has written. A slot's memory peaks
+near two thirds of its 2 GB, so the machine has no cheaper size that fits.
 
 The hub snapshot is `https://hub.waow.tech/api/costs.json`, read on
 2026-11-13. It prices each Fly machine from July 2026 list prices and its

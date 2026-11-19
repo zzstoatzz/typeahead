@@ -310,10 +310,14 @@ fly volumes extend <volume id> -s <GB> -a <app>
 
 ## Replace a lost volume
 
-Fly snapshots each slot's volume daily and keeps two days of them. A slot
-whose volume is lost or damaged is rebuilt from a snapshot, its own or the
-other slot's: both hold the same accounts and index. Both slots were built
-this way on 2026-11-14, from one snapshot.
+Fly snapshots slot B's volume daily and keeps two days of them. Slot A's
+volume has no scheduled snapshots since 2026-11-19. A slot whose volume is
+lost or damaged is rebuilt from a snapshot, slot B's or one taken by hand from
+the surviving slot (`fly volumes snapshots create <volume id>`): both slots
+hold the same accounts and index. Both were built this way on 2026-11-14, from
+one snapshot. Snapshots are the only way a slot is rebuilt, so one volume must
+always have its schedule on; a destroyed volume's snapshots stay usable by
+volume id until they expire.
 
 ```sh
 fly volumes snapshots list <volume id>
