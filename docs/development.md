@@ -80,7 +80,8 @@ just deploy-image-renderer    # renderer, then image smoke
 fly deploy . --config deploy/slot/fly.toml -a <standby app>
 ```
 
-Push first. Deploys are run by hand; CI builds and tests only. A slot image
+The recipes refuse anything but a clean checkout of `origin/main`. Deploys
+are run by hand; CI builds and tests only. A slot image
 goes to the standby first and reaches the serving slot only after a flip:
 [operating](operating.md#upgrade-the-slots) has the steps.
 

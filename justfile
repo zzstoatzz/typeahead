@@ -137,10 +137,25 @@ control-ready:
     @! grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' wrangler.jsonc || { echo "wrangler.jsonc: CONTROL_DB has the placeholder database_id; put the typeahead-control database's id there" >&2; exit 1; }
     bun scripts/control-ready.ts --remote
 
+# Fails on uncommitted changes to tracked files, or when HEAD is not
+# origin/main. Each deploy labels its Worker version with the commit.
+[doc('refuse to deploy anything but a clean checkout of origin/main')]
+[group('deploy')]
+published:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git fetch --quiet origin main
+    if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+      echo "uncommitted changes: commit and push before deploying" >&2; exit 1
+    fi
+    if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+      echo "HEAD is not origin/main: push, or check out origin/main, before deploying" >&2; exit 1
+    fi
+
 # the public Worker, then the API and image smoke suites as the gate
 [group('deploy')]
-deploy-worker url=WORKER_URL: control-ready lint typecheck
-    bunx wrangler deploy
+deploy-worker url=WORKER_URL: published control-ready lint typecheck
+    bunx wrangler deploy --message "$(git rev-parse --short=12 HEAD)"
     @echo "--- waiting for edge propagation before smoke ---"
     sleep 5
     just smoke {{url}}
@@ -148,21 +163,21 @@ deploy-worker url=WORKER_URL: control-ready lint typecheck
 
 # the private PNG renderer, then the image smoke suite
 [group('deploy')]
-deploy-image-renderer url=WORKER_URL: lint typecheck
-    bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc
+deploy-image-renderer url=WORKER_URL: published lint typecheck
+    bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --message "$(git rev-parse --short=12 HEAD)"
     just smoke-images {{url}}
 
 # Deploy it before a public Worker that adds or changes its binding.
 [doc('the search transport, then the API smoke suite')]
 [group('deploy')]
-deploy-search-transport url=WORKER_URL: lint typecheck
-    bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc
+deploy-search-transport url=WORKER_URL: published lint typecheck
+    bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --message "$(git rev-parse --short=12 HEAD)"
     just smoke {{url}}
 
 # the public Worker WITHOUT the smoke gate (escape hatch)
 [group('deploy')]
-deploy-worker-only: control-ready lint typecheck
-    bunx wrangler deploy
+deploy-worker-only: published control-ready lint typecheck
+    bunx wrangler deploy --message "$(git rev-parse --short=12 HEAD)"
 
 # fresh public images through the renderer
 [group('production')]

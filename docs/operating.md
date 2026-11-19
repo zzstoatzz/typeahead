@@ -436,7 +436,10 @@ just deploy-search-transport  # transport, then the API smoke suite
 just deploy-image-renderer    # renderer, then the image smoke suite
 ```
 
-Push before deploying. All three lint and type-check first.
+Every deploy recipe runs `just published` first, which refuses anything but a
+clean checkout of `origin/main`, then lints and type-checks. Each labels the
+Worker version with the commit it was built from; `bunx wrangler deployments
+list` (with `-c` for a Worker other than the public one) shows it.
 `just deploy-worker-only` skips the smoke suites.
 
 `just deploy-worker` and `just deploy-worker-only` run `just control-ready`
