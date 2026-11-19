@@ -1,4 +1,4 @@
-import type { SqlDb } from "./db";
+import type { SqlDb } from "../db";
 
 /** fire-and-forget: increment 5-min search count + accumulate response time */
 export async function recordMetric(db: SqlDb, ms: number, now = Date.now()): Promise<void> {

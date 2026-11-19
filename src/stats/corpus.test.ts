@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeEach, expect, spyOn, test } from "bun:test";
 import { STORE_COUNT_MAX_AGE_S, recordExclusions, recordSnapshot, slotExclusions, slotSnapshot } from "./corpus";
 import { EXCLUSIONS_KEY, EXCLUSIONS_REFRESH_MS, parseExclusions } from "./exclusions";
-import type { SlotCorpus, SlotEnv } from "./slot-read";
+import type { SlotCorpus, SlotEnv } from "../slot-read";
 import { statsRows, statsStores } from "./stats-d1-fixture";
 
 // The corpus numbers on /stats come from the routed slot: the hourly

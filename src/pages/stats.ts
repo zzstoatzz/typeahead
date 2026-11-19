@@ -1,8 +1,8 @@
 import { FAVICON } from "../types";
 import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, CARD_VERSION } from "./theme";
 import { escHtml as esc } from "../utils";
-import type { SearchExclusions } from "../exclusions";
-import type { StatsProfile } from "../stats-profile";
+import type { SearchExclusions } from "../stats/exclusions";
+import type { StatsProfile } from "../stats/stats-profile";
 import { SOURCE_BRANDS } from "./source-brands";
 import { SOURCE_COLOR_SCRIPT } from "./source-colors";
 
@@ -981,7 +981,7 @@ export function statsPage(d: StatsData): string {
       const idx = sourceDomains.indexOf(domain);
       return idx >= 0 ? PIE_COLORS[idx % PIE_COLORS.length] : tok('--accent');
     }
-    // typical range per UTC hour (see stats-profile.ts); before the first showSeries()
+    // typical range per UTC hour (see stats/stats-profile.ts); before the first showSeries()
     const PROFILE = ${jsonScript(d.profile ?? { none: true })};
     let tsRange = '7d';
     // range picks both the window and the finest data that stays readable

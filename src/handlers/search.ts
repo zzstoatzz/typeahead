@@ -4,8 +4,8 @@ export { normalizePds } from "../pds";
 import type { Env } from "../types";
 import { CORS_HEADERS, BSKY_TYPEAHEAD_URL } from "../types";
 import { json, sanitize } from "../utils";
-import { recordMetric, recordCacheHit, recordTrafficSource } from "../metrics";
-import { recordStats } from "../stats-store";
+import { recordMetric, recordCacheHit, recordTrafficSource } from "../stats/metrics";
+import { recordStats } from "../stats/stats-store";
 import { retainedBackendTiming } from "../server-timing";
 import { trace } from "../worker-tracing";
 

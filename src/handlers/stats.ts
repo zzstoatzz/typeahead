@@ -2,9 +2,9 @@ import { rowsAs, type SqlDb } from "../db";
 import type { Env, RequestKvData, StatsKvData } from "../types";
 import { html } from "../utils";
 import { statsPage, type SnapshotPoint } from "../pages/stats";
-import { EXCLUSIONS_KEY, parseExclusions } from "../exclusions";
-import { sourceQueries, tailQueries, tailStartBucket, withTail } from "../stats-tail";
-import { PROFILE_KEY, parseProfile } from "../stats-profile";
+import { EXCLUSIONS_KEY, parseExclusions } from "../stats/exclusions";
+import { sourceQueries, tailQueries, tailStartBucket, withTail } from "../stats/stats-tail";
+import { PROFILE_KEY, parseProfile } from "../stats/stats-profile";
 
 const EDGE_CACHE_TTL = 60; // seconds
 

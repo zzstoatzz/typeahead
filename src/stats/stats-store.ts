@@ -1,5 +1,5 @@
-import { d1Db, type SqlDb } from "./db";
-import type { Env } from "./types";
+import { d1Db, type SqlDb } from "../db";
+import type { Env } from "../types";
 
 export type StatsEnv = Pick<Env, "STATS_DB">;
 

@@ -202,7 +202,7 @@ regression is pinned). Extend it, don't prune it.
   feeds the `source · endpoint · status` views on /stats. `endpointLabel` is a fixed label set —
   unknown paths must collapse to `other`, never mint a new endpoint. Check `/stats?view=status`
   first when something smells.
-  Statistics writers go through `recordStats`/`writeStats` (`src/stats-store.ts`) and
+  Statistics writers go through `recordStats`/`writeStats` (`src/stats/stats-store.ts`) and
   statistics reads go through `statsDb`, the `STATS_DB` D1 database.
 - moderation overrides, blocked domains and indexing requests have one source of truth, the
   `typeahead-control` D1 database, written only through `src/control-store.ts` (every policy

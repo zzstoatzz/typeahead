@@ -38,7 +38,7 @@ pub const Counts = struct {
     /// Live with a handle and not ranked: the rest walk.
     rest: u64 = 0,
 
-    /// `snapshots.total` as `recordSnapshot` in `src/enrichment.ts` writes
+    /// `snapshots.total` as `recordSnapshot` in `src/stats/corpus.ts` writes
     /// it: live actors less the hidden ones.
     pub fn total(self: Counts) u64 {
         return self.live - self.hidden;

@@ -1,8 +1,8 @@
 import { afterAll, afterEach, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
-import { rowsAs } from "./db";
+import { rowsAs } from "../db";
 import { materializeStats, writeSnapshot } from "./enrichment";
-import { knownSource } from "./handlers/source-icon";
-import { statsBody } from "./handlers/stats";
+import { knownSource } from "../handlers/source-icon";
+import { statsBody } from "../handlers/stats";
 import { recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
 import { PROFILE_KEY, parseProfile, recordProfile } from "./stats-profile";
 import { STATS_TABLES, collectingCtx, statsStores } from "./stats-d1-fixture";

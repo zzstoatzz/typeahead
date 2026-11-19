@@ -1,6 +1,6 @@
 import { writeSnapshot, type Snapshot } from "./enrichment";
 import { EXCLUSIONS_KEY, exclusionsDue, type ExclusionsKv, type SearchExclusions } from "./exclusions";
-import { slotCorpus, type SlotCorpus, type SlotEnv } from "./slot-read";
+import { slotCorpus, type SlotCorpus, type SlotEnv } from "../slot-read";
 import { writeStats, type StatsEnv } from "./stats-store";
 
 /** The corpus numbers /stats shows, taken from the routed store slot. Where

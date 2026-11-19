@@ -1,11 +1,11 @@
 import type { Env } from "./types";
 import { CORS_HEADERS, FAVICON_SVG } from "./types";
 import { clientIP, json, html } from "./utils";
-import { materializeStats } from "./enrichment";
-import { recordExclusions, recordSnapshot } from "./corpus";
-import { recordProfile } from "./stats-profile";
-import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
-import { recordStats, statsDb } from "./stats-store";
+import { materializeStats } from "./stats/enrichment";
+import { recordExclusions, recordSnapshot } from "./stats/corpus";
+import { recordProfile } from "./stats/stats-profile";
+import { endpointLabel, recordRequest, trafficDomain } from "./stats/metrics";
+import { recordStats, statsDb } from "./stats/stats-store";
 import { controlDb, pruneIndexRequests } from "./control-store";
 import { controlHealth, handleControlHealth } from "./control-health";
 import { handleSearch } from "./handlers/search";

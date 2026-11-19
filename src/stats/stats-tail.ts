@@ -1,4 +1,4 @@
-import type { Stmt, SqlDb } from "./db";
+import type { Stmt, SqlDb } from "../db";
 import { TRAFFIC_SOURCE_WHERE } from "./metrics";
 
 /** The cron writes /stats data to KV once an hour, so its newest buckets are up

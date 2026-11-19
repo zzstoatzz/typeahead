@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, test, expect, mock, spyOn } from "bun:test";
 import { GENERATION, controlStore } from "./control-d1-fixture";
 import type { SqlDb } from "./db";
-import { statsStores } from "./stats-d1-fixture";
+import { statsStores } from "./stats/stats-d1-fixture";
 import type { Env } from "./types";
 import { publishReports } from "./eval/archive";
 import { reportSchema } from "./eval/model";

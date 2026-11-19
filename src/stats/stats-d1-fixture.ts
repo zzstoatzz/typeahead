@@ -1,9 +1,9 @@
 import { Miniflare } from "miniflare";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
-import { d1Db, type SqlDb } from "./db";
+import { d1Db, type SqlDb } from "../db";
 
-const MIGRATIONS = new URL("../migrations/stats-d1/", import.meta.url).pathname;
+const MIGRATIONS = new URL("../../migrations/stats-d1/", import.meta.url).pathname;
 
 const PRIMARY_KEYS = {
   actor_deltas: "bucket",

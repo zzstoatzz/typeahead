@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { rowsAs, type SqlDb } from "./db";
+import { rowsAs, type SqlDb } from "../db";
 
 /** What each UTC hour of the day usually looks like, so /stats can draw a
  *  typical range behind the live line. Built hourly by the cron from the last
