@@ -1,6 +1,6 @@
 {
   "name": "typeahead-image-renderer",
-  "main": "../../src/image-renderer.ts",
+  "main": "../../src/image-renderer/image-renderer.ts",
   "compatibility_date": "2026-11-04",
   "workers_dev": false,
   "preview_urls": false,

@@ -1,4 +1,4 @@
-import { handleOgImage, handleAppleTouchIcon } from "./handlers/og";
+import { handleOgImage, handleAppleTouchIcon } from "./og";
 
 export default {
   async fetch(request: Request, env: Pick<ImageRendererEnv, "KV">): Promise<Response> {
