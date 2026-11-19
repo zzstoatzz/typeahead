@@ -174,6 +174,12 @@ deploy-search-transport url=WORKER_URL: published lint typecheck
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --message "$(git rev-parse --short=12 HEAD)"
     just smoke {{url}}
 
+# It has no HTTP surface, so nothing can smoke it; read its next cron tick.
+[doc('the eval collector')]
+[group('deploy')]
+deploy-eval-collector: published lint typecheck
+    bunx wrangler deploy -c deploy/eval/wrangler.jsonc --message "$(git rev-parse --short=12 HEAD)"
+
 # the public Worker WITHOUT the smoke gate (escape hatch)
 [group('deploy')]
 deploy-worker-only: published control-ready lint typecheck

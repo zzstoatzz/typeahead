@@ -77,6 +77,7 @@ docker build --platform linux/amd64 -f deploy/slot/Dockerfile -t typeahead-slot:
 just deploy-worker            # public Worker, then smoke
 just deploy-search-transport  # transport, then smoke
 just deploy-image-renderer    # renderer, then image smoke
+just deploy-eval-collector    # eval collector
 fly deploy . --config deploy/slot/fly.toml -a <standby app>
 ```
 

@@ -434,6 +434,7 @@ Migrations are in `migrations/control-d1`:
 just deploy-worker            # public Worker, then the API and image smoke suites
 just deploy-search-transport  # transport, then the API smoke suite
 just deploy-image-renderer    # renderer, then the image smoke suite
+just deploy-eval-collector    # eval collector; it has no HTTP surface to smoke
 ```
 
 Every deploy recipe runs `just published` first, which refuses anything but a

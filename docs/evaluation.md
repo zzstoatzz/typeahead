@@ -104,8 +104,7 @@ fixture. The production run remained pending at rollout.
 Deploy the collector independently after publishing the code:
 
 ```sh
-bunx wrangler deploy -c deploy/eval/wrangler.jsonc --dry-run
-bunx wrangler deploy -c deploy/eval/wrangler.jsonc
+just deploy-eval-collector
 ```
 
 To pause collection, set `triggers.crons` to `[]` in the collector configuration
