@@ -139,9 +139,8 @@ control-ready:
 
 # the public Worker, then the API and image smoke suites as the gate
 [group('deploy')]
-deploy-worker url=WORKER_URL: control-ready lint
-    bunx tsc --noEmit
-    npx wrangler deploy
+deploy-worker url=WORKER_URL: control-ready lint typecheck
+    bunx wrangler deploy
     @echo "--- waiting for edge propagation before smoke ---"
     sleep 5
     just smoke {{url}}
@@ -149,28 +148,26 @@ deploy-worker url=WORKER_URL: control-ready lint
 
 # the private PNG renderer, then the image smoke suite
 [group('deploy')]
-deploy-image-renderer url=WORKER_URL: lint
-    bunx tsc --noEmit
+deploy-image-renderer url=WORKER_URL: lint typecheck
     bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc
     just smoke-images {{url}}
-
-# fresh public images through the renderer
-[group('production')]
-smoke-images url=WORKER_URL:
-    python3 scripts/smoke-images.py --url {{url}}
 
 # Deploy it before a public Worker that adds or changes its binding.
 [doc('the search transport, then the API smoke suite')]
 [group('deploy')]
-deploy-search-transport url=WORKER_URL: lint
-    bunx tsc --noEmit
+deploy-search-transport url=WORKER_URL: lint typecheck
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc
     just smoke {{url}}
 
 # the public Worker WITHOUT the smoke gate (escape hatch)
 [group('deploy')]
-deploy-worker-only: control-ready lint
-    npx wrangler deploy
+deploy-worker-only: control-ready lint typecheck
+    bunx wrangler deploy
+
+# fresh public images through the renderer
+[group('production')]
+smoke-images url=WORKER_URL:
+    python3 scripts/smoke-images.py --url {{url}}
 
 # [Evaluation](docs/evaluation.md) says what each of these reads and writes.
 

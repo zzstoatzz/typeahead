@@ -166,7 +166,7 @@ regression is pinned). Extend it, don't prune it.
 
 - `just deploy-worker` — `control-ready` (the control database has its schema), lint and type-check, then
   `wrangler deploy` **then** the smoke suite. A deploy that breaks shape, ranking, or the admin API fails loudly
-  here. `deploy-worker-only` skips smoke but still requires `control-ready` and lint.
+  here. `deploy-worker-only` skips smoke but still requires `control-ready`, lint and the type-check.
 - `just deploy-search-transport` deploys the transport, then runs the smoke suite. A slot's
   origin must be in `src/transport/search-route.ts` and deployed before a route record can name it.
 - `just deploy-image-renderer` deploys the private PNG renderer, then validates
