@@ -1701,10 +1701,11 @@ export function statsPage(d: StatsData): string {
       let unattributedShown = false;
       // The ring shows one window of the ranked sources at a time, drawn
       // across the full ring. A window takes sources while each stays at least
-      // MIN_SHARE of it, so every slice has room for its icon. Only the first
-      // window adds a slice for everything smaller; later windows never put a
-      // tail slice beside the sources being inspected.
-      const PAGE = 12, MIN_SHARE = 0.025;
+      // MIN_SHARE of it. Only the first window adds a slice for everything
+      // smaller; later windows never put a tail slice beside the sources being
+      // inspected. A slice too thin to hold a legible icon gets its icon in the
+      // hole instead, on a leader line (placeCallouts).
+      const PAGE = 12, MIN_SHARE = 0.008;
       const offsets = [0];
       let offset = 0, nextOffset = 0;
       let view = [];
@@ -1732,24 +1733,56 @@ export function statsPage(d: StatsData): string {
       }
       let renderedWidth = 0;
       const MAX_ICON_PX = 32;
+      // a callout icon grows with the ring; a band icon smaller than most of
+      // one is drawn as a callout instead
+      const calloutIconPx = () => Math.min(MAX_ICON_PX, Math.max(20, renderedWidth * 0.055));
+      function drawIcon(group, row, x, y, size, leader) {
+        const icon = svgNode('g', {class: 'pie-logo', 'aria-hidden': 'true', opacity: 0});
+        if (leader) icon.append(leader);
+        const info = iconInfo.get(row.domain);
+        const img = svgNode('image', {href: info?.cut ?? sourceIconUrl(row.domain), x: x - size / 2, y: y - size / 2, width: size, height: size, preserveAspectRatio: 'xMidYMid meet'});
+        if (info) img.setAttribute('filter', 'url(#pie-halo-' + (info.lum > 0.55 ? 'dark' : 'light') + ')');
+        img.addEventListener('load', () => icon.setAttribute('opacity', '1'));
+        img.addEventListener('error', () => { failedLogos.add(row.domain); icon.remove(); });
+        icon.append(img); group.append(icon);
+      }
+      // true when the slice has an icon the band cannot show legibly
       function addIcon(group, row, start, end, outer, inner, scale) {
-        const url = sourceIconUrl(row.domain);
-        if (!url || failedLogos.has(row.domain)) return;
+        if (!sourceIconUrl(row.domain) || failedLogos.has(row.domain)) return false;
         learnIcon(row.domain);
         const radius = (outer + inner) / 2;
         // the icon is a square centred on the band: its half-diagonal must clear
         // both band edges and the slice's own sides, whatever the slice's angle
         const clearance = Math.min((outer - inner) / 2, radius * Math.sin(Math.min((end - start) / 2, Math.PI / 2)));
         const size = Math.min(MAX_ICON_PX / scale, (clearance - 0.5 / scale) * Math.SQRT2);
-        if (size <= 0) return;
+        if (size * scale < calloutIconPx() * 0.8) return true;
         const [x, y] = point(radius, (start + end) / 2);
-        const icon = svgNode('g', {class: 'pie-logo', 'aria-hidden': 'true', opacity: 0});
-        const info = iconInfo.get(row.domain);
-        if (info) icon.setAttribute('filter', 'url(#pie-halo-' + (info.lum > 0.55 ? 'dark' : 'light') + ')');
-        const img = svgNode('image', {href: info?.cut ?? url, x: x - size / 2, y: y - size / 2, width: size, height: size, preserveAspectRatio: 'xMidYMid meet'});
-        img.addEventListener('load', () => icon.setAttribute('opacity', '1'));
-        img.addEventListener('error', () => { failedLogos.add(row.domain); icon.remove(); });
-        icon.append(img); group.append(icon);
+        drawIcon(group, row, x, y, size);
+        return false;
+      }
+      // Icons for thin slices sit on one circle just inside the hole, clear of
+      // the detail text at its centre, each on a line from its slice. Neighbours
+      // are pushed apart along the circle until none overlap; the slices are in
+      // angular order, so the lines never cross.
+      function placeCallouts(callouts, inner, scale) {
+        const size = calloutIconPx() / scale;
+        const radius = inner - size / 2 - 5 / scale;
+        const gap = (size + 6 / scale) / radius;
+        const angles = callouts.map(callout => callout.mid);
+        for (let pass = 0; pass < 32; pass++) {
+          for (let i = 1; i < angles.length; i++) {
+            const short = gap - (angles[i] - angles[i - 1]);
+            if (short > 0) { angles[i - 1] -= short / 2; angles[i] += short / 2; }
+          }
+        }
+        callouts.forEach((callout, i) => {
+          const [x, y] = point(radius, angles[i]);
+          const [x1, y1] = point(inner, callout.mid);
+          const [x2, y2] = point(radius + size / 2, angles[i]);
+          const leader = svgNode('line', {class: 'pie-leader', x1, y1, x2, y2, stroke: domainColor(callout.row.domain), 'stroke-width': 1.25 / scale});
+          drawIcon(callout.group, callout.row, x, y, size, leader);
+          callout.group.append(svgNode('rect', {class: 'pie-callout-hit', x: x - size / 2, y: y - size / 2, width: size, height: size, fill: 'transparent'}));
+        });
       }
       // the tail slice says what it holds and that it opens, instead of a blank wedge
       function addTailLabel(group, row, start, end, outer, inner, scale) {
@@ -1812,6 +1845,7 @@ export function statsPage(d: StatsData): string {
         pieCanvas.append(defs);
         const outer = 190, inner = 133;
         let angle = -Math.PI / 2;
+        const callouts = [];
         view.forEach(row => {
           const start = angle;
           const end = angle + row.hits / total * Math.PI * 2 - 0.00001;
@@ -1826,7 +1860,7 @@ export function statsPage(d: StatsData): string {
           group.append(svgNode('path', {d: path, class: 'pie-face', fill: row.rest ? 'var(--line-2)' : row.unattributed ? 'var(--panel-2)' : domainColor(row.domain), opacity: tsDim === 'source' && pinned.length && !pinned.includes(row.domain) && !plain ? 0.72 : 1}));
           group.append(svgNode('title', {}, group.getAttribute('aria-label')));
           if (row.rest) addTailLabel(group, row, start, end, outer, inner, scale);
-          else if (!row.unattributed) addIcon(group, row, start, end, outer, inner, scale);
+          else if (!row.unattributed && addIcon(group, row, start, end, outer, inner, scale)) callouts.push({group, row, mid: (start + end) / 2});
           activateOnTap(group, () => {
             if (row.rest) step(1);
             else if (row.unattributed) { unattributedShown = !unattributedShown; refreshPie(); }
@@ -1834,6 +1868,7 @@ export function statsPage(d: StatsData): string {
           });
           pieCanvas.append(group);
         });
+        placeCallouts(callouts, inner, scale);
         const larger = document.getElementById('pie-larger');
         larger.hidden = offset === 0;
         larger.onclick = () => step(-1);
