@@ -510,6 +510,10 @@ wrong.
 - The hourly cron writes the page's series to KV, records the account counts
   it reads from the serving slot, and once a day records how many accounts
   moderation hides. Each run logs `cron_done` with the time each step took.
+- A run keeps the series it wrote the hour before and reads only the buckets
+  since then. Once a day, and whenever the KV copy is missing or malformed,
+  it reads all 90 days. `rebuilt_at` in the `stats_data` and `request_data`
+  keys says when that last happened.
 - Statistics are written to and read from the `typeahead-stats` D1 database.
   A failed write is logged as `stats_write_failed` and does not fail the
   request.
