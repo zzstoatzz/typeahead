@@ -298,14 +298,15 @@ pub const Model = struct {
             },
             .profile => |c| {
                 const known = self.actors.get(c.did);
+                if (known == null and c.known_only) return 0;
                 var actor = known orelse self.fresh(c.did);
                 if (actor.status != .live) return 0;
                 actor.handle = orKeep(actor.handle, c.handle);
-                actor.display_name = orKeep(actor.display_name, c.display_name);
-                actor.avatar = orKeep(actor.avatar, c.avatar);
+                if (c.display_name) |said| actor.display_name = said;
+                if (c.avatar) |said| actor.avatar = said;
                 actor.pds = orKeep(actor.pds, c.pds);
-                actor.description = orKeep(actor.description, c.description);
-                actor.banner = orKeep(actor.banner, c.banner);
+                if (c.description) |said| actor.description = said;
+                if (c.banner) |said| actor.banner = said;
                 self.stamp(&actor);
                 self.wantRefresh(&actor);
                 if (known == null and c.enqueue_identity) self.discover(c.did, &actor);

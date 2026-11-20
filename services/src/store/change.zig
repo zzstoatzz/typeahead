@@ -14,16 +14,20 @@ pub const Observe = struct {
     enqueue_identity: bool = false,
 };
 
-/// A profile-bearing event. An empty field keeps the stored value.
+/// A profile-bearing event. A null field is one the event does not speak
+/// for and keeps the stored value; an empty one clears it. An empty handle
+/// or PDS keeps the stored value.
 pub const Profile = struct {
     did: []const u8,
     handle: []const u8 = "",
-    display_name: []const u8 = "",
-    avatar: []const u8 = "",
+    display_name: ?[]const u8 = null,
+    avatar: ?[]const u8 = null,
     pds: []const u8 = "",
-    description: []const u8 = "",
-    banner: []const u8 = "",
+    description: ?[]const u8 = null,
+    banner: ?[]const u8 = null,
     enqueue_identity: bool = false,
+    /// Change nothing when the actor is not in the store.
+    known_only: bool = false,
 };
 
 /// A resolution from the DID's authority, applied only when it is at least

@@ -87,7 +87,7 @@ test "a bare observation creates an actor once" {
     try testing.expectEqual(@as(usize, 1), (try f.logged()).len);
 }
 
-test "a profile update keeps stored fields an event leaves empty" {
+test "a profile update keeps the fields an event does not speak for and clears the empty ones" {
     var f = try Fixture.init(.{});
     defer f.deinit();
     _ = try f.apply(t0, .{ .profile = .{ .did = alice, .handle = "Alice.Test", .display_name = "Alice", .avatar = "bafyavatar", .pds = "https://pds.test" } });
@@ -105,6 +105,17 @@ test "a profile update keeps stored fields an event leaves empty" {
     try testing.expectEqual(@as(usize, 0), unchanged.changed);
     try testing.expectEqual(@as(u64, t0 + 5), (try f.actor(alice)).updated_at);
     try testing.expectEqual(@as(usize, 2), (try f.logged()).len);
+
+    _ = try f.apply(t0 + 10, .{ .profile = .{ .did = alice, .display_name = "", .avatar = "", .description = "", .banner = "" } });
+    const cleared = try f.actor(alice);
+    try testing.expectEqualStrings("", cleared.display_name);
+    try testing.expectEqualStrings("", cleared.avatar);
+    try testing.expectEqualStrings("", cleared.description);
+    try testing.expectEqualStrings("Alice.Test", cleared.handle);
+    try testing.expectEqualStrings("https://pds.test", cleared.pds);
+
+    _ = try f.apply(t0 + 11, .{ .profile = .{ .did = bob, .display_name = "", .known_only = true } });
+    try testing.expect(try f.store.actor(f.arena.allocator(), bob) == null);
 }
 
 test "a handle change moves the handle key, and lookups ignore case" {

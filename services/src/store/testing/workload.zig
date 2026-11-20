@@ -65,6 +65,12 @@ const Gen = struct {
         return pool[self.random.uintLessThan(usize, pool.len)];
     }
 
+    /// A field a source speaks for three times in four; each pool holds the
+    /// empty value that clears.
+    fn said(self: *Gen, pool: []const []const u8) ?[]const u8 {
+        return if (self.chance(25)) null else self.pick([]const u8, pool);
+    }
+
     fn chance(self: *Gen, percent: u8) bool {
         return self.random.uintLessThan(u8, 100) < percent;
     }
@@ -138,12 +144,13 @@ const Gen = struct {
             12...25 => .{ .profile = .{
                 .did = subject,
                 .handle = try self.handle(),
-                .display_name = self.pick([]const u8, &displays),
-                .avatar = self.pick([]const u8, &cids),
+                .display_name = self.said(&displays),
+                .avatar = self.said(&cids),
                 .pds = self.pick([]const u8, &hosts),
-                .description = self.pick([]const u8, &texts),
-                .banner = self.pick([]const u8, &cids),
+                .description = self.said(&texts),
+                .banner = self.said(&cids),
                 .enqueue_identity = self.chance(50),
+                .known_only = self.chance(10),
             } },
             26...31 => .{ .identity_resolved = .{
                 .did = subject,
