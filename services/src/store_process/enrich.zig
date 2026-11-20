@@ -10,14 +10,18 @@
 //!    which is how new and re-touched actors arrive.
 //! 2. Ask the appview's `getProfiles` for the leased DIDs.
 //! 3. A profile that came back becomes an `enrichment` from Bluesky, with
-//!    the response's labels as the labeler's answer.
+//!    the response's labels as the labeler's answer. It is the whole
+//!    profile: a display name, description, avatar or banner it lacks is
+//!    cleared. Zero counts are not written.
 //! 4. A DID that did not come back is handled as `refreshModeration` in
 //!    `src/cron.ts` handles it. With a PDS on record and no `hide` override,
 //!    the appview's `getProfile` is asked why; `AccountTakedown`, or a `show`
 //!    override without asking, sends the DID to Blacksky's appview and then
 //!    to the profile record on its PDS (`app.bsky.actor.profile`, then
 //!    `sh.tangled.actor.profile`). Either becomes an `enrichment` from that
-//!    source. Anything else (deactivated,
+//!    source, which adds the fields it carries and clears none, except that
+//!    a readable Bluesky record clears a display name or avatar it lacks.
+//!    Anything else (deactivated,
 //!    suspended, never indexed) changes nothing and is stamped as checked.
 //!    Nothing is deleted here: account removal arrives on the relay.
 //! 5. The results are one submission. A request that taught nothing (429,

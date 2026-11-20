@@ -62,6 +62,13 @@ account is shown. The index bridge then sends the account to the search
 engine. Accounts already in the store are refreshed on a schedule by the same
 steps.
 
+A profile is replaced, not merged. When an account removes its display name,
+description, avatar or banner, the next profile record on the relay or the
+next answer from Bluesky's AppView clears it in the store and in search. Two
+things are kept on purpose: a field the source could not be read for, and
+follower, follow and post counts the AppView reports as zero, since an AppView
+that has lost its counts also answers zero and ranking depends on them.
+
 ## Two slots and the route
 
 <img src="diagrams/route.svg" alt="The search transport follows a route record that names the serving slot. Two slots each follow the same sources on their own. A flip is one write to the route record." width="600" />
