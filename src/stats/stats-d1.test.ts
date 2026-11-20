@@ -284,3 +284,14 @@ function sortedPayload(payload: StatsPayload | RequestPayload) {
   return Object.fromEntries(Object.entries(payload).map(([name, rows]) =>
     [name, Array.isArray(rows) ? rows.map((row) => JSON.stringify(row)).sort() : rows]));
 }
+
+test("the profile is recomputed once a day, not every hour", async () => {
+  const kv = memoryKv();
+  const T0 = Date.UTC(2026, 10, 12, 15, 0, 2);
+  const first = await recordProfile(db, kv, T0);
+  expect(first.as_of).toBe(new Date(T0).toISOString());
+  expect((await recordProfile(db, kv, T0 + 23 * 3_600_000)).as_of).toBe(first.as_of);
+  expect((await recordProfile(db, kv, T0 + 24 * 3_600_000)).as_of).toBe(new Date(T0 + 24 * 3_600_000).toISOString());
+  kv.stored.set(PROFILE_KEY, "not a profile");
+  expect((await recordProfile(db, kv, T0 + 25 * 3_600_000)).as_of).toBe(new Date(T0 + 25 * 3_600_000).toISOString());
+});

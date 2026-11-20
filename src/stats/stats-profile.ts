@@ -61,7 +61,7 @@ export function hourOfDayBands(totals: Map<number, number>, start: number, end: 
   });
 }
 
-type ProfileKv = { put(key: string, value: string): Promise<void> };
+type ProfileKv = { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<void> };
 
 /** the profile as the cron computes it, read from one statistics store */
 export async function readProfile(db: SqlDb, now = Date.now()): Promise<StatsProfile> {
@@ -83,7 +83,13 @@ export async function readProfile(db: SqlDb, now = Date.now()): Promise<StatsPro
   } satisfies StatsProfile;
 }
 
+/** The window is 28 days ending a day back, so a profile computed within the
+ *  last day describes nearly the same days: the cron keeps it rather than
+ *  read 28 days of buckets every hour. */
 export async function recordProfile(db: SqlDb, kv: ProfileKv, now = Date.now()): Promise<StatsProfile> {
+  const stored = parseProfile(await kv.get(PROFILE_KEY));
+  const age = stored ? now - Date.parse(stored.as_of) : NaN;
+  if (stored && stored.days === PROFILE_DAYS && age >= 0 && age < 24 * 3_600_000) return stored;
   const profile = await readProfile(db, now);
   await kv.put(PROFILE_KEY, JSON.stringify(profile));
   return profile;
