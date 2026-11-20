@@ -99,8 +99,10 @@ pub const HandleVerdict = enum {
     deferred,
 };
 
-/// What a profile fetch returned. Empty strings and zero counts keep the
-/// stored values, as the SQL `COALESCE(NULLIF(...))` writes did.
+/// What a profile fetch returned. A null field is one the source does not
+/// speak for and keeps the stored value; an empty one clears it. An empty
+/// `created_at` or `associated` and a zero count or score keep the stored
+/// value: an appview that has lost its counts answers zero.
 pub const Enrichment = struct {
     did: []const u8,
     source: record.ProfileSource,
@@ -110,10 +112,10 @@ pub const Enrichment = struct {
     handle: []const u8 = "",
     /// Null leaves a differing handle unanswered.
     handle_check: ?HandleCheck = null,
-    display_name: []const u8 = "",
-    avatar: []const u8 = "",
-    description: []const u8 = "",
-    banner: []const u8 = "",
+    display_name: ?[]const u8 = null,
+    avatar: ?[]const u8 = null,
+    description: ?[]const u8 = null,
+    banner: ?[]const u8 = null,
     created_at: []const u8 = "",
     associated: []const u8 = "",
     followers_count: u64 = 0,

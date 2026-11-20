@@ -910,10 +910,10 @@ pub const Batch = struct {
             new.identity_due = self.now;
             queue = .{ .reason = .identity, .enqueued_at = self.now };
         }
-        new.display_name = keep(new.display_name, c.display_name);
-        new.avatar = keep(new.avatar, c.avatar);
-        new.description = keep(new.description, c.description);
-        new.banner = keep(new.banner, c.banner);
+        new.display_name = c.display_name orelse new.display_name;
+        new.avatar = c.avatar orelse new.avatar;
+        new.description = c.description orelse new.description;
+        new.banner = c.banner orelse new.banner;
         new.created_at = keep(new.created_at, c.created_at);
         if (c.associated.len > 0 and !std.mem.eql(u8, c.associated, "{}")) new.associated = c.associated;
         new.followers_count = keepCount(new.followers_count, c.followers_count);

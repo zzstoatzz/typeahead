@@ -832,3 +832,105 @@ test "a new account is fetched as soon as its handle resolves" {
     try testing.expect(actor.quality_score > 0);
     try testing.expectEqual(@as(usize, 1), rig.world.requests.items.len);
 }
+
+const full = "\"displayName\":\"Kept\",\"description\":\"about\",\"avatar\":\"https://cdn.test/img/avatar/plain/did/bafkreiavatar@jpeg\",\"banner\":\"https://cdn.test/img/banner/plain/did/bafkreibanner@jpeg\",\"followersCount\":40,\"followsCount\":7,\"postsCount\":12";
+
+/// Queue `subject` again as a profile write does, then run the queue dry.
+fn again(rig: *Rig, subject: []const u8) !void {
+    _ = try rig.f.commit(&.{.{ .profile = .{ .did = subject } }}, null);
+    _ = try rig.drain();
+}
+
+test "Bluesky's appview clears the fields an account no longer has, and keeps counts it reports as zero" {
+    const rig = try Rig.create(.{ .walk_per_hour = 0, .sweep_per_hour = 0 });
+    defer rig.destroy();
+    const subject = try rig.seed(1);
+    try rig.known(subject, full);
+    _ = try rig.drain();
+    const before = try rig.f.live(subject);
+    try testing.expectEqualStrings("Kept", before.display_name);
+    try testing.expectEqualStrings("about", before.description);
+    try testing.expectEqualStrings("bafkreiavatar", before.avatar);
+    try testing.expectEqualStrings("bafkreibanner", before.banner);
+
+    try rig.known(subject, "\"followersCount\":0,\"followsCount\":0,\"postsCount\":0");
+    try again(rig, subject);
+    const actor = try rig.f.live(subject);
+    try testing.expectEqualStrings("", actor.display_name);
+    try testing.expectEqualStrings("", actor.description);
+    try testing.expectEqualStrings("", actor.avatar);
+    try testing.expectEqualStrings("", actor.banner);
+    try testing.expectEqual(@as(u64, 40), actor.followers_count);
+    try testing.expectEqual(before.quality_score, actor.quality_score);
+}
+
+test "a failed or empty answer clears nothing" {
+    const rig = try Rig.create(.{ .walk_per_hour = 0, .sweep_per_hour = 0, .backoff_seconds = 1, .backoff_max_seconds = 1 });
+    defer rig.destroy();
+    const subject = try rig.seed(1);
+    try rig.known(subject, full);
+    _ = try rig.drain();
+
+    const a = rig.f.arena.allocator();
+    try rig.world.scripted.append(a, .{ .status = 503 });
+    try rig.world.scripted.append(a, .{ .status = 200, .body = "{\"profiles\":null}" });
+    try rig.world.scripted.append(a, .{ .status = 200, .body = "not json" });
+    try rig.world.scripted.append(a, .{ .status = 200, .body = "{\"profiles\":[]}" });
+    _ = try rig.f.commit(&.{.{ .profile = .{ .did = subject } }}, null);
+    while (rig.world.scripted.items.len > 0) {
+        _ = try rig.drain();
+        _ = World.sleepMs(rig.world, 5000);
+    }
+    _ = try rig.drain();
+    const actor = try rig.f.live(subject);
+    try testing.expectEqualStrings("Kept", actor.display_name);
+    try testing.expectEqualStrings("about", actor.description);
+    try testing.expectEqualStrings("bafkreiavatar", actor.avatar);
+    try testing.expectEqual(@as(u64, 40), actor.followers_count);
+}
+
+test "Blacksky and a PDS record clear only what they are trusted to say" {
+    const rig = try Rig.create(.{ .walk_per_hour = 0, .sweep_per_hour = 0 });
+    defer rig.destroy();
+    const a = rig.f.arena.allocator();
+    const on_black = try rig.seed(1);
+    const on_pds = try rig.seed(2);
+    const unread = try rig.seed(3);
+    const tangled = try rig.seed(4);
+    const all = [_][]const u8{ on_black, on_pds, unread, tangled };
+    for (all) |subject| try rig.known(subject, full);
+    _ = try rig.drain();
+
+    for (all) |subject| {
+        _ = rig.world.bsky.remove(subject);
+        try rig.world.refusals.put(a, subject, "AccountTakedown");
+    }
+    try rig.world.black.put(a, on_black, try std.fmt.allocPrint(a, "{{\"did\":\"{s}\",\"followersCount\":0,\"followsCount\":0,\"postsCount\":0}}", .{on_black}));
+    try rig.world.records.put(a, try std.fmt.allocPrint(a, "https://pds.test app.bsky.actor.profile {s}", .{on_pds}), "{\"value\":{\"displayName\":\"\"}}");
+    try rig.world.records.put(a, try std.fmt.allocPrint(a, "https://pds.test app.bsky.actor.profile {s}", .{unread}), "{\"value\":{\"displayName\":\"\",\"avatar\":{\"cid\":\"legacy\"}}}");
+    try rig.world.records.put(a, try std.fmt.allocPrint(a, "https://pds.test sh.tangled.actor.profile {s}", .{tangled}), "{\"value\":{\"description\":\"tangled only\"}}");
+    _ = try rig.f.commit(&.{ .{ .profile = .{ .did = on_black } }, .{ .profile = .{ .did = on_pds } }, .{ .profile = .{ .did = unread } }, .{ .profile = .{ .did = tangled } } }, null);
+    _ = try rig.drain();
+
+    const black = try rig.f.live(on_black);
+    try testing.expectEqual(store_mod.record.ProfileSource.blacksky, black.profile_source);
+    try testing.expectEqualStrings("Kept", black.display_name);
+    try testing.expectEqualStrings("bafkreiavatar", black.avatar);
+    try testing.expectEqual(@as(u64, 40), black.followers_count);
+
+    const pds = try rig.f.live(on_pds);
+    try testing.expectEqual(store_mod.record.ProfileSource.pds, pds.profile_source);
+    try testing.expectEqualStrings("", pds.display_name);
+    try testing.expectEqualStrings("", pds.avatar);
+    try testing.expectEqualStrings("about", pds.description);
+    try testing.expectEqualStrings("bafkreibanner", pds.banner);
+    try testing.expectEqual(@as(u64, 40), pds.followers_count);
+
+    for ([_][]const u8{ unread, tangled }) |subject| {
+        const actor = try rig.f.live(subject);
+        try testing.expectEqual(store_mod.record.ProfileSource.pds, actor.profile_source);
+        try testing.expectEqualStrings("Kept", actor.display_name);
+        try testing.expectEqualStrings("bafkreiavatar", actor.avatar);
+        try testing.expectEqualStrings("about", actor.description);
+    }
+}

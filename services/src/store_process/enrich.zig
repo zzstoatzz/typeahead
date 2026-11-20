@@ -201,7 +201,15 @@ fn parsed(arena: Allocator, body: []const u8) ?Value {
     return std.json.parseFromSliceLeaky(Value, arena, body, .{}) catch null;
 }
 
-const Found = struct { fields: profile.Fields, source: store_mod.record.ProfileSource };
+const Found = struct {
+    fields: profile.Fields,
+    source: store_mod.record.ProfileSource,
+    /// The source's display name and avatar are the account's own, so an
+    /// empty one clears the stored value.
+    names: bool = false,
+    /// The same for its description and banner.
+    about: bool = false,
+};
 
 const Verdict = union(enum) {
     found: Found,
@@ -314,10 +322,12 @@ pub const Enricher = struct {
     }
 
     /// `fetchProfileFromPds`: the object the Worker builds from a profile
-    /// record, the Bluesky collection first.
-    fn record(self: *Enricher, arena: Allocator, did: []const u8, pds: []const u8) !?Value {
+    /// record, the Bluesky collection first. `whole` when it is the Bluesky
+    /// record and both fields it gives were readable, so an empty display
+    /// name or avatar is the account's own.
+    fn record(self: *Enricher, arena: Allocator, did: []const u8, pds: []const u8) !?struct { profile: Value, whole: bool } {
         const origin = try pdsOrigin(arena, pds) orelse return null;
-        for ([_][]const u8{ "app.bsky.actor.profile", "sh.tangled.actor.profile" }) |collection| {
+        for ([_][]const u8{ "app.bsky.actor.profile", "sh.tangled.actor.profile" }, 0..) |collection, index| {
             const url = try std.fmt.allocPrint(arena, "{s}/xrpc/com.atproto.repo.getRecord?repo={s}&collection={s}&rkey=self", .{ origin, try encoded(arena, did), collection });
             const response = self.request(arena, url);
             if (response.status != 200) continue;
@@ -326,10 +336,16 @@ pub const Enricher = struct {
             var object: std.json.ObjectMap = .empty;
             try object.put(arena, "did", .{ .string = did });
             try object.put(arena, "handle", .{ .string = "" });
+            const avatar = string(member(member(member(value, "avatar") orelse .null, "ref") orelse .null, "$link"));
             try object.put(arena, "displayName", .{ .string = string(member(value, "displayName")) });
-            try object.put(arena, "avatar", .{ .string = string(member(member(member(value, "avatar") orelse .null, "ref") orelse .null, "$link")) });
+            try object.put(arena, "avatar", .{ .string = avatar });
             try object.put(arena, "createdAt", .{ .string = string(member(value, "createdAt")) });
-            return .{ .object = object };
+            const name_read = switch (member(value, "displayName") orelse .null) {
+                .null, .string => true,
+                else => false,
+            };
+            const avatar_read = avatar.len > 0 or (member(value, "avatar") orelse .null) == .null;
+            return .{ .profile = .{ .object = object }, .whole = index == 0 and name_read and avatar_read };
         }
         return null;
     }
@@ -350,7 +366,7 @@ pub const Enricher = struct {
             if (!std.mem.eql(u8, reason, "AccountTakedown")) return .absent;
         }
         if (try self.blacksky(arena, job.did)) |found| return .{ .found = .{ .fields = try profile.extract(arena, found, now_ms), .source = .blacksky } };
-        if (try self.record(arena, job.did, job.pds)) |found| return .{ .found = .{ .fields = try profile.extract(arena, found, now_ms), .source = .pds } };
+        if (try self.record(arena, job.did, job.pds)) |found| return .{ .found = .{ .fields = try profile.extract(arena, found.profile, now_ms), .source = .pds, .names = found.whole } };
         return .absent;
     }
 
@@ -362,10 +378,10 @@ pub const Enricher = struct {
             .source = found.source,
             .handle = handle,
             .handle_check = self.options.handle_check,
-            .display_name = f.display_name,
-            .avatar = f.avatar,
-            .description = f.description,
-            .banner = f.banner,
+            .display_name = said(found.names, f.display_name),
+            .avatar = said(found.names, f.avatar),
+            .description = said(found.about, f.description),
+            .banner = said(found.about, f.banner),
             .created_at = f.created_at,
             .associated = f.associated,
             .followers_count = f.followers_count,
@@ -375,6 +391,10 @@ pub const Enricher = struct {
             .labels = if (found.source == .pds) null else f.labels,
             .lease = job.lease,
         } };
+    }
+
+    fn said(whole: bool, field: []const u8) ?[]const u8 {
+        return if (whole or field.len > 0) field else null;
     }
 
     /// The walk steps this step owes, by the time since the last one.
@@ -427,7 +447,7 @@ pub const Enricher = struct {
         var tally: struct { enriched: u64 = 0, blacksky: u64 = 0, pds: u64 = 0, absent: u64 = 0, retried: u64 = 0 } = .{};
         for (changes, jobs) |*slot, job| {
             const verdict: Verdict = if (returned.get(job.did)) |found|
-                .{ .found = .{ .fields = try profile.extract(arena, found, now_ms), .source = .bsky } }
+                .{ .found = .{ .fields = try profile.extract(arena, found, now_ms), .source = .bsky, .names = true, .about = true } }
             else if (!answered)
                 .unknown
             else
