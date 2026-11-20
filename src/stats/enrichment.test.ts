@@ -14,7 +14,7 @@ test("snapshot history keeps the newest hours once the table outgrows the limit"
     for (let hour = 1; hour <= stored; hour++) insert.run(hour, hour * 10);
   })();
 
-  const rows = db.query<{ hour: number; total: number }, []>(SNAPSHOT_HISTORY_SQL).all();
+  const rows = db.query<{ hour: number; total: number }, [number]>(SNAPSHOT_HISTORY_SQL).all(0);
 
   expect(rows.length).toBe(SNAPSHOT_HISTORY_HOURS);
   expect(rows.at(-1)).toMatchObject({ hour: stored, total: stored * 10 });

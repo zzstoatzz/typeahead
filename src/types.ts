@@ -43,7 +43,10 @@ export interface StatsKvData {
   /** apps that have ever sent a search: traffic_sources rows minus probes,
    *  tunnels, private IPs, and the unknown/homepage attribution buckets */
   traffic_sources_total?: number;
+  /** the instant this copy describes */
   materialized_at: number;
+  /** when every row was last read from the store rather than carried from the copy before */
+  rebuilt_at?: number;
 }
 
 /** KV `request_data`, written hourly by materializeRequests */
@@ -52,6 +55,7 @@ export interface RequestKvData {
   series_5m?: { bucket: number; domain: string; endpoint: string; status: number; hits: number }[];
   daily?: { day: number; domain: string; endpoint: string; status: number; hits: number }[];
   materialized_at: number;
+  rebuilt_at?: number;
 }
 
 export const CORS_HEADERS = {

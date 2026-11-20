@@ -1,6 +1,6 @@
 import { afterAll, afterEach, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
 import { rowsAs } from "../db";
-import { materializeStats, writeSnapshot } from "./enrichment";
+import { materializeStats, readRequestPayload, readStatsPayload, writeSnapshot, type RequestPayload, type StatsPayload } from "./enrichment";
 import { knownSource } from "../handlers/source-icon";
 import { statsBody } from "../handlers/stats";
 import { recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
@@ -21,7 +21,10 @@ afterAll(dispose);
 afterEach(() => { setSystemTime(); });
 
 const stored = new Map<string, string>();
-const kv = { async put(key: string, value: string) { stored.set(key, value); } };
+const kv = {
+  async get(key: string) { return stored.get(key) ?? null; },
+  async put(key: string, value: string) { stored.set(key, value); },
+};
 const storedJson = (key: string) => JSON.parse(stored.get(key) ?? "null");
 
 test("the migrations define the nine statistics tables and seed the actor counter", async () => {
@@ -199,3 +202,85 @@ test("the page shows what the cron materialized and, live, what was recorded aft
     expect(page.timing).toMatch(/^query;dur=\d+, process;dur=\d+, render;dur=\d+, total;dur=\d+$/);
   }
 });
+
+// A run that carries the previous copy forward has to write what a run that
+// reads everything would. The differences it could introduce are at the
+// seams: the hour it resumes from, a count that lands after the previous run
+// read, the trailing edge of each window, and a bucket rolled into the daily
+// table between the two runs.
+test("an hourly run that carries the previous copy writes what a full read returns", async () => {
+  for (const table of STATS_TABLES.filter((name) => name !== "counters")) await db.prepare(`DELETE FROM ${table}`).run();
+  const T0 = Date.UTC(2026, 10, 12, 15, 0, 2);
+  const bucket0 = Math.floor(T0 / 300_000);
+  let seed = 7;
+  const rand = (n: number) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+  const apps = ["plyr.fm", "leaflet.pub", "pckt.blog"];
+  const fill = async (buckets: number[]) => {
+    const stmts = buckets.flatMap((bucket) => {
+      const app = apps[rand(apps.length)]!, status = rand(9) === 0 ? 503 : 200, hits = 1 + rand(5);
+      return [
+        db.prepare("INSERT INTO traffic_buckets (bucket, domain, hits) VALUES (?1, ?2, ?3) ON CONFLICT(bucket, domain) DO UPDATE SET hits = hits + excluded.hits").bind(bucket, app, hits),
+        db.prepare("INSERT INTO request_buckets (bucket, domain, endpoint, status, hits) VALUES (?1, ?2, 'search', ?3, ?4) ON CONFLICT(bucket, domain, endpoint, status) DO UPDATE SET hits = hits + excluded.hits").bind(bucket, app, status, hits),
+        db.prepare("INSERT INTO metrics (hour, searches, total_ms) VALUES (?1, ?2, 1.5) ON CONFLICT(hour) DO UPDATE SET searches = searches + excluded.searches").bind(bucket, hits),
+      ];
+    });
+    for (let i = 0; i < stmts.length; i += 90) await db.batch(stmts.slice(i, i + 90));
+  };
+  // 92 days of history, dense at both edges of every window the payload has
+  const history = [
+    ...Array.from({ length: 400 }, () => bucket0 - rand(92 * 288)),
+    ...Array.from({ length: 80 }, () => bucket0 - 90 * 288 + rand(30) - 15),
+    ...Array.from({ length: 80 }, () => bucket0 - 30 * 288 + rand(30) - 15),
+    ...Array.from({ length: 80 }, () => bucket0 - 2 * 288 + rand(30) - 15),
+    ...Array.from({ length: 80 }, () => bucket0 - rand(30)),
+  ];
+  await fill(history);
+  for (let h = 0; h < 6; h++) await writeSnapshot(db, { hour: Math.floor(T0 / 3_600_000) - h, total: 100 - h, with_handles: 90, with_avatars: 80, hidden: 1 });
+
+  const kv = memoryKv();
+  const stamps = (key: string) => { const { materialized_at, rebuilt_at } = JSON.parse(kv.stored.get(key)!); return { materialized_at, rebuilt_at }; };
+  const written = (key: string) => { const { materialized_at: _m, rebuilt_at: _r, ...payload } = JSON.parse(kv.stored.get(key)!); return sortedPayload(payload); };
+
+  await materializeStats(db, { KV: kv }, T0);
+  expect(stamps("stats_data")).toEqual({ materialized_at: T0, rebuilt_at: T0 });
+
+  for (let run = 1; run <= 3; run++) {
+    const now = T0 + run * 3_600_000;
+    const nowBucket = Math.floor(now / 300_000);
+    // the hour since the last run, and counts that landed in the hour before it after that run read
+    await fill([...Array.from({ length: 40 }, () => nowBucket - rand(12)), nowBucket - 12, nowBucket - 13, nowBucket - 13]);
+    await writeSnapshot(db, { hour: Math.floor(now / 3_600_000), total: 200 + run, with_handles: 90, with_avatars: 80, hidden: 1 });
+    await materializeStats(db, { KV: kv }, now);
+    expect(stamps("stats_data")).toEqual({ materialized_at: now, rebuilt_at: T0 });
+    expect(stamps("request_data")).toEqual({ materialized_at: now, rebuilt_at: T0 });
+    expect(written("stats_data")).toEqual(sortedPayload(await readStatsPayload(db, now)));
+    expect(written("request_data")).toEqual(sortedPayload(await readRequestPayload(db, now)));
+  }
+  expect(JSON.parse(kv.stored.get("request_data")!).daily.length).toBeGreaterThan(100);
+
+  // a day after the last full read, everything is read again
+  const later = T0 + 24 * 3_600_000;
+  await materializeStats(db, { KV: kv }, later);
+  expect(stamps("stats_data")).toEqual({ materialized_at: later, rebuilt_at: later });
+  expect(stamps("request_data")).toEqual({ materialized_at: later, rebuilt_at: later });
+});
+
+test("a previous copy that cannot be carried is replaced by a full read", async () => {
+  const now = Date.UTC(2026, 10, 14, 9, 0, 1);
+  const full = sortedPayload(await readStatsPayload(db, now));
+  for (const previous of ["not json", "null", JSON.stringify({ materialized_at: now - 3_600_000, metrics: [] }),
+    JSON.stringify({ materialized_at: now + 60_000, rebuilt_at: now, metrics: [], snapshots: [], traffic_series: [], traffic_series_5m: [], traffic_daily: [] }),
+    JSON.stringify({ materialized_at: now - 3_600_000, rebuilt_at: now - 3_600_000, metrics: [], snapshots: [], traffic_series: [], traffic_series_5m: "x", traffic_daily: [] })]) {
+    const kv = memoryKv();
+    kv.stored.set("stats_data", previous);
+    await materializeStats(db, { KV: kv }, now);
+    const { materialized_at, rebuilt_at, ...payload } = JSON.parse(kv.stored.get("stats_data")!);
+    expect({ materialized_at, rebuilt_at }).toEqual({ materialized_at: now, rebuilt_at: now });
+    expect(sortedPayload(payload)).toEqual(full);
+  }
+});
+
+function sortedPayload(payload: StatsPayload | RequestPayload) {
+  return Object.fromEntries(Object.entries(payload).map(([name, rows]) =>
+    [name, Array.isArray(rows) ? rows.map((row) => JSON.stringify(row)).sort() : rows]));
+}
