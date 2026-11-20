@@ -694,14 +694,15 @@ pub const Batch = struct {
 
     fn profile(self: *Batch, c: change.Profile) !Outcome {
         const old = try self.load(c.did);
+        if (old == null and c.known_only) return .{};
         var new = old orelse try self.fresh(c.did);
         if (!new.live()) return .{};
         new.handle = keep(new.handle, c.handle);
-        new.display_name = keep(new.display_name, c.display_name);
-        new.avatar = keep(new.avatar, c.avatar);
+        new.display_name = c.display_name orelse new.display_name;
+        new.avatar = c.avatar orelse new.avatar;
         new.pds = keep(new.pds, c.pds);
-        new.description = keep(new.description, c.description);
-        new.banner = keep(new.banner, c.banner);
+        new.description = c.description orelse new.description;
+        new.banner = c.banner orelse new.banner;
         self.stampActivity(&new);
         self.requestRefresh(&new);
         const queue = if (old == null) self.discovered(c.enqueue_identity, &new) else null;

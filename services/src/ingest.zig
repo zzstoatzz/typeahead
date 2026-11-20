@@ -77,14 +77,26 @@ pub const ProfileFields = struct {
 };
 
 /// What a profile record (bsky or tangled) says about its actor, copied into
-/// `arena`. Tangled profiles have no displayName.
-pub fn profileFields(arena: Allocator, record: zat.cbor.Value) ProfileFields {
+/// `arena`. A key the record lacks is empty. A key whose value this reader
+/// cannot use is null, so a record it does not understand clears nothing.
+/// Tangled profiles have no displayName.
+pub fn profileFields(arena: Allocator, record: zat.cbor.Value) Allocator.Error!ProfileFields {
     return .{
-        .display_name = if (record.getString("displayName")) |name| arena.dupe(u8, name) catch null else null,
-        .avatar_cid = avatarCidOf(arena, record),
-        .description = if (record.getString("description")) |d| arena.dupe(u8, d) catch null else null,
-        .banner_cid = blobCidOf(arena, record, "banner"),
+        .display_name = try textOf(arena, record, "displayName"),
+        .avatar_cid = blobOf(arena, record, "avatar"),
+        .description = try textOf(arena, record, "description"),
+        .banner_cid = blobOf(arena, record, "banner"),
     };
+}
+
+fn textOf(arena: Allocator, record: zat.cbor.Value, key: []const u8) Allocator.Error!?[]const u8 {
+    if (record.get(key) == null) return "";
+    return try arena.dupe(u8, record.getString(key) orelse return null);
+}
+
+fn blobOf(arena: Allocator, record: zat.cbor.Value, key: []const u8) ?[]const u8 {
+    if (record.get(key) == null) return "";
+    return blobCidOf(arena, record, key);
 }
 
 /// A relay `seq` is a small monotonic counter (~8.5e8 as of 2026-07). Jetstream's

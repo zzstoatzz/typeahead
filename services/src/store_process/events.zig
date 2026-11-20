@@ -5,8 +5,10 @@
 //!
 //! | heard                                   | changes                                        |
 //! |-----------------------------------------|------------------------------------------------|
-//! | profile record with any field           | `profile`, discovery queued if new             |
-//! | profile record with no field we keep    | `observe`, discovery queued if new             |
+//! | Bluesky profile record at `self`        | `profile` replacing its four fields, discovery queued if new |
+//! | that record deleted                     | `profile` clearing them, for a known actor     |
+//! | other profile record with any field     | `profile` adding them, discovery queued if new |
+//! | other profile record with no field we keep | `observe`, discovery queued if new          |
 //! | any other wanted record, not a delete   | `observe`, discovery queued if new             |
 //! | `#identity`                             | `observe`, `identity_enqueue` (identity)       |
 //! | indexing request (`control.zig`)        | the same as `#identity`                        |
@@ -91,21 +93,35 @@ pub const Changes = struct {
             if (one.action != .delete) try self.observe(did, true);
             return;
         }
+        // The Bluesky record at `self` is the whole profile: what it lacks
+        // is cleared. Any other record only adds what it carries.
+        const whole = std.mem.eql(u8, one.collection, "app.bsky.actor.profile") and std.mem.eql(u8, one.rkey, "self");
+        if (one.action == .delete) {
+            if (whole) try self.add(.{ .profile = .{ .did = did, .display_name = "", .avatar = "", .description = "", .banner = "", .known_only = true } });
+            return;
+        }
         if (one.action != .create and one.action != .update) return;
-        const fields = ingest.profileFields(self.arena, one.record orelse return);
+        const value = one.record orelse return;
+        if (value != .map) return self.observe(did, true);
+        const fields = try ingest.profileFields(self.arena, value);
         const profile: store.change.Profile = .{
             .did = did,
-            .display_name = fields.display_name orelse "",
-            .avatar = fields.avatar_cid orelse "",
-            .description = fields.description orelse "",
-            .banner = fields.banner_cid orelse "",
+            .display_name = said(whole, fields.display_name),
+            .avatar = said(whole, fields.avatar_cid),
+            .description = said(whole, fields.description),
+            .banner = said(whole, fields.banner_cid),
             .enqueue_identity = true,
         };
-        if (profile.display_name.len == 0 and profile.avatar.len == 0 and profile.description.len == 0 and profile.banner.len == 0) {
+        if (profile.display_name == null and profile.avatar == null and profile.description == null and profile.banner == null) {
             return self.observe(did, true);
         }
         try self.observed.put(self.arena, did, {});
         try self.add(.{ .profile = profile });
+    }
+
+    fn said(whole: bool, field: ?[]const u8) ?[]const u8 {
+        const text = field orelse return null;
+        return if (whole or text.len > 0) text else null;
     }
 
     fn account(self: *Changes, did: []const u8, active: bool, status: ?zat.AccountStatus) !void {

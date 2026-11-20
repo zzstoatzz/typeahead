@@ -108,17 +108,74 @@ test "counts all new actors, bare and profile-bearing, and none that exist" {
     try testing.expectEqual(@as(u64, 3), f.owner.counters.actors_created.load(.monotonic));
 }
 
-test "a profile keeps stored fields it does not carry" {
+test "a Bluesky profile record replaces the stored fields and clears what it lacks" {
     const f = try Fixture.create(.{});
     defer f.destroy();
     try hear(f, 1, &.{try profile(f, alice, named)});
     try hear(f, 2, &.{try profile(f, alice, .{ .map = &.{.{ .key = "displayName", .value = .{ .text = "Renamed" } }} })});
-    const actor = try f.live(alice);
+    var actor = try f.live(alice);
     try testing.expectEqualStrings("Renamed", actor.display_name);
+    try testing.expectEqualStrings("", actor.description);
+
+    try hear(f, 3, &.{try profile(f, alice, .{ .map = &.{
+        .{ .key = "displayName", .value = .{ .text = "" } },
+        .{ .key = "description", .value = .{ .text = "back" } },
+    } })});
+    actor = try f.live(alice);
+    try testing.expectEqualStrings("", actor.display_name);
+    try testing.expectEqualStrings("back", actor.description);
+}
+
+test "a value the reader cannot use keeps the stored field" {
+    const f = try Fixture.create(.{});
+    defer f.destroy();
+    try hear(f, 1, &.{try profile(f, alice, named)});
+    try hear(f, 2, &.{try profile(f, alice, .{ .map = &.{
+        .{ .key = "displayName", .value = .{ .unsigned = 7 } },
+        .{ .key = "description", .value = .{ .text = "about me" } },
+        .{ .key = "avatar", .value = .{ .text = "not a blob" } },
+    } })});
+    try testing.expectEqualStrings("New", (try f.live(alice)).display_name);
+
+    try hear(f, 3, &.{.{ .commit = .{ .seq = 0, .repo = alice, .rev = "", .time = stamp, .ops = &.{
+        .{ .action = .update, .collection = "app.bsky.actor.profile", .rkey = "self", .record = .{ .text = "not a record" } },
+    } } }});
+    const actor = try f.live(alice);
+    try testing.expectEqualStrings("New", actor.display_name);
     try testing.expectEqualStrings("about me", actor.description);
 }
 
-test "a profile with nothing we keep is a bare sighting" {
+test "a profile record that is not the Bluesky one at self adds fields and clears none" {
+    const f = try Fixture.create(.{});
+    defer f.destroy();
+    try hear(f, 1, &.{try profile(f, alice, named)});
+    const bio: zat.cbor.Value = .{ .map = &.{.{ .key = "description", .value = .{ .text = "tangled bio" } }} };
+    const empty: zat.cbor.Value = .{ .map = &.{.{ .key = "pronouns", .value = .{ .text = "they" } }} };
+    try hear(f, 2, &.{.{ .commit = .{ .seq = 0, .repo = alice, .rev = "", .time = stamp, .ops = &.{
+        .{ .action = .update, .collection = "sh.tangled.actor.profile", .rkey = "self", .record = bio },
+        .{ .action = .update, .collection = "sh.tangled.actor.profile", .rkey = "self", .record = empty },
+        .{ .action = .update, .collection = "app.bsky.actor.profile", .rkey = "other", .record = empty },
+        .{ .action = .delete, .collection = "sh.tangled.actor.profile", .rkey = "self" },
+        .{ .action = .delete, .collection = "app.bsky.actor.profile", .rkey = "other" },
+    } } }});
+    const actor = try f.live(alice);
+    try testing.expectEqualStrings("New", actor.display_name);
+    try testing.expectEqualStrings("tangled bio", actor.description);
+}
+
+test "deleting the Bluesky profile record clears a known actor's fields" {
+    const f = try Fixture.create(.{});
+    defer f.destroy();
+    try hear(f, 1, &.{try profile(f, alice, named)});
+    try hear(f, 2, &.{.{ .commit = .{ .seq = 0, .repo = alice, .rev = "", .time = stamp, .ops = &.{
+        .{ .action = .delete, .collection = "app.bsky.actor.profile", .rkey = "self" },
+    } } }});
+    const actor = try f.live(alice);
+    try testing.expectEqualStrings("", actor.display_name);
+    try testing.expectEqualStrings("", actor.description);
+}
+
+test "an empty profile record is still a sighting of a new actor" {
     const f = try Fixture.create(.{});
     defer f.destroy();
     try hear(f, 1, &.{try profile(f, alice, .{ .map = &.{.{ .key = "pronouns", .value = .{ .text = "they" } }} })});
