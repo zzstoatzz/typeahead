@@ -378,10 +378,10 @@ pub const Model = struct {
                     actor.identity_due = self.now;
                     self.queue.put(self.mem(), self.own(c.did), .{ .reason = .identity, .enqueued_at = self.now }) catch @panic("out of memory");
                 }
-                actor.display_name = orKeep(actor.display_name, c.display_name);
-                actor.avatar = orKeep(actor.avatar, c.avatar);
-                actor.description = orKeep(actor.description, c.description);
-                actor.banner = orKeep(actor.banner, c.banner);
+                if (c.display_name) |said| actor.display_name = said;
+                if (c.avatar) |said| actor.avatar = said;
+                if (c.description) |said| actor.description = said;
+                if (c.banner) |said| actor.banner = said;
                 actor.created_at = orKeep(actor.created_at, c.created_at);
                 if (c.associated.len > 0 and !std.mem.eql(u8, c.associated, "{}")) actor.associated = c.associated;
                 if (c.followers_count != 0) actor.followers_count = c.followers_count;
