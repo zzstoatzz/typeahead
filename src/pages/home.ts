@@ -276,7 +276,7 @@ export function indexPage(pdsEnabled = false): string {
       results.replaceChildren();
       results.setAttribute('aria-busy', 'false');
       if (appliedPds && !normalizePds(appliedPds)) { message('Invalid hosting server. Open the filter to correct it.'); return; }
-      if (value.length < 2) return;
+      if (!value) return;
       timer = setTimeout(async () => {
         request = new AbortController();
         results.setAttribute('aria-busy', 'true');

@@ -9,3 +9,9 @@ test("homepage results are a selectable list that hands profiles to aturi.to", (
   expect(html).toContain("'https://aturi.to/' + actor.did");
   expect(html).toContain("row.addEventListener('click', () => choose(actor));");
 });
+
+test("the homepage searches from the first character, as the API answers", () => {
+  const html = indexPage();
+  expect(html).toContain("if (!value) return;");
+  expect(html).not.toMatch(/value\.length < \d/);
+});
