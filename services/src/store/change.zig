@@ -206,6 +206,11 @@ pub const RefreshWalk = struct {
     limit: usize,
     /// Keys to examine at most.
     scan: usize,
+    /// A Unix time. Greater than the last one the walk acted on, it starts
+    /// the walk again from the top, passing over actors that hold no profile
+    /// field until it reaches where it was (`WalkState.catch_up`). 0 never
+    /// restarts.
+    restart: u64 = 0,
 };
 
 pub const TombstonesPruned = struct {
@@ -273,9 +278,16 @@ pub const Walked = struct {
     queued: u64 = 0,
     /// Passes completed by reaching the end of the range.
     wrapped: u64 = 0,
+    /// Actors passed over after a restart because they hold no profile field.
+    skipped: u64 = 0,
 
     pub fn since(self: Walked, earlier: Walked) Walked {
-        return .{ .examined = self.examined - earlier.examined, .queued = self.queued - earlier.queued, .wrapped = self.wrapped - earlier.wrapped };
+        return .{
+            .examined = self.examined - earlier.examined,
+            .queued = self.queued - earlier.queued,
+            .wrapped = self.wrapped - earlier.wrapped,
+            .skipped = self.skipped - earlier.skipped,
+        };
     }
 };
 

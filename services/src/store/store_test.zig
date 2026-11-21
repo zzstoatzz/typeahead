@@ -757,6 +757,95 @@ test "the rest walk covers live actors with a handle that the quality walk does 
     try testing.expectEqual(@as(u64, 2), try f.count(.refresh));
 }
 
+test "a restarted walk starts at the top and passes over bare profiles up to where it was" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const frank = "did:plc:ffffffffffffffffffffffff";
+    const dids = [_][]const u8{ bob, erin, alice, dave, frank };
+    const scores = [_]f32{ 500, 400, 300, 200, 100 };
+    for (dids, scores) |did, value| {
+        _ = try f.apply(t0, .{ .profile = .{ .did = did, .handle = "h.test" } });
+        _ = try f.apply(t0, .{ .enrichment = .{ .did = did, .source = .bsky, .quality_score = value } });
+    }
+    _ = try f.apply(t0, .{ .profile = .{ .did = bob, .display_name = "Bob" } });
+    _ = try f.apply(t0, .{ .profile = .{ .did = dave, .avatar = "bafyavatar" } });
+    const settle = struct {
+        fn all(fx: *Fixture, at: u64, list: []const []const u8) !void {
+            for (list) |did| _ = try fx.apply(at, .{ .refresh_complete = .{ .did = did } });
+        }
+    }.all;
+    try settle(&f, t0, &dids);
+
+    const partway = try f.store.begin(t0 + 100);
+    _ = try partway.apply(.{ .refresh_walk = .{ .pool = .quality, .limit = 3, .scan = 3 } });
+    try testing.expectEqual(change.Walked{ .examined = 3, .queued = 3 }, partway.walked(.quality));
+    try partway.commit();
+    try settle(&f, t0 + 101, &dids);
+
+    // Bob, Erin and Alice were refreshed in this pass; of them only Bob holds
+    // a profile field. Dave and Frank are past where the walk was.
+    const restart: change.Change = .{ .refresh_walk = .{ .pool = .quality, .limit = 10, .scan = 10, .restart = t0 + 150 } };
+    const restarted = try f.store.begin(t0 + 200);
+    _ = try restarted.apply(restart);
+    try testing.expectEqual(change.Walked{ .examined = 5, .queued = 3, .wrapped = 1, .skipped = 2 }, restarted.walked(.quality));
+    try restarted.commit();
+    for (dids) |did| {
+        const queued = std.mem.eql(u8, did, bob) or std.mem.eql(u8, did, dave) or std.mem.eql(u8, did, frank);
+        try testing.expectEqual(@as(u64, if (queued) t0 + 200 else 0), (try f.actor(did)).refresh_due);
+    }
+    var state = try read.walkState(f.store.db(), f.arena.allocator(), .walk_quality);
+    try testing.expectEqual(@as(u64, t0 + 150), state.restarted);
+    try testing.expectEqualStrings("", state.catch_up);
+    try settle(&f, t0 + 201, &dids);
+
+    // The same stamp again is a plain step.
+    const again = try f.store.begin(t0 + 250);
+    _ = try again.apply(restart);
+    try testing.expectEqual(change.Walked{ .examined = 5, .queued = 5, .wrapped = 1 }, again.walked(.quality));
+    try again.commit();
+    try settle(&f, t0 + 251, &dids);
+
+    // Restarted just after finishing a pass, the whole range was refreshed in
+    // it. Where the catch-up ends survives a reopen.
+    const top = try f.store.begin(t0 + 300);
+    _ = try top.apply(.{ .refresh_walk = .{ .pool = .quality, .limit = 1, .scan = 2, .restart = t0 + 300 } });
+    try testing.expectEqual(change.Walked{ .examined = 1, .queued = 1 }, top.walked(.quality));
+    try top.commit();
+    try f.reopen();
+    state = try read.walkState(f.store.db(), f.arena.allocator(), .walk_quality);
+    try testing.expect(state.catch_up.len > 0);
+    const rest = try f.store.begin(t0 + 360);
+    _ = try rest.apply(.{ .refresh_walk = .{ .pool = .quality, .limit = 10, .scan = 10, .restart = t0 + 300 } });
+    try testing.expectEqual(change.Walked{ .examined = 4, .queued = 1, .wrapped = 1, .skipped = 3 }, rest.walked(.quality));
+    try rest.commit();
+    try testing.expectEqual(@as(u64, t0 + 360), (try f.actor(dave)).refresh_due);
+    state = try read.walkState(f.store.db(), f.arena.allocator(), .walk_quality);
+    try testing.expectEqualStrings("", state.catch_up);
+    try testing.expectEqual(@as(u64, 60), state.last_pass_seconds);
+}
+
+test "a restart reaches the rest walk too" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    _ = try f.apply(t0, .{ .profile = .{ .did = alice, .handle = "a.test", .description = "hello" } });
+    _ = try f.apply(t0, .{ .profile = .{ .did = bob, .handle = "b.test" } });
+    _ = try f.apply(t0, .{ .profile = .{ .did = carol, .handle = "c.test" } });
+    for ([_][]const u8{ alice, bob, carol }) |did| _ = try f.apply(t0, .{ .refresh_complete = .{ .did = did } });
+    const first = try f.store.begin(t0 + 10);
+    _ = try first.apply(.{ .refresh_walk = .{ .pool = .rest, .limit = 2, .scan = 2 } });
+    try testing.expectEqual(change.Walked{ .examined = 2, .queued = 2 }, first.walked(.rest));
+    try first.commit();
+    for ([_][]const u8{ alice, bob }) |did| _ = try f.apply(t0 + 11, .{ .refresh_complete = .{ .did = did } });
+
+    const restarted = try f.store.begin(t0 + 20);
+    _ = try restarted.apply(.{ .refresh_walk = .{ .pool = .rest, .limit = 10, .scan = 10, .restart = t0 + 20 } });
+    try testing.expectEqual(change.Walked{ .examined = 3, .queued = 2, .wrapped = 1, .skipped = 1 }, restarted.walked(.rest));
+    try restarted.commit();
+    try testing.expectEqual(@as(u64, t0 + 20), (try f.actor(alice)).refresh_due);
+    try testing.expectEqual(@as(u64, 0), (try f.actor(bob)).refresh_due);
+    try testing.expectEqual(@as(u64, t0 + 20), (try f.actor(carol)).refresh_due);
+}
+
 test "a batch lands whole with its cursor, or not at all" {
     var f = try Fixture.init(.{});
     defer f.deinit();

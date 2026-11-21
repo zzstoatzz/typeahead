@@ -1051,12 +1051,18 @@ pub const Batch = struct {
         const a = self.arena.allocator();
         var buf: keys.Buf = undefined;
         var state = try read.walkState(engine_db, a, c.pool.cursor());
-        if (state.position.len == 0) state.started_at = self.now;
         const prefix: keys.Prefix = switch (c.pool) {
             .quality => .quality,
             .rest => .actor,
         };
         const bounds = prefix.bounds();
+        if (c.restart > state.restarted) {
+            const reached: []const u8 = if (state.position.len > 0) state.position else if (state.passes > 0) try a.dupe(u8, &bounds[1]) else "";
+            if (std.mem.order(u8, reached, state.catch_up) == .gt) state.catch_up = reached;
+            state.restarted = c.restart;
+            state.position = "";
+        }
+        if (state.position.len == 0) state.started_at = self.now;
         var start: std.ArrayList(u8) = .empty;
         try start.appendSlice(a, if (state.position.len == 0) &bounds[0] else state.position);
         if (state.position.len != 0) try start.append(a, 0);
@@ -1065,10 +1071,12 @@ pub const Batch = struct {
 
         var examined: usize = 0;
         var queued: usize = 0;
+        var skipped: usize = 0;
         for (found.keys.items) |key| {
             if (queued == c.limit) break;
             examined += 1;
             state.position = key;
+            if (state.catch_up.len > 0 and std.mem.order(u8, key, state.catch_up) == .gt) state.catch_up = "";
             const did = switch (c.pool) {
                 .quality => (try keys.parseQuality(key)).did,
                 .rest => try keys.parseActor(key),
@@ -1078,6 +1086,10 @@ pub const Batch = struct {
             const old = try self.load(did) orelse return error.InconsistentStore;
             if (!old.live() or old.handle.len == 0 or old.refresh_due != 0) continue;
             if (c.pool == .rest and old.ranked()) continue;
+            if (state.catch_up.len > 0 and !old.holdsProfile()) {
+                skipped += 1;
+                continue;
+            }
             var new = old;
             new.refresh_due = self.now;
             _ = try self.save(did, old, new, null);
@@ -1086,10 +1098,12 @@ pub const Batch = struct {
         const tally = self.walk_tally.getPtr(c.pool);
         tally.examined += examined;
         tally.queued += queued;
+        tally.skipped += skipped;
         if (examined == found.keys.items.len and found.keys.items.len < c.scan) {
             state.passes += 1;
             state.last_pass_seconds = self.now - state.started_at;
             state.position = "";
+            state.catch_up = "";
             tally.wrapped += 1;
         }
         _ = self.scratch.reset(.retain_capacity);

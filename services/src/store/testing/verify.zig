@@ -197,7 +197,8 @@ pub fn check(gpa: std.mem.Allocator, db: *engine.Db, model: *const Model) !Summa
         const walk = try read.walkState(db, arena, pool.cursor());
         const expected = model.walks.get(pool);
         try ensure(walk.passes == expected.passes and walk.started_at == expected.started_at and walk.last_pass_seconds == expected.last_pass_seconds and
-            std.mem.eql(u8, walk.position, expected.position), "the {t} walk stands at pass {d}, model {d}", .{ pool, walk.passes, expected.passes });
+            std.mem.eql(u8, walk.position, expected.position) and walk.restarted == expected.restarted and
+            std.mem.eql(u8, walk.catch_up, expected.catch_up), "the {t} walk stands at pass {d}, model {d}", .{ pool, walk.passes, expected.passes });
     }
 
     const counts = try read.counts(gpa, db, .{ .page = 311 });

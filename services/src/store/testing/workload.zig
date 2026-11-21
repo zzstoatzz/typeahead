@@ -221,6 +221,7 @@ const Gen = struct {
                 .pool = if (self.chance(50)) .quality else .rest,
                 .limit = 1 + self.random.uintLessThan(usize, 4),
                 .scan = 1 + self.random.uintLessThan(usize, 9),
+                .restart = if (self.chance(10)) self.now else 0,
             } },
             95 => .{ .refresh_retry = .{ .did = subject, .lease = self.now - 300 + self.random.uintLessThan(u64, 3000), .due = self.now + self.random.uintLessThan(u64, 900) } },
             96 => .{ .hidden_refreshed = subject },

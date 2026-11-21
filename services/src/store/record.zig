@@ -23,8 +23,8 @@ pub const actor_format = 1;
 pub const label_format = 1;
 pub const queue_format = 1;
 pub const policy_format = 1;
-pub const walk_format = 1;
-
+pub const walk_format = 2;
+/// 1 had no restart: `restarted` and `catch_up` read as their defaults.
 pub const Error = error{ CorruptRecord, UnsupportedRecordFormat };
 
 pub const Status = enum(u2) { live, deactivated, deleted };
@@ -81,6 +81,11 @@ pub const Actor = struct {
 
     pub fn live(self: Actor) bool {
         return self.status == .live;
+    }
+
+    /// Any of the four profile fields is set.
+    pub fn holdsProfile(self: Actor) bool {
+        return self.display_name.len > 0 or self.description.len > 0 or self.avatar.len > 0 or self.banner.len > 0;
     }
 
     /// What a search could return: the rule behind the quality walk.
@@ -294,6 +299,14 @@ pub const WalkState = struct {
     passes: u64 = 0,
     last_pass_seconds: u64 = 0,
     position: []const u8 = "",
+    /// The restart stamp last acted on (`RefreshWalk.restart`); 0 before any.
+    restarted: u64 = 0,
+    /// After a restart, the key the walk had reached before it, or the end
+    /// of the range when it had just finished a pass. Every actor before it
+    /// was refreshed in that pass already, so one holding no profile field is
+    /// passed over: a refresh has nothing of its profile to clear. Empty once
+    /// the walk passes it.
+    catch_up: []const u8 = "",
 
     pub fn encode(self: WalkState, gpa: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
         out.clearRetainingCapacity();
@@ -302,22 +315,28 @@ pub const WalkState = struct {
         try putInt(gpa, out, self.passes);
         try putInt(gpa, out, self.last_pass_seconds);
         try putBytes(gpa, out, self.position);
+        try putInt(gpa, out, self.restarted);
+        try putBytes(gpa, out, self.catch_up);
     }
 
     pub fn decode(bytes: []const u8) Error!WalkState {
         var in: Input = .{ .bytes = bytes };
-        if (try in.byte() != walk_format) return error.UnsupportedRecordFormat;
-        const state: WalkState = .{
+        const format = try in.byte();
+        if (format != 1 and format != walk_format) return error.UnsupportedRecordFormat;
+        var state: WalkState = .{
             .started_at = try in.int(),
             .passes = try in.int(),
             .last_pass_seconds = try in.int(),
             .position = try in.slice(),
         };
+        if (format == walk_format) {
+            state.restarted = try in.int();
+            state.catch_up = try in.slice();
+        }
         try in.end();
         return state;
     }
 };
-
 
 pub fn encodeU64(value: u64) [8]u8 {
     var out: [8]u8 = undefined;
@@ -555,6 +574,13 @@ test "queue state, stored labels and policy entries round trip" {
         try testing.expectEqualDeep(entry, try PolicyEntry.decode(out.items));
     }
     try testing.expectError(error.UnsupportedRecordFormat, PolicyEntry.decode(&.{ policy_format + 1, 0, 0, 0 }));
+
+    const walk: WalkState = .{ .started_at = 1_794_000_000, .passes = 3, .last_pass_seconds = 7_200, .position = "q-key", .restarted = 1_795_000_000, .catch_up = "end-key" };
+    try walk.encode(gpa, &out);
+    try testing.expectEqualDeep(walk, try WalkState.decode(out.items));
+    try testing.expectError(error.CorruptRecord, WalkState.decode(out.items[0 .. out.items.len - 1]));
+    try testing.expectError(error.UnsupportedRecordFormat, WalkState.decode(&.{ walk_format + 1, 0, 0, 0, 0, 0, 0 }));
+    try testing.expectEqualDeep(WalkState{ .started_at = 5, .passes = 1, .last_pass_seconds = 2, .position = "k" }, try WalkState.decode(&.{ 1, 5, 1, 2, 1, 'k' }));
 
     for ([_]u64{ 0, 1, 1 << 40, std.math.maxInt(u64) }) |value| try testing.expectEqual(value, try decodeU64(&encodeU64(value)));
     try testing.expectError(error.CorruptRecord, decodeU64("1234567"));

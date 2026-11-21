@@ -537,6 +537,17 @@ pub const Model = struct {
 
     fn walk(self: *Model, c: change.RefreshWalk) void {
         const state = self.walks.getPtr(c.pool);
+        if (c.restart > state.restarted) {
+            const prefix: keys.Prefix = switch (c.pool) {
+                .quality => .quality,
+                .rest => .actor,
+            };
+            const end = prefix.bounds();
+            const reached: []const u8 = if (state.position.len > 0) state.position else if (state.passes > 0) self.own(&end[1]) else "";
+            if (std.mem.order(u8, reached, state.catch_up) == .gt) state.catch_up = reached;
+            state.restarted = c.restart;
+            state.position = "";
+        }
         if (state.position.len == 0) state.started_at = self.now;
         const all = self.walkKeys(c.pool);
         var from: usize = 0;
@@ -550,6 +561,7 @@ pub const Model = struct {
             if (queued == c.limit) break;
             examined += 1;
             state.position = key;
+            if (state.catch_up.len > 0 and std.mem.order(u8, key, state.catch_up) == .gt) state.catch_up = "";
             const did = switch (c.pool) {
                 .quality => (keys.parseQuality(key) catch unreachable).did,
                 .rest => keys.parseActor(key) catch unreachable,
@@ -557,6 +569,7 @@ pub const Model = struct {
             var actor = self.actors.get(did).?;
             if (actor.status != .live or actor.handle.len == 0 or actor.refresh_due != 0) continue;
             if (c.pool == .rest and actor.ranked()) continue;
+            if (state.catch_up.len > 0 and actor.display_name.len == 0 and actor.description.len == 0 and actor.avatar.len == 0 and actor.banner.len == 0) continue;
             actor.refresh_due = self.now;
             _ = self.put(did, actor);
             queued += 1;
@@ -565,6 +578,7 @@ pub const Model = struct {
             state.passes += 1;
             state.last_pass_seconds = self.now - state.started_at;
             state.position = "";
+            state.catch_up = "";
         }
     }
 
