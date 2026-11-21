@@ -60,7 +60,8 @@ account's DID, asks Bluesky's AppView for the profile, and applies moderation
 policy: labels, domain blocks and operator overrides decide whether the
 account is shown. The index bridge then sends the account to the search
 engine. Accounts already in the store are refreshed on a schedule by the same
-steps.
+steps: two walks, one over ranked accounts best first and one over the rest in
+DID order, each resuming where it stopped after a restart.
 
 A profile is replaced, not merged. When an account removes its display name,
 description, avatar or banner, the next profile record on the relay or the

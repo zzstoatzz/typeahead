@@ -638,6 +638,29 @@ bunx wrangler secret delete EMERGENCY_PROXY_BSKY   # off
 Restore search first, with a [failover](#fail-over) or this switch, and
 diagnose afterwards.
 
+## Refresh every account again
+
+The two profile walks resume where they stopped, so a change to what a refresh
+writes reaches an account only when its walk comes round to it. To start both
+walks again from the top, deploy with a new restart stamp, standby first, as
+in [upgrade the slots](#upgrade-the-slots):
+
+```sh
+fly deploy . --config deploy/slot/fly.toml -a <standby app> -e ENRICH_WALK_RESTART=$(date +%s)
+```
+
+Use the same stamp on the other slot. A walk acts on a stamp once, the first
+time it sees one greater than the last, so a later deploy without it, or a
+restart, does not repeat the pass. Each slot's store keeps its own walks.
+
+Until a walk is back where the restart found it, it passes over accounts that
+hold no display name, description, avatar or banner: it refreshed those in the
+pass the restart cut short, and a refresh has nothing of their profile to
+clear. The request rate stays as it is; the walk only spends it on the
+accounts that need it. In `/health` on port 8082, each walk under
+`enrichment` reports `restarted`, `catching_up` while it is short of that
+point, and `skipped`, the accounts passed over since the process started.
+
 ## Edge configuration
 
 `/xrpc/` requests have to work for API clients that are not browsers. Keep the
