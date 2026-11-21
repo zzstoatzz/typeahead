@@ -20,6 +20,7 @@
 //! | `ENRICH_JITTER`          | no       | each gap between requests is stretched by up to this fraction, default 0.2 |
 //! | `ENRICH_WALK_PER_HOUR`   | no       | actors the quality walk queues an hour, default 20000          |
 //! | `ENRICH_SWEEP_PER_HOUR`  | no       | actors the rest walk queues an hour while the queue keeps up, default 10000 |
+//! | `ENRICH_WALK_RESTART`    | no       | Unix seconds. Both walks start again from the top once, the first time they see a value greater than the last one they acted on; until each reaches where it was, it passes over actors that hold no profile field. A restart neither repeats it nor loses it |
 //! | `ENRICH_LEASE_SECONDS`   | no       | how long a leased refresh stays out of the queue, default 300  |
 //! | `ENRICH_BACKOFF_SECONDS` | no       | first pause after a failed appview request, doubling, default 30 |
 //! | `ENRICH_BACKOFF_MAX_SECONDS` | no   | longest such pause, default 900                                |
@@ -178,6 +179,7 @@ fn enrichment(getenv: Getenv) Error!enrich.Options {
         .jitter = try fraction(getenv, "ENRICH_JITTER", defaults.jitter),
         .walk_per_hour = try whole(getenv, "ENRICH_WALK_PER_HOUR", defaults.walk_per_hour),
         .sweep_per_hour = try whole(getenv, "ENRICH_SWEEP_PER_HOUR", defaults.sweep_per_hour),
+        .walk_restart = try whole(getenv, "ENRICH_WALK_RESTART", defaults.walk_restart),
         .lease_seconds = try whole(getenv, "ENRICH_LEASE_SECONDS", defaults.lease_seconds),
         .backoff_seconds = try whole(getenv, "ENRICH_BACKOFF_SECONDS", defaults.backoff_seconds),
         .backoff_max_seconds = try whole(getenv, "ENRICH_BACKOFF_MAX_SECONDS", defaults.backoff_max_seconds),
@@ -282,7 +284,7 @@ test "enrichment is on with its defaults unless the role is offline or told othe
         .{ "ENRICH_WALK_PER_HOUR", "800" },                     .{ "ENRICH_SWEEP_PER_HOUR", "0" },         .{ "ENRICH_LEASE_SECONDS", "600" },
         .{ "ENRICH_BACKOFF_SECONDS", "10" },                    .{ "ENRICH_BACKOFF_MAX_SECONDS", "60" },   .{ "ENRICH_APPVIEW_URL", "http://127.0.0.1:2584/" },
         .{ "ENRICH_BLACKSKY_URL", "https://blacksky.example" }, .{ "CORPUS_SCAN_SECONDS", "0" },           .{ "ENRICH_HANDLE_SETTLE_SECONDS", "3600" },
-        .{ "ENRICH_HANDLE_BACKLOG", "25" },
+        .{ "ENRICH_HANDLE_BACKLOG", "25" },                     .{ "ENRICH_WALK_RESTART", "1795200000" },
     }));
     const options = set.enrich.?;
     try testing.expectEqual(@as(f64, 0.25), options.requests_per_second);
@@ -294,6 +296,7 @@ test "enrichment is on with its defaults unless the role is offline or told othe
     try testing.expectEqual(@as(u64, 60), options.backoff_max_seconds);
     try testing.expectEqual(@as(u64, 3600), options.handle_check.settle_seconds);
     try testing.expectEqual(@as(usize, 25), options.handle_check.backlog_limit);
+    try testing.expectEqual(@as(u64, 1_795_200_000), options.walk_restart);
     try testing.expectEqualStrings("http://127.0.0.1:2584", options.appview_url);
     try testing.expectEqualStrings("https://blacksky.example", options.blacksky_url);
 }
@@ -346,6 +349,7 @@ test "enrichment settings that could not pace a loop are refused" {
         .{ "ENRICH_REQUESTS_PER_SECOND", "50" },             .{ "ENRICH_JITTER", "2" },               .{ "ENRICH_WALK_PER_HOUR", "-5" },
         .{ "ENRICH_LEASE_SECONDS", "5" },                    .{ "ENRICH_BACKOFF_SECONDS", "0" },      .{ "ENRICH_BACKOFF_MAX_SECONDS", "10" },
         .{ "ENRICH_APPVIEW_URL", "http://appview.example" }, .{ "ENRICH_HANDLE_BACKLOG", "many" },    .{ "ENRICH_HANDLE_SETTLE_SECONDS", "-1" },
+        .{ "ENRICH_WALK_RESTART", "now" },
     }) |pair| {
         const env = struct {
             var name: []const u8 = "";

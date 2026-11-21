@@ -262,6 +262,12 @@ pub const WalkBody = struct {
     /// walk its score. Empty and 0 at the top of a pass.
     position_did: []const u8,
     position_score: f32,
+    /// The restart stamp last acted on, whether the walk is still short of
+    /// where it was then, and the actors it has passed over since the
+    /// process started for holding no profile field.
+    restarted: u64,
+    catching_up: bool,
+    skipped: u64,
     pool: ?u64 = null,
     period_seconds: ?u64 = null,
 };
@@ -313,7 +319,7 @@ pub const HandleChecksBody = struct {
     deferred: u64,
 };
 
-fn walkBody(arena: Allocator, walk: owner_mod.Walk, per_hour: u64, queued: u64, pool: ?u64, period: ?u64) !WalkBody {
+fn walkBody(arena: Allocator, walk: owner_mod.Walk, per_hour: u64, queued: u64, skipped: u64, pool: ?u64, period: ?u64) !WalkBody {
     return .{
         .per_hour = per_hour,
         .queued = queued,
@@ -322,6 +328,9 @@ fn walkBody(arena: Allocator, walk: owner_mod.Walk, per_hour: u64, queued: u64, 
         .last_pass_seconds = walk.last_pass_seconds,
         .position_did = try arena.dupe(u8, walk.position()),
         .position_score = walk.score,
+        .restarted = walk.restarted,
+        .catching_up = walk.catching_up,
+        .skipped = skipped,
         .pool = pool,
         .period_seconds = period,
     };
@@ -362,8 +371,8 @@ pub fn enrichmentBody(arena: Allocator, enricher: *enrich.Enricher, health: owne
             .settled = load(&s.handle_settled),
             .deferred = load(&s.handle_deferred),
         },
-        .quality_walk = try walkBody(arena, health.walks.get(.quality), o.walk_per_hour, load(&s.walk_queued), null, null),
-        .rest_walk = try walkBody(arena, health.walks.get(.rest), o.sweep_per_hour, load(&s.sweep_queued), null, null),
+        .quality_walk = try walkBody(arena, health.walks.get(.quality), o.walk_per_hour, load(&s.walk_queued), load(&s.walk_skipped), null, null),
+        .rest_walk = try walkBody(arena, health.walks.get(.rest), o.sweep_per_hour, load(&s.sweep_queued), load(&s.sweep_skipped), null, null),
     };
 }
 

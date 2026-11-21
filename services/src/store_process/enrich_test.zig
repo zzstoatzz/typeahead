@@ -711,6 +711,30 @@ test "the walks queue ranked actors at their hourly rate and the rest only while
     try testing.expectEqual(@as(u64, 1), health.walks.get(.rest).passes);
 }
 
+test "a restart stamp reaches the walks and their health" {
+    const rig = try Rig.create(.{ .requests_per_second = 2, .jitter = 0, .walk_per_hour = 3600, .sweep_per_hour = 0, .walk_restart = harness.t0 });
+    defer rig.destroy();
+    var seeds: std.ArrayList(Change) = .empty;
+    const a = rig.f.arena.allocator();
+    for (0..10) |n| {
+        const subject = rig.did(n);
+        try rig.known(subject, counts);
+        try seeds.append(a, .{ .profile = .{ .did = subject, .handle = try std.fmt.allocPrint(a, "r{d}.test", .{n}) } });
+        try seeds.append(a, .{ .enrichment = .{ .did = subject, .source = .bsky, .quality_score = @floatFromInt(1000 - n) } });
+    }
+    _ = try rig.f.commit(seeds.items, null);
+    try testing.expectEqual(enrich.Step.idle, try rig.steps(1));
+    _ = World.sleepMs(rig.world, 30_000);
+    try testing.expectEqual(enrich.Step.worked, try rig.steps(1));
+    const health = blk: {
+        _ = try rig.f.commit(&.{}, null);
+        rig.f.advance(61);
+        _ = rig.f.owner.turn(0);
+        break :blk rig.f.owner.health();
+    };
+    try testing.expectEqual(@as(u64, harness.t0), health.walks.get(.quality).restarted);
+}
+
 test "health reports progress without scanning for queue or corpus totals" {
     const rig = try Rig.create(.{ .requests_per_second = 2, .jitter = 0, .walk_per_hour = 7200, .sweep_per_hour = 7200 });
     defer rig.destroy();

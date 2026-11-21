@@ -90,6 +90,9 @@ pub const Options = struct {
     walk_per_hour: u64 = 20_000,
     /// Actors the rest walk queues an hour, while the queue keeps up.
     sweep_per_hour: u64 = 10_000,
+    /// A Unix time; a value greater than the one a walk last acted on starts
+    /// both walks again from the top (`RefreshWalk.restart`). 0 never does.
+    walk_restart: u64 = 0,
     backoff_seconds: u64 = 30,
     backoff_max_seconds: u64 = 900,
     /// How long the loop waits when nothing is due.
@@ -149,6 +152,8 @@ pub const Stats = struct {
     commit_failed: std.atomic.Value(u64) = .init(0),
     walk_queued: std.atomic.Value(u64) = .init(0),
     sweep_queued: std.atomic.Value(u64) = .init(0),
+    walk_skipped: std.atomic.Value(u64) = .init(0),
+    sweep_skipped: std.atomic.Value(u64) = .init(0),
     /// Unix seconds.
     last_success_at: std.atomic.Value(u64) = .init(0),
     last_request_at: std.atomic.Value(u64) = .init(0),
@@ -412,12 +417,12 @@ pub const Enricher = struct {
         if (self.walk_tokens >= get_profiles_max) {
             const limit: usize = @intFromFloat(self.walk_tokens);
             self.walk_tokens -= @floatFromInt(limit);
-            try list.append(arena, .{ .refresh_walk = .{ .pool = .quality, .limit = limit, .scan = limit * quality_scan_factor } });
+            try list.append(arena, .{ .refresh_walk = .{ .pool = .quality, .limit = limit, .scan = limit * quality_scan_factor, .restart = self.options.walk_restart } });
         }
         if (self.sweep_tokens >= get_profiles_max and !self.stats.backed_up.load(.monotonic)) {
             const limit: usize = @intFromFloat(self.sweep_tokens);
             self.sweep_tokens -= @floatFromInt(limit);
-            try list.append(arena, .{ .refresh_walk = .{ .pool = .rest, .limit = limit, .scan = limit * rest_scan_factor } });
+            try list.append(arena, .{ .refresh_walk = .{ .pool = .rest, .limit = limit, .scan = limit * rest_scan_factor, .restart = self.options.walk_restart } });
         }
     }
 
@@ -433,6 +438,8 @@ pub const Enricher = struct {
         try self.owner.call(leasing);
         _ = self.stats.walk_queued.fetchAdd(leasing.walked.get(.quality).queued, .monotonic);
         _ = self.stats.sweep_queued.fetchAdd(leasing.walked.get(.rest).queued, .monotonic);
+        _ = self.stats.walk_skipped.fetchAdd(leasing.walked.get(.quality).skipped, .monotonic);
+        _ = self.stats.sweep_skipped.fetchAdd(leasing.walked.get(.rest).skipped, .monotonic);
         const jobs = leasing.refresh_jobs;
         self.stats.backed_up.store(jobs.len == get_profiles_max, .monotonic);
         if (jobs.len == 0) return .idle;

@@ -236,6 +236,10 @@ pub const Walk = struct {
     last_pass_seconds: u64 = 0,
     /// The score the quality walk has reached; 0 at the top of a pass.
     score: f32 = 0,
+    /// The restart stamp last acted on, and whether the walk is still short
+    /// of where that restart found it.
+    restarted: u64 = 0,
+    catching_up: bool = false,
     did: [max_walk_did]u8 = undefined,
     did_len: usize = 0,
 
@@ -837,7 +841,13 @@ pub const Owner = struct {
         fresh.cursors.plc = null;
         for (std.enums.values(change.WalkPool)) |pool| {
             const state = try store_mod.read.walkState(self.store.db(), self.scratch.allocator(), pool.cursor());
-            var walk: Walk = .{ .started_at = state.started_at, .passes = state.passes, .last_pass_seconds = state.last_pass_seconds };
+            var walk: Walk = .{
+                .started_at = state.started_at,
+                .passes = state.passes,
+                .last_pass_seconds = state.last_pass_seconds,
+                .restarted = state.restarted,
+                .catching_up = state.catch_up.len > 0,
+            };
             if (state.position.len > 0) {
                 const did = switch (pool) {
                     .quality => blk: {
