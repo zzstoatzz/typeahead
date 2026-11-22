@@ -100,8 +100,12 @@ fn expected(
         .collect::<Vec<_>>();
     candidates.sort_by(|a, b| {
         let local = |a: &Actor| preference.is_some_and(|h| a.pds == format!("https://{h}"));
-        let score =
-            |a: &Actor| f64::from(a.quality_score) + if local(a) { f64::from(bonus) } else { 0.0 };
+        let prefix = |a: &Actor| tokens.len() == 1 && a.handle != q && a.handle.starts_with(q);
+        let score = |a: &Actor| {
+            f64::from(a.quality_score)
+                + if local(a) { f64::from(bonus) } else { 0.0 }
+                + if prefix(a) { f64::from(HANDLE_PREFIX_BONUS) } else { 0.0 }
+        };
         (a.handle != q, !(first && local(a)))
             .cmp(&(b.handle != q, !(first && local(b))))
             .then_with(|| score(b).total_cmp(&score(a)))
@@ -112,6 +116,60 @@ fn expected(
         .take(limit)
         .map(|a| a.did.clone())
         .collect()
+}
+
+fn small_index(actors: &[(&str, &str, &str, f32)]) -> (tempfile::TempDir, Engine) {
+    let directory = tempfile::tempdir().unwrap();
+    let empty_hash = format!("{:x}", Sha256::digest(b""));
+    let input = format!(
+        "{}\n{}\n",
+        json!({"type":"manifest","build_id":"fixture-handle-prefix","source_watermark":100,"actor_count":0,"source_actor_count":0,"partial":true}),
+        json!({"type":"end","build_id":"fixture-handle-prefix","actor_count":0,"actors_sha256":empty_hash})
+    );
+    import(directory.path(), Cursor::new(input), None, ImportOptions::default(), true).unwrap();
+    let mut engine = Engine::open(directory.path(), 32 * 1024 * 1024).unwrap();
+    engine.allow_partial = true;
+    engine.allow_stale = true;
+    let rows = actors
+        .iter()
+        .map(|(did, handle, name, score)| {
+            serde_json::from_value(json!({"did":did,"handle":handle,"display_name":name,"quality_score":score,
+                "pds":"https://pds.test","hidden":false,"version":100,"labels":[]}))
+            .unwrap()
+        })
+        .collect();
+    let policy = json!({"schema_version":1,"source_observed_at":epoch(),"complete":true,"blocked_domains":[],"overrides":[]});
+    apply(&engine, rows, Some(policy));
+    (directory, engine)
+}
+
+#[test]
+fn a_handle_start_wins_and_a_domain_segment_needs_a_dot() {
+    let (_directory, engine) = small_index(&[
+        ("did:fixture:aoc", "aoc.bsky.social", "Alexandria Ocasio-Cortez", 900.0),
+        ("did:fixture:sam", "sam.test", "Sam", 300.0),
+        ("did:fixture:sarah", "big.test", "Sarah", 340.0),
+        ("did:fixture:sun", "sunny.test", "Sun", 100.0),
+        ("did:fixture:huge", "huge.test", "Sunday Paper", 1000.0),
+    ]);
+    let handles = |q: &str| {
+        engine
+            .search(q, 10, None, None, false, None)
+            .unwrap()
+            .actors
+            .into_iter()
+            .map(|a| a.handle)
+            .collect::<Vec<_>>()
+    };
+    // .bsky.social does not make aoc a match for "s"; sam.test starts with
+    // the query and passes the bigger name match; a far bigger name match
+    // still wins
+    assert_eq!(handles("s"), ["huge.test", "sam.test", "big.test", "sunny.test"]);
+    assert_eq!(handles("su"), ["huge.test", "sunny.test"]);
+    // with a dot, the segment after it is a match again
+    assert_eq!(handles("bsky.s"), ["aoc.bsky.social"]);
+    // an exact handle comes first whatever its score
+    assert_eq!(handles("sunny.test"), ["sunny.test"]);
 }
 
 #[test]

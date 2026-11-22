@@ -867,12 +867,15 @@ impl Engine {
         } else {
             vec![None]
         };
-        for exact in [true, false] {
+        for pass in [Pass::Exact, Pass::Handle, Pass::Any] {
+            if pass == Pass::Handle && plan["handle_key"].is_null() {
+                continue;
+            }
             for bucket in &buckets {
                 let query = make_query(
                     self.fields,
                     &plan,
-                    exact,
+                    pass,
                     pds.as_deref(),
                     preference.as_deref(),
                     *bucket,
@@ -919,11 +922,15 @@ impl Engine {
                     if verified {
                         found
                             .entry(did.to_owned())
-                            .and_modify(|c| c.exact |= exact)
+                            .and_modify(|c| {
+                                c.exact |= pass == Pass::Exact;
+                                c.handle |= pass == Pass::Handle;
+                            })
                             .or_insert(Candidate {
                                 rank: key,
                                 address,
-                                exact,
+                                exact: pass == Pass::Exact,
+                                handle: pass == Pass::Handle,
                                 local: *bucket == Some(true),
                                 actor: hydrated,
                             });
@@ -984,8 +991,10 @@ impl Engine {
         candidates.sort_by(|a, b| {
             let a_score = rank_score(&a.rank);
             let b_score = rank_score(&b.rank);
-            let a_bonus = if a.local { boost.unwrap_or(0.0) } else { 0.0 };
-            let b_bonus = if b.local { boost.unwrap_or(0.0) } else { 0.0 };
+            let a_bonus = if a.local { boost.unwrap_or(0.0) } else { 0.0 }
+                + if a.handle { HANDLE_PREFIX_BONUS } else { 0.0 };
+            let b_bonus = if b.local { boost.unwrap_or(0.0) } else { 0.0 }
+                + if b.handle { HANDLE_PREFIX_BONUS } else { 0.0 };
             (!a.exact, !(pds_first && a.local))
                 .cmp(&(!b.exact, !(pds_first && b.local)))
                 .then_with(|| boost::cmp_effective(b_score, b_bonus, a_score, a_bonus))
@@ -1020,11 +1029,29 @@ impl Engine {
         })
     }
 }
+/// Added to the quality score of an account whose handle starts with a
+/// one-word query. Tern's bonus (150 on a 100·log2 follower scale) is about
+/// this much on ours: an account a little under three times smaller wins by
+/// its handle. Larger values buried the answer for longer queries
+/// (docs/investigations/2026-11-22-handle-prefix-ranking.md).
+const HANDLE_PREFIX_BONUS: f32 = 50.0;
+
+/// The lookups a one-word query makes, in order: the exact handle, handles
+/// that start with it, then every match.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Pass {
+    Exact,
+    Handle,
+    Any,
+}
+
 #[derive(Clone)]
 struct Candidate {
     rank: String,
     address: DocAddress,
     exact: bool,
+    /// Found by the handle-prefix lookup.
+    handle: bool,
     local: bool,
     actor: Option<Actor>,
 }
@@ -1087,12 +1114,17 @@ fn all(queries: Vec<Box<dyn Query>>) -> Box<dyn Query> {
         ))
     }
 }
-fn lexical(fields: Fields, plan: &Value, exact: bool) -> Result<Box<dyn Query>> {
-    if exact {
-        return Ok(plan["exact"]
+fn lexical(fields: Fields, plan: &Value, pass: Pass) -> Result<Box<dyn Query>> {
+    let key = |field: &str| -> Box<dyn Query> {
+        plan[field]
             .as_str()
             .map(|s| key_term(fields.key, s))
-            .unwrap_or(Box::new(EmptyQuery)));
+            .unwrap_or(Box::new(EmptyQuery))
+    };
+    match pass {
+        Pass::Exact => return Ok(key("exact")),
+        Pass::Handle => return Ok(key("handle_key")),
+        Pass::Any => {}
     }
     let mut display = vec![];
     if let Some(groups) = plan["groups"].as_array() {
@@ -1111,23 +1143,28 @@ fn lexical(fields: Fields, plan: &Value, exact: bool) -> Result<Box<dyn Query>> 
         return Ok(display);
     }
     let mut alternatives = vec![(Occur::Should, display)];
-    for field in ["handle_key", "domain_key"] {
-        if let Some(value) = plan[field].as_str() {
-            alternatives.push((Occur::Should, key_term(fields.key, value)));
-        }
+    if let Some(value) = plan["handle_key"].as_str() {
+        alternatives.push((Occur::Should, key_term(fields.key, value)));
+    }
+    // a segment after a dot ("social" in aoc.bsky.social) is matched only
+    // when the query has a dot itself, so "s" is not a match for every
+    // .bsky.social handle
+    let dotted = plan["normalized"].as_str().is_some_and(|q| q.contains('.'));
+    if let (true, Some(value)) = (dotted, plan["domain_key"].as_str()) {
+        alternatives.push((Occur::Should, key_term(fields.key, value)));
     }
     Ok(Box::new(BooleanQuery::new(alternatives)))
 }
 fn make_query(
     fields: Fields,
     plan: &Value,
-    exact: bool,
+    pass: Pass,
     pds: Option<&str>,
     preferred: Option<&str>,
     bucket: Option<bool>,
     policy_enabled: bool,
 ) -> Result<Box<dyn Query>> {
-    let mut clauses = vec![(Occur::Must, lexical(fields, plan, exact)?)];
+    let mut clauses = vec![(Occur::Must, lexical(fields, plan, pass)?)];
     if !policy_enabled {
         clauses.push((
             Occur::Must,
@@ -1137,7 +1174,7 @@ fn make_query(
             )) as Box<dyn Query>,
         ));
     }
-    if !exact {
+    if pass != Pass::Exact {
         if let Some(value) = plan["exact"].as_str() {
             clauses.push((Occur::MustNot, key_term(fields.key, value)));
         }
