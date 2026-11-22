@@ -22,7 +22,9 @@ export async function handleFirst(request: Request, env: Env, ctx: ExecutionCont
   if (segment !== null && query === null) return new Response(null, { status: 302, headers: { Location: "/first" } });
 
   const cache = caches.default;
-  const key = new Request(`${url.origin}/first-cache/${searchCacheGeneration(env.SEARCH_CACHE_GENERATION)}/${query === null ? "" : encodeURIComponent(query)}`);
+  // the deployed version is in the key, so a deploy never serves a page the old code rendered
+  const version = env.CF_VERSION_METADATA?.id ?? "local";
+  const key = new Request(`${url.origin}/first-cache/${searchCacheGeneration(env.SEARCH_CACHE_GENERATION)}/${version}/${query === null ? "" : encodeURIComponent(query)}`);
   const cached = await cache.match(key);
   if (cached) return cached;
 

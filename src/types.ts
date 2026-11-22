@@ -1,4 +1,4 @@
-export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_DB">, Partial<Pick<PublicWorkerEnv, "STATS_DB">> {
+export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_DB">, Partial<Pick<PublicWorkerEnv, "STATS_DB" | "CF_VERSION_METADATA">> {
   KV: KVNamespace;
   ADMIN_SECRET: string;
   /// Bearer secret the store slots present to `/slot/control/*`, and nothing
