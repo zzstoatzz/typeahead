@@ -601,7 +601,8 @@ The [eval timing disclosure](evaluation.md#where-time-goes) documents the
 timer boundaries and displays saved measurements without running probes.
 
 The public Worker and transport export native Cloudflare traces to Logfire's
-`waow/typeahead` project through `logfire-typeahead-traces`. Custom spans cover
+`waow/apps` project (shared, filter on `service_name`; `waow/typeahead` before
+2026-11-22) through `logfire-typeahead-traces`. Custom spans cover
 handler execution, cache, transport headers/body, route validation and Fly
 requests. Use the explicit handler spans to exclude background `waitUntil`
 work, and follow parent spans rather than adding overlapping durations.
@@ -625,7 +626,11 @@ Discord channel) when a state changes, not every hour:
 unreachable, not ready, or does not find the probe handle. Those do not post
 by themselves, so read the endpoint when in doubt.
 
-Logfire, project `typeahead`, has one alert per slot:
+Logfire has one alert per slot, in the shared project `apps`, filtered on the
+slot's `service_name`. Telemetry moved there from project `typeahead` on
+2026-11-22. Slot B's new token is staged and applies on its next restart; until
+then its alert stays enabled in `typeahead` and its `apps` copy is disabled.
+After that restart, enable the `apps` copy and disable the `typeahead` one.
 
 | alert | meaning | do |
 | --- | --- | --- |

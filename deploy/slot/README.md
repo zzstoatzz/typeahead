@@ -97,7 +97,7 @@ Secrets the app needs:
 |---|---|
 | the store process's bearer secret for its read endpoints | new and random for this app; the name comes with the store process |
 | `ADMIN_SECRET` | new and random for this app. It guards the index's loopback admin endpoints, which the store process calls. It must not be the Worker's secret of the same name |
-| `LOGFIRE_WRITE_TOKEN` | optional; the write token of the Logfire `typeahead` project |
+| `LOGFIRE_WRITE_TOKEN` | optional; a write token of the shared Logfire `apps` project (sops `logfire.typeahead-write-token`) |
 | `SLOT_CONTROL_SECRET` | the bearer secret for the Worker's `/slot/control/*`, at least 32 bytes, the same value on the Worker and on every slot. It reads the control record and can change nothing. It must not be the Worker's admin secret, which those endpoints refuse. Set it with `fly secrets set --stage` so that setting it restarts nothing |
 
 ## A new or lost volume
