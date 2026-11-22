@@ -186,7 +186,7 @@ export function firstQueryPage(view: QueryView): string {
     ? `<p class="note">search is unavailable right now.</p>`
     : live.actors.length === 0
       ? `<p class="note">nobody comes up for this.</p>`
-      : `<ol class="places">${live.actors.map((actor, i) => `<li><span class="rank">${i + 1}</span>${avatar(actor, 36)}<a class="who" href="https://bsky.app/profile/${escHtml(actor.did)}"><span class="name">${name(actor)}</span><span class="handle">@${escHtml(actor.handle)}</span></a></li>`).join("")}</ol>`;
+      : `<ol class="places">${live.actors.map((actor, i) => `<li><span class="rank">${i + 1}</span>${avatar(actor, 36)}<a class="who" href="https://aturi.to/${escHtml(actor.did)}" target="_blank" rel="noopener"><span class="name">${name(actor)}</span><span class="handle">@${escHtml(actor.handle)}</span></a></li>`).join("")}</ol>`;
   const kept = view.slots
     ? historyBlock(view.slots, view.reigns)
     : `<p class="note">only single letters keep a history; this is the live answer.</p>`;

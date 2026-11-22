@@ -68,6 +68,9 @@ test("/first renders live, keeps today's first places once, and keeps nothing fo
     const name = await (await get("/first/nate")).text();
     expect(name).toContain("only single letters keep a history");
     expect(name).toContain("nate 1");
+    // the reader picks their own client, as on the homepage
+    expect(name).toContain('href="https://aturi.to/did:plc:nate1"');
+    expect(name).not.toContain("bsky.app/profile");
     expect(await (await get("/first/nobody")).text()).toContain("nobody comes up for this");
     expect(await (await get("/first/peak")).text()).toMatch(/peak [1-6]</);
     await settle();
