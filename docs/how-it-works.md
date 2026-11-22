@@ -13,8 +13,10 @@ cache, which keeps each answer for 60 seconds. On a miss it hands the query to
 the search transport, a second Worker whose only job is to know which slot is
 serving. The transport reads that from the route record and works from a copy
 at most one second old. The slot's search engine matches handles and display
-names by prefix, ranks them with an exact handle first, and returns the stored
-profiles. Answers are public and the same for every caller.
+names by prefix, ranks them with an exact handle first, then by quality score
+with a bonus for a handle that starts with the query, and returns the stored
+profiles. The part of a handle after a dot matches only a query that has a dot
+([handle-prefix ranking](investigations/2026-11-22-handle-prefix-ranking.md)). Answers are public and the same for every caller.
 
 ## Inside one slot
 

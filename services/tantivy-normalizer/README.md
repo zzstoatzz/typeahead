@@ -85,8 +85,11 @@ A successful query reply contains:
 
 All keys inside each group are conjunctive; all groups inside the display
 branch are conjunctive. With `mode:"or"` (one normalized whitespace token),
-the overall expression is `handle_key OR domain_key OR display_branch`.
-`exact` is separate for exact-handle priority. With `mode:"and"`, only the
+the overall expression is `handle_key OR display_branch`, plus `domain_key`
+when the normalized query contains a dot, so a segment after a dot in a handle
+(`social`, `com`) is not a match for a dotless query. `exact` is separate for
+exact-handle priority, and the engine looks `handle_key` up on its own so an
+account whose handle starts with the query earns a ranking bonus. With `mode:"and"`, only the
 display branch is used. `keys` is a compatibility flattening of display keys;
 blindly OR-ing those keys is incorrect for CJK and mixed scripts.
 
