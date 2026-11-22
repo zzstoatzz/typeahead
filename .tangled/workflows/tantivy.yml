@@ -1,6 +1,16 @@
+# Runs only when the search engine, the store or a policy file they read changes.
 when:
   - event: ["push"]
     branch: main
+    paths:
+      - "services/**"
+      - "src/identity-quarantine.json"
+      - "src/moderation-regexes.json"
+      - "src/moderation.ts"
+      - "src/control-rule-vectors.json"
+      - "scripts/ci-zig.sh"
+      - "justfile"
+      - ".tangled/workflows/tantivy.yml"
 engine: microvm
 image: nixos
 dependencies:

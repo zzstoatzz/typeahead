@@ -1,6 +1,23 @@
+# Runs only when the Workers, their tests or their configuration change.
 when:
   - event: ["push"]
     branch: main
+    paths:
+      - "src/**"
+      - "scripts/**/*.ts"
+      - "scripts/ci-workerd.sh"
+      - "deploy/search-transport/**"
+      - "deploy/image-renderer/**"
+      - "deploy/eval/**"
+      - "migrations/**"
+      - "lexicons/**"
+      - "tools/**"
+      - "package.json"
+      - "bun.lock"
+      - "tsconfig.json"
+      - "wrangler.jsonc"
+      - ".oxlintrc.json"
+      - ".tangled/workflows/deploy.yml"
 
 engine: microvm
 image: nixos

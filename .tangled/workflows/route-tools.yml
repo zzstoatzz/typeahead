@@ -1,6 +1,11 @@
+# Runs only when the route, smoke or release scripts change.
 when:
   - event: ["push"]
     branch: main
+    paths:
+      - "scripts/*.py"
+      - "scripts/route/**"
+      - ".tangled/workflows/route-tools.yml"
 engine: microvm
 image: nixos
 dependencies:
