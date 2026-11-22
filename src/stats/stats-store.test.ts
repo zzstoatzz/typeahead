@@ -51,7 +51,7 @@ test("every writer leaves its rows in the statistics database, after the respons
   }
   const rows = await statsRows(stores.db);
   expect(rows.map((entry) => [entry.table, entry.rows.length])).toEqual([
-    ["actor_deltas", 0], ["counters", 1], ["metrics", 1], ["request_buckets", 2], ["request_daily", 0],
+    ["actor_deltas", 0], ["counters", 1], ["first_daily", 0], ["metrics", 1], ["request_buckets", 2], ["request_daily", 0],
     ["snapshots", 1], ["traffic_buckets", 1], ["traffic_daily", 0], ["traffic_sources", 1],
   ]);
   expect(rowsOf(rows, "request_buckets")).toMatchObject([

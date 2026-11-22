@@ -8,6 +8,7 @@ const MIGRATIONS = new URL("../../migrations/stats-d1/", import.meta.url).pathna
 const PRIMARY_KEYS = {
   actor_deltas: "bucket",
   counters: "name",
+  first_daily: "day, query, rank",
   metrics: "hour",
   request_buckets: "bucket, domain, endpoint, status",
   request_daily: "day, domain, endpoint, status",

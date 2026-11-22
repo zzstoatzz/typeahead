@@ -27,7 +27,7 @@ const kv = {
 };
 const storedJson = (key: string) => JSON.parse(stored.get(key) ?? "null");
 
-test("the migrations define the nine statistics tables and seed the actor counter", async () => {
+test("the migrations define the statistics tables and seed the actor counter", async () => {
   const { results } = await db.prepare(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name != 'd1_migrations' ORDER BY name",
   ).all<{ name: string }>();
