@@ -40,6 +40,7 @@ const STYLE = `${THEME_CSS}
     form button { min-height: 44px; padding: 0 1rem; font: inherit; color: var(--bg); background: var(--accent); border: 0; border-radius: 8px; cursor: pointer; }
     .most { display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem 0.9rem; margin-bottom: 1.25rem; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
     .most b { color: var(--bright); }
+    .most .dot { display: none; }
     .most .letters { margin-left: auto; color: var(--accent); font-weight: 700; letter-spacing: 0.2em; }
     img, .blank { border-radius: 50%; background: var(--panel-2); flex: none; display: block; }
     .who { display: flex; flex-direction: column; min-width: 0; }
@@ -68,6 +69,8 @@ const STYLE = `${THEME_CSS}
       .most img { width: 22px; height: 22px; }
       .most > span:not(.letters) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
       .most .letters { letter-spacing: 0.1em; }
+      .most .for { display: none; }
+      .most .dot { display: inline; }
       .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 4px; }
       .tile { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 0; min-height: 0; text-align: center; background: none; border: 0; border-radius: 0; }
       .tile:hover { background: none; }
@@ -135,7 +138,7 @@ function mostLetters(tiles: readonly Tile[]): string {
   }
   const top = [...held.values()].sort((a, b) => b.letters.length - a.letters.length)[0];
   if (!top || top.letters.length < 2) return "";
-  return `<p class="most">${avatar(top.first, 36)}<span><b>${name(top.first)}</b> is first for ${top.letters.length} letters</span><span class="letters">${escHtml(top.letters.join(""))}</span></p>`;
+  return `<p class="most">${avatar(top.first, 36)}<span><b>${name(top.first)}</b><span class="for"> is first for</span><span class="dot"> ·</span> ${top.letters.length} letters</span><span class="letters">${escHtml(top.letters.join(""))}</span></p>`;
 }
 
 function tile(entry: Tile): string {
