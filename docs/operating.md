@@ -628,9 +628,7 @@ by themselves, so read the endpoint when in doubt.
 
 Logfire has one alert per slot, in the shared project `apps`, filtered on the
 slot's `service_name`. Telemetry moved there from project `typeahead` on
-2026-11-22. Slot B's new token is staged and applies on its next restart; until
-then its alert stays enabled in `typeahead` and its `apps` copy is disabled.
-After that restart, enable the `apps` copy and disable the `typeahead` one.
+2026-11-22.
 
 | alert | meaning | do |
 | --- | --- | --- |
