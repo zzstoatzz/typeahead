@@ -6,7 +6,7 @@ find people across [AT Protocol](https://atproto.com). search by handle or displ
 name, or look up a public profile—no sign-in required. use it on the web or add
 account search to your app.
 
-[try a search ↗](https://typeahead.waow.tech/) · [API docs](https://typeahead.waow.tech/docs) · [who’s using it?](https://typeahead.waow.tech/stats)
+[try a search ↗](https://typeahead.waow.tech/) · [API docs](https://typeahead.waow.tech/docs) · [who’s using it?](https://typeahead.waow.tech/stats) · [who comes up first?](https://typeahead.waow.tech/first)
 
 ## use
 

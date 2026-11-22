@@ -31,9 +31,8 @@ const STYLE = `${THEME_CSS}
     body { padding: calc(2rem + env(safe-area-inset-top)) 1rem calc(3rem + env(safe-area-inset-bottom)); }
     main { max-width: 980px; margin: 0 auto; }
     header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.75rem; }
-    header nav { display: flex; gap: 1rem; align-items: baseline; }
+    header nav { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
     header nav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; }
-    #theme-toggle { background: none; border: 0; color: var(--muted); cursor: pointer; font: inherit; min-width: 44px; min-height: 44px; }
     h1 { font-size: 1.25rem; color: var(--bright); }
     .lede { color: var(--muted); margin: 0.25rem 0 1.25rem; }
     form { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
@@ -96,7 +95,7 @@ function page(title: string, description: string, path: string, body: string): s
 <main>
   <header>
     <a class="wordmark" href="/">typeahead</a>
-    <nav><a href="/first">first</a><a href="/stats">stats</a><a href="/docs">docs</a><button id="theme-toggle" type="button" aria-label="Toggle theme">◐</button></nav>
+    <nav><a href="/first">first</a><a href="/stats">stats</a><a href="/docs">docs</a><button class="theme-btn" id="theme-toggle" data-compact type="button" aria-label="Theme: system. Switch to dark.">◐</button></nav>
   </header>
   ${body}
 </main>

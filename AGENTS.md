@@ -194,7 +194,8 @@ regression is pinned). Extend it, don't prune it.
 - worker tests: `bun test`. zig tests: `just test-services` (or `cd services && zig build test`).
   Retrieval changes also require `just --no-dotenv test-tantivy`, run by CI on main.
 - never run work proportional to the corpus on the request/cron path (see the invariant above).
-- **the cron contract**: the Worker cron does freshness, statistics, the control
+- **the cron contract**: the Worker cron does freshness, statistics (including
+  keeping each letter's first places once a day for `/first`), the control
   database probe and index-request pruning, inside a 12-minute budget
   (`CRON_BUDGET_MS`), because a 15-minute wall kill is silent. It does no
   enrichment and never drains a backlog: discovering, resolving and refreshing
