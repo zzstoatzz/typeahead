@@ -153,9 +153,9 @@ function tile(entry: Tile): string {
 }
 
 export function firstIndexPage(tiles: readonly Tile[]): string {
-  return page("typeahead — first by letter", "Who comes up first when you type one letter, live, with each letter's history.", "/first", `
-  <h1>first by letter</h1>
-  <p class="lede">who comes up first when you type one letter, live. each day's first place is kept.</p>
+  return page("typeahead — the a-list", "The account typeahead puts first for each letter, a to z.", "/first", `
+  <h1>the a-list</h1>
+  <p class="lede">the account typeahead puts first for each letter.</p>
   ${searchForm()}
   ${mostLetters(tiles)}
   <ul class="tiles">${tiles.map(tile).join("")}</ul>`);
