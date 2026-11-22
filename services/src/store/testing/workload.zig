@@ -224,7 +224,10 @@ const Gen = struct {
                 .restart = if (self.chance(10)) self.now else 0,
             } },
             95 => .{ .refresh_retry = .{ .did = subject, .lease = self.now - 300 + self.random.uintLessThan(u64, 3000), .due = self.now + self.random.uintLessThan(u64, 900) } },
-            96 => .{ .hidden_refreshed = subject },
+            96 => if (self.chance(50))
+                .{ .hidden_refreshed = subject }
+            else
+                .{ .quality_set = .{ .did = subject, .quality_score = self.pick(f32, &.{ 0, 120, 250.5, 900.19 }) } },
             else => if (self.config.keep_actors)
                 .{ .hidden_refreshed = subject }
             else
@@ -255,6 +258,10 @@ pub fn batch(arena: std.mem.Allocator, config: Config, n: u64, size: usize) !Ste
     const generation = 1 + n / 60 + @intFromBool(gen.chance(5));
     if (gen.chance(25)) try cursors.append(arena, .{ .control_policy = .{ .generation = generation, .at = (n + gen.random.uintLessThan(u64, 6)) -| 3 } });
     if (gen.chance(25)) try cursors.append(arena, .{ .control_requests = .{ .generation = generation, .at = (n * 4 + gen.random.uintLessThan(u64, 20)) -| 10 } });
+    if (gen.chance(10)) try cursors.append(arena, .{ .rescore = .{
+        .version = 1 + gen.random.uintLessThan(u64, 3),
+        .next = if (gen.chance(40)) "" else try std.fmt.allocPrint(arena, "a{d}", .{gen.random.uintLessThan(u64, 1000)}),
+    } });
     return .{ .now = gen.now, .changes = changes.items, .cursors = cursors.items };
 }
 

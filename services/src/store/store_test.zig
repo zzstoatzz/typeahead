@@ -846,6 +846,37 @@ test "a restart reaches the rest walk too" {
     try testing.expectEqual(@as(u64, t0 + 20), (try f.actor(carol)).refresh_due);
 }
 
+test "a quality score set moves the actor's rank key once, and the rescore cursor records its pass" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const mem = f.arena.allocator();
+    _ = try f.apply(t0, .{ .profile = .{ .did = alice, .handle = "alice.test" } });
+    _ = try f.apply(t0, .{ .enrichment = .{ .did = alice, .source = .bsky, .quality_score = 500 } });
+    const logged = (try f.logged()).len;
+
+    try testing.expect((try f.apply(t0 + 1, .{ .quality_set = .{ .did = alice, .quality_score = 420 } })).applied);
+    try testing.expectEqual(@as(f32, 420), (try f.actor(alice)).quality_score);
+    const walk = try f.store.quality(mem, null, 10);
+    try testing.expectEqual(@as(usize, 1), walk.len);
+    try testing.expectEqual(@as(f32, 420), walk[0].score);
+    try testing.expectEqual(logged + 1, (try f.logged()).len);
+
+    // the same score again writes nothing
+    try testing.expect(!(try f.apply(t0 + 2, .{ .quality_set = .{ .did = alice, .quality_score = 420 } })).applied);
+    try testing.expectEqual(logged + 1, (try f.logged()).len);
+    try testing.expect(!(try f.apply(t0 + 2, .{ .quality_set = .{ .did = bob, .quality_score = 1 } })).applied);
+
+    try f.store.setCursor(.{ .rescore = .{ .version = 2, .next = "a\x00next" } });
+    var cursors = try f.store.cursors(mem);
+    try testing.expectEqual(@as(?u64, null), cursors.score_version);
+    try testing.expectEqualStrings("a\x00next", cursors.rescore_next.?);
+    try f.store.setCursor(.{ .rescore = .{ .version = 2, .next = "" } });
+    try f.reopen();
+    cursors = try f.store.cursors(mem);
+    try testing.expectEqual(@as(?u64, 2), cursors.score_version);
+    try testing.expectEqual(@as(?[]const u8, null), cursors.rescore_next);
+}
+
 test "a batch lands whole with its cursor, or not at all" {
     var f = try Fixture.init(.{});
     defer f.deinit();

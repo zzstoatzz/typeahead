@@ -49,6 +49,8 @@ pub const Model = struct {
     control_generation: ?u64 = null,
     control_policy: ?u64 = null,
     control_requests: ?u64 = null,
+    score_version: ?u64 = null,
+    rescore_next: ?[]const u8 = null,
     /// Lowercase domains whose sweep is owed.
     owed: std.StringArrayHashMapUnmanaged(void) = .empty,
     walks: std.EnumArray(change.WalkPool, record.WalkState) = .initFill(.{}),
@@ -493,6 +495,12 @@ pub const Model = struct {
                 const actor = self.actors.get(did) orelse return 0;
                 return @intFromBool(self.put(did, actor));
             },
+            .quality_set => |c| {
+                var actor = self.actors.get(c.did) orelse return 0;
+                if (@as(u32, @bitCast(actor.quality_score)) == @as(u32, @bitCast(c.quality_score))) return 0;
+                actor.quality_score = c.quality_score;
+                return @intFromBool(self.put(c.did, actor));
+            },
             .tombstones_pruned => |c| {
                 var doomed: std.ArrayList([]const u8) = .empty;
                 for (self.actors.keys(), self.actors.values()) |did, actor| {
@@ -629,6 +637,12 @@ pub const Model = struct {
             .plc => |value| {
                 if (self.plc) |stored| if (std.mem.order(u8, value, stored) != .gt) return;
                 self.plc = self.own(value);
+            },
+            .rescore => |position| {
+                if (position.next.len == 0) {
+                    self.score_version = position.version;
+                    self.rescore_next = null;
+                } else self.rescore_next = self.own(position.next);
             },
         }
         if (self.labeler == 0) self.labeler = null;

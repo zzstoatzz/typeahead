@@ -213,6 +213,14 @@ pub const RefreshWalk = struct {
     restart: u64 = 0,
 };
 
+/// Replace one actor's quality score, from a rescore that recomputed it out
+/// of the counts the actor already holds. Nothing else about the actor
+/// changes, and an equal score writes nothing.
+pub const QualitySet = struct {
+    did: []const u8,
+    quality_score: f32,
+};
+
 pub const TombstonesPruned = struct {
     /// Remove actors deleted or deactivated before this time.
     before: u64,
@@ -242,6 +250,7 @@ pub const Change = union(enum) {
     refresh_walk: RefreshWalk,
     hidden_refreshed: []const u8,
     tombstones_pruned: TombstonesPruned,
+    quality_set: QualitySet,
 };
 
 pub const Outcome = struct {
@@ -307,6 +316,15 @@ pub const CursorUpdate = union(enum) {
     control_policy: ControlPosition,
     /// The sequence of the last indexing request the batch queued.
     control_requests: ControlPosition,
+    /// Where the rescore pass stands: `next` is the next actor key to read,
+    /// empty once the pass has finished, and then `version` is recorded as
+    /// the score version every stored score now follows.
+    rescore: RescorePosition,
+};
+
+pub const RescorePosition = struct {
+    version: u64,
+    next: []const u8,
 };
 
 /// A position in the Worker's control record. It means something only
@@ -359,6 +377,10 @@ pub fn validate(one: Change) Invalid!void {
             try part(c.value, keys.max_label_value, true);
         },
         .labels_reconciled => |c| try checkDid(c.did),
+        .quality_set => |c| {
+            try checkDid(c.did);
+            if (!std.math.isFinite(c.quality_score)) return error.InvalidChange;
+        },
         .override_set => |c| try checkDid(c.did),
         .domain_blocked => |c| try part(c.domain, keys.max_domain, true),
         .domain_unblocked => |name| try part(name, keys.max_domain, true),

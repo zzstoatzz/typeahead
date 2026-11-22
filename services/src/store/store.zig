@@ -456,6 +456,13 @@ pub const Batch = struct {
             },
             .control_policy => |position| try controlPosition(engine_db, .control_policy, position),
             .control_requests => |position| try controlPosition(engine_db, .control_requests, position),
+            .rescore => |position| {
+                if (position.next.len > keys.max_key) return error.InvalidCursor;
+                if (position.next.len == 0) {
+                    try engine_db.put(keys.cursor(&buf, .score_version), &record.encodeU64(position.version));
+                    try engine_db.del(keys.cursor(&buf, .rescore_next));
+                } else try engine_db.put(keys.cursor(&buf, .rescore_next), position.next);
+            },
             .plc => |value| {
                 if (value.len == 0 or value.len > change.max_cursor_bytes) return error.InvalidCursor;
                 const key = keys.cursor(&buf, .plc);
@@ -548,6 +555,7 @@ pub const Batch = struct {
             .refresh_retry => |c| self.refreshRetry(c),
             .refresh_walk => |c| self.refreshWalk(c),
             .hidden_refreshed => |did| self.hiddenRefreshed(did),
+            .quality_set => |c| self.qualitySet(c),
             .tombstones_pruned => |c| self.tombstonesPruned(c),
         };
     }
@@ -1111,6 +1119,14 @@ pub const Batch = struct {
         try state.encode(self.tmp(), &value);
         try engine_db.put(keys.cursor(&buf, c.pool.cursor()), value.items);
         return .{ .applied = queued > 0 };
+    }
+
+    fn qualitySet(self: *Batch, c: change.QualitySet) !Outcome {
+        const old = try self.load(c.did) orelse return .{};
+        if (@as(u32, @bitCast(old.quality_score)) == @as(u32, @bitCast(c.quality_score))) return .{};
+        var new = old;
+        new.quality_score = c.quality_score;
+        return self.save(c.did, old, new, null);
     }
 
     fn hiddenRefreshed(self: *Batch, did: []const u8) !Outcome {

@@ -190,6 +190,8 @@ pub fn check(gpa: std.mem.Allocator, db: *engine.Db, model: *const Model) !Summa
     try ensure(std.meta.eql(cursors.bridge, model.bridge), "bridge cursor is {?d}, model {?d}", .{ cursors.bridge, model.bridge });
     try ensure(std.meta.eql(cursors.control_generation, model.control_generation), "control generation is {?d}, model {?d}", .{ cursors.control_generation, model.control_generation });
     try ensure(std.meta.eql(cursors.control_policy, model.control_policy), "control policy revision is {?d}, model {?d}", .{ cursors.control_policy, model.control_policy });
+    try ensure(std.meta.eql(cursors.score_version, model.score_version), "score version is {?d}, model {?d}", .{ cursors.score_version, model.score_version });
+    try ensure((cursors.rescore_next == null) == (model.rescore_next == null) and (cursors.rescore_next == null or std.mem.eql(u8, cursors.rescore_next.?, model.rescore_next.?)), "rescore position is {?s}, model {?s}", .{ cursors.rescore_next, model.rescore_next });
     try ensure(std.meta.eql(cursors.control_requests, model.control_requests), "control request sequence is {?d}, model {?d}", .{ cursors.control_requests, model.control_requests });
     try ensure((cursors.plc == null) == (model.plc == null) and (cursors.plc == null or std.mem.eql(u8, cursors.plc.?, model.plc.?)), "plc cursor is {?s}, model {?s}", .{ cursors.plc, model.plc });
 

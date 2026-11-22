@@ -157,6 +157,12 @@ pub const Cursors = struct {
     control_policy: ?u64 = null,
     /// The last indexing request taken from the control record.
     control_requests: ?u64 = null,
+    /// The score version every stored score follows; null before the first
+    /// rescore pass finished.
+    score_version: ?u64 = null,
+    /// The next actor key the running rescore pass reads; null when no pass
+    /// is under way.
+    rescore_next: ?[]const u8 = null,
     /// The sequence the next change-log entry will take.
     next_change: u64 = 1,
     /// The lowest position a change-log consumer may still ask for.
@@ -178,10 +184,12 @@ pub fn cursors(db: *Db, arena: std.mem.Allocator) !Cursors {
         .control_generation = try counter(db, .control_generation),
         .control_policy = try counter(db, .control_policy),
         .control_requests = try counter(db, .control_requests),
+        .score_version = try counter(db, .score_version),
         .next_change = try counter(db, .next_change) orelse 1,
         .change_floor = try counter(db, .change_floor) orelse 0,
     };
     if (try db.get(keys.cursor(&buf, .plc))) |borrowed| out.plc = try arena.dupe(u8, borrowed);
+    if (try db.get(keys.cursor(&buf, .rescore_next))) |borrowed| out.rescore_next = try arena.dupe(u8, borrowed);
     return out;
 }
 
