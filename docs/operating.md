@@ -524,7 +524,9 @@ wrong.
 bunx wrangler d1 execute typeahead-stats --remote --command "SELECT datetime(bucket * 300, 'unixepoch') AS bucket_utc, sum(hits) AS answers FROM request_buckets GROUP BY bucket ORDER BY bucket DESC LIMIT 6"
 ```
 
-Migrations are in `migrations/stats-d1`. Worker logs are in Cloudflare's
+Migrations are in `migrations/stats-d1`; apply a new one with
+`bunx wrangler d1 migrations apply typeahead-stats --remote` before deploying
+the Worker that reads it. Worker logs are in Cloudflare's
 Workers Logs for `typeahead`: `worker_request_timing` per request,
 `cron_done` and `cron_step_failed` per cron run.
 
@@ -532,6 +534,25 @@ Every response carries `Server-Timing` with `worker`, and for searches
 `search`, `cache` and `origin`. Compare a client's time after TLS with
 `worker`, then `worker` with `search`, to find where a slow request spent its
 time.
+
+### First by letter
+
+`/first` shows who comes up first for each letter, and `/first/<query>` the
+top five for any query. Both are rendered from live searches through the
+Worker's own search, counted on `/stats` under the app `typeahead-first`, and
+cached at the edge for 10 minutes; a page is not cached when any of its
+searches failed.
+
+Each UTC day the first three places of every letter are kept in the
+`first_daily` table, once: by the first page render of the day, or else by
+the hourly cron's `keepFirsts` step, which is one read when the day is
+already kept. A day answered by the Bluesky fallback is not kept, since it is
+not this service's ranking; the next cron run tries again. Only letters are
+kept, so a visitor's queries cannot grow the table.
+
+```sh
+bunx wrangler d1 execute typeahead-stats --remote --command "SELECT date(day * 86400, 'unixepoch') AS day, query, handle FROM first_daily WHERE rank = 1 ORDER BY day DESC, query LIMIT 26"
+```
 
 ### Statistics isolation
 
