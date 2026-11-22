@@ -253,6 +253,11 @@ async def run_latency(
     total = len(corpus) * (runs * 2 + 2)
     done = 0
 
+    # open both connections untimed, or the first query pays their setup
+    if corpus:
+        await timed_fetch(client, ours_search_url(ours_url, corpus[0], 1, appb_direct))
+        await timed_fetch(client, search_url(BSKY, corpus[0], 1))
+
     for q in corpus:
         stats = LatencyStats(query=q)
 

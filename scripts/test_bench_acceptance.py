@@ -1,4 +1,6 @@
+import asyncio
 import unittest
+from unittest import mock
 
 import bench
 
@@ -16,6 +18,25 @@ class PunctuationDivergence(unittest.TestCase):
 
     def test_equal_result_sets_pass(self):
         self.assertEqual(bench.acceptance_checks([result("fig", ["a.test"]), result("fig (", ["a.test"])]), [])
+
+
+class LatencyWarmUp(unittest.TestCase):
+    def test_the_first_query_is_not_charged_for_opening_the_connections(self):
+        seen = []
+
+        async def fetch(client, url, timeout=30.0):
+            seen.append(url)
+            return {}, 500.0 if len(seen) <= 2 else 40.0, 200
+
+        async def no_sleep(_):
+            return None
+
+        with mock.patch.object(bench, "timed_fetch", fetch), mock.patch.object(bench.asyncio, "sleep", no_sleep), mock.patch.object(bench, "progress"), mock.patch.object(bench, "clear_line"):
+            stats = asyncio.run(bench.run_latency(None, "https://ours.test", ["a", "b"], runs=2))
+        self.assertIn("limit=1", seen[0])
+        self.assertTrue(seen[1].startswith(bench.BSKY))
+        self.assertEqual(stats[0].ours_cold_ms, [40.0, 40.0])
+        self.assertEqual(stats[0].bsky_ms, [40.0, 40.0])
 
 
 if __name__ == "__main__":
