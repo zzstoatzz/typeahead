@@ -25,6 +25,7 @@ import { RequestTiming } from "./request-timing";
 import { trace } from "./worker-tracing";
 import { handleEval } from "./handlers/eval";
 import { handleFirst } from "./handlers/first";
+import { robotsTxt, sitemapXml } from "./pages/sitemap";
 import { keepToday } from "./first";
 
 /** Cloudflare kills a scheduled invocation at 15 minutes of wall time, with
@@ -169,6 +170,12 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
     return new Response(env.SERVICE_DID, {
       headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" },
     });
+  }
+  if (pathname === "/sitemap.xml" && request.method === "GET") {
+    return new Response(sitemapXml(), { headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=86400" } });
+  }
+  if (pathname === "/robots.txt" && request.method === "GET") {
+    return new Response(robotsTxt(), { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=86400" } });
   }
   if (pathname === "/llms.txt" && request.method === "GET") {
     return new Response(llmsTxt(), {

@@ -103,7 +103,8 @@ export function endpointLabel(pathname: string): string {
       pathname === "/reputation" || pathname === "/llms.txt" || pathname === "/eval" || pathname === "/eval/data.json" ||
       pathname === "/og-image" || pathname === "/.well-known/atproto-did" ||
       pathname === "/favicon.svg" || pathname === "/apple-touch-icon.png" ||
-      pathname === "/site.webmanifest" || pathname === "/first" || pathname.startsWith("/first/")) return "page";
+      pathname === "/site.webmanifest" || pathname === "/first" || pathname.startsWith("/first/") ||
+      pathname === "/sitemap.xml" || pathname === "/robots.txt") return "page";
   return "other";
 }
 
