@@ -42,6 +42,8 @@ const std = @import("std");
 const store_mod = @import("../store/root.zig");
 const log_route = @import("../log_route.zig");
 const handle_policy = @import("handle_policy.zig");
+const authority = @import("authority_score.zig");
+const profile = @import("profile.zig");
 const Io = std.Io;
 const Store = store_mod.Store;
 const Change = store_mod.Change;
@@ -109,6 +111,15 @@ pub const Options = struct {
     expiry_scan: usize = 2000,
     /// Handle keys examined by one step of a domain sweep.
     sweep_scan: usize = 5000,
+    /// Actor records one step of the rescore pass examines, and how far the
+    /// change log may run ahead of the index bridge before the pass waits
+    /// for it: a pass changes nearly every actor, faster than the index
+    /// takes them.
+    rescore_scan: usize = 2000,
+    rescore_max_lag: u64 = 200_000,
+    /// Run the rescore pass when the stored scores are behind. Off unless
+    /// the role turns it on, so a test's seeded scores stay as written.
+    rescore: bool = false,
     trim_seconds: u64 = 60,
     trim_limit: usize = 10_000,
     /// Change-log entries kept when no consumer has reported a position.
@@ -181,6 +192,9 @@ pub const Counters = struct {
     actors_reactivated: std.atomic.Value(u64) = .init(0),
     tombstones_pruned: std.atomic.Value(u64) = .init(0),
     hidden_refreshed: std.atomic.Value(u64) = .init(0),
+    /// Actors the rescore pass examined, and those whose score it changed.
+    rescore_examined: std.atomic.Value(u64) = .init(0),
+    rescore_changed: std.atomic.Value(u64) = .init(0),
     expiry_passes: std.atomic.Value(u64) = .init(0),
     domain_sweeps: std.atomic.Value(u64) = .init(0),
     changes_trimmed: std.atomic.Value(u64) = .init(0),
@@ -218,6 +232,9 @@ pub const Health = struct {
     /// Refresh entries due now; the rest of `refresh_pending` is leased.
     refresh_due: ?u64 = null,
     walks: std.EnumArray(change.WalkPool, Walk) = .initFill(.{}),
+    /// A rescore pass is under way; `cursors.score_version` is the version
+    /// every stored score follows.
+    rescore_running: bool = false,
     tombstones: ?u64 = null,
     /// Legacy field; observational queue enumeration is disabled.
     counts_capped: bool = false,
@@ -288,6 +305,10 @@ pub const Owner = struct {
     sweeps: std.ArrayList(SweepJob) = .empty,
     noted_domains: std.ArrayList([]const u8) = .empty,
     expiry: scan.Position = .{},
+    /// The rescore pass: unknown until the first step reads the store's
+    /// score version, then running until it reaches the end of the actors.
+    rescore: enum { unknown, running, done } = .unknown,
+    rescore_position: scan.Position = .{},
     next_prune: u64 = 0,
     next_expiry: u64 = 0,
     next_trim: u64 = 0,
@@ -334,6 +355,7 @@ pub const Owner = struct {
         for (self.noted_domains.items) |domain| self.gpa.free(domain);
         self.noted_domains.deinit(self.gpa);
         self.expiry.deinit(self.gpa);
+        self.rescore_position.deinit(self.gpa);
         self.queue.deinit(self.gpa);
         self.group.deinit(self.gpa);
         self.scratch.deinit();
@@ -523,6 +545,7 @@ pub const Owner = struct {
         if (pressure == .stalled or stalled) return;
         const at = self.now();
         if (self.sweeps.items.len > 0) try self.sweepStep(at);
+        if (self.options.rescore and self.rescore != .done) try self.rescoreStep(at);
         if (at >= self.next_prune) {
             try self.prune(at);
             self.next_prune = at + self.options.prune_seconds;
@@ -788,6 +811,70 @@ pub const Owner = struct {
         }
     };
 
+    const Rescored = struct {
+        arena: std.mem.Allocator,
+        now_ms: i64,
+        examined: u64 = 0,
+        changed: std.ArrayList(change.QualitySet) = .empty,
+
+        pub fn entry(self: *Rescored, key: []const u8, value: []const u8) !void {
+            self.examined += 1;
+            const actor = try store_mod.record.Actor.decode(self.arena, value);
+            // 0 is the score of an actor no profile source has answered for
+            if (actor.quality_score == 0) return;
+            const score = authority.stored(authority.score(.{
+                .followers = @floatFromInt(actor.followers_count),
+                .follows = @floatFromInt(actor.follows_count),
+                .created_ms = profile.dateMs(actor.created_at),
+                .now_ms = self.now_ms,
+            }));
+            if (@as(u32, @bitCast(score)) == @as(u32, @bitCast(actor.quality_score))) return;
+            const did = try self.arena.dupe(u8, try keys.parseActor(key));
+            try self.changed.append(self.arena, .{ .did = did, .quality_score = score });
+        }
+    };
+
+    /// One step of the pass that recomputes every stored quality score from
+    /// the counts the actor holds, once, when the store's scores follow an
+    /// older formula than `authority.version`. It walks the actor range
+    /// `rescore_scan` records a step, writes only the scores that change,
+    /// and stores its position in the same commit, so a restart resumes it.
+    /// It waits while the index bridge is `rescore_max_lag` changes behind.
+    fn rescoreStep(self: *Owner, at: u64) !void {
+        _ = self.scratch.reset(.retain_capacity);
+        const cursors = try self.store.cursors(self.scratch.allocator());
+        const bounds = keys.Prefix.actor.bounds();
+        if (self.rescore == .unknown) {
+            if ((cursors.score_version orelse 1) >= authority.version) {
+                self.rescore = .done;
+                return;
+            }
+            try self.rescore_position.reset(self.gpa, cursors.rescore_next orelse &bounds[0]);
+            self.rescore = .running;
+            log.info("rescore pass to score version {d} {s}", .{ authority.version, if (cursors.rescore_next == null) "starts" else "resumes" });
+        }
+        if (cursors.bridge) |bridge| {
+            if (cursors.next_change -| bridge > self.options.rescore_max_lag) return;
+        }
+        const batch = try self.store.begin(at);
+        errdefer batch.abort();
+        var found: Rescored = .{ .arena = self.scratch.allocator(), .now_ms = @intCast(at * 1000) };
+        _ = try scan.run(self.gpa, self.store.db(), &self.rescore_position, &bounds[1], .{ .limit = self.options.rescore_scan }, &found);
+        var changed: u64 = 0;
+        for (found.changed.items) |c| changed += (try batch.apply(.{ .quality_set = c })).changed;
+        try batch.setCursor(.{ .rescore = .{
+            .version = authority.version,
+            .next = if (self.rescore_position.done) "" else self.rescore_position.next.items,
+        } });
+        try batch.commit();
+        _ = self.counters.rescore_examined.fetchAdd(found.examined, .monotonic);
+        _ = self.counters.rescore_changed.fetchAdd(changed, .monotonic);
+        if (self.rescore_position.done) {
+            self.rescore = .done;
+            log.info("rescore pass to score version {d} done", .{authority.version});
+        }
+    }
+
     /// One step of the pass that makes a lapsed label stop hiding its actor:
     /// walk the next stretch of the label range and recompute `hidden` for
     /// every account holding an expired label. An actor whose flag is already
@@ -839,6 +926,8 @@ pub const Owner = struct {
             @memcpy(fresh.plc_cursor[0..fresh.plc_cursor_len], text[0..fresh.plc_cursor_len]);
         }
         fresh.cursors.plc = null;
+        fresh.cursors.rescore_next = null;
+        fresh.rescore_running = self.rescore == .running;
         for (std.enums.values(change.WalkPool)) |pool| {
             const state = try store_mod.read.walkState(self.store.db(), self.scratch.allocator(), pool.cursor());
             var walk: Walk = .{

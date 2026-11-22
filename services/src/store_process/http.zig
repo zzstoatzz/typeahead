@@ -18,6 +18,7 @@
 //! then a `/store/*` request with the right bearer is answered 503.
 
 const std = @import("std");
+const authority = @import("authority_score.zig");
 const store_mod = @import("../store/root.zig");
 const ingest = @import("../ingest.zig");
 const identity = @import("../identity.zig");
@@ -148,6 +149,10 @@ pub const HealthBody = struct {
     /// Since this process started.
     actors: struct { created: u64, gone: u64, reactivated: u64, pruned: u64, live_delta: i64 },
     housekeeping: struct { hidden_refreshed: u64, expiry_passes: u64, domain_sweeps: u64, changes_trimmed: u64 },
+    /// The pass that recomputes stored quality scores under a new formula:
+    /// the version every stored score follows (1 before any pass), the one
+    /// this build computes, and progress since this process started.
+    rescore: struct { score_version: u64, target_version: u64, running: bool, examined: u64, changed: u64 },
     identity: struct { leased: u64, lease_failed: u64, verified: u64, unverified: u64, no_handle: u64, did_failed: u64, retried: u64, commit_failed: u64 },
     plc: struct { pages: u64, operations: u64, failed: u64 },
     labels: struct { frames: u64, adopted: u64, malformed: u64, ignored: u64, commits: u64, commit_failed: u64, cursor: i64, newest_cts: i64 },
@@ -527,6 +532,13 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .reactivated = reactivated,
             .pruned = load(&c.tombstones_pruned),
             .live_delta = @as(i64, @intCast(created + reactivated)) - @as(i64, @intCast(gone)),
+        },
+        .rescore = .{
+            .score_version = health.cursors.score_version orelse 1,
+            .target_version = authority.version,
+            .running = health.rescore_running,
+            .examined = load(&c.rescore_examined),
+            .changed = load(&c.rescore_changed),
         },
         .housekeeping = .{
             .hidden_refreshed = load(&c.hidden_refreshed),

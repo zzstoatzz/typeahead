@@ -375,6 +375,7 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         .on_fatal = exitOnStoreFailure,
         .on_heartbeat = heartbeat,
         .startup_seconds = options.startup_seconds,
+        .rescore = true,
     }) catch |err| {
         log.err("store open failed: {s}", .{@errorName(err)});
         return err;

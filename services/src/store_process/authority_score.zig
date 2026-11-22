@@ -17,6 +17,11 @@
 
 const std = @import("std");
 
+/// The version of the formula above. A store whose scores were computed
+/// under an older one recomputes them all once (the owner's rescore pass).
+/// 1 had `+ log10(posts + 1) * 20`.
+pub const version: u64 = 2;
+
 fn words(x: f64) struct { hi: i32, lo: u32 } {
     const bits: u64 = @bitCast(x);
     return .{ .hi = @bitCast(@as(u32, @truncate(bits >> 32))), .lo = @truncate(bits) };

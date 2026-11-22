@@ -146,6 +146,18 @@ throttled, p90 42 to 45 ms). Do not flip to a freshly resynced slot at the
 shared size until a [latency round](#restarts-and-warm-up) against it is
 clean.
 
+An image that changes the quality score's formula raises
+`authority_score.version` in `services/src/store_process/authority_score.zig`.
+On its first start a slot then recomputes every stored score from the counts
+each account already holds, with no AppView calls, and the changed scores
+reach its index through the bridge like any other edit. The pass waits while
+the bridge is more than 200,000 changes behind, so it runs at the speed the
+index takes them: give the standby performance CPUs for it, as for a resync.
+`rescore` in the store's `/health` reports `score_version`, `target_version`,
+`running`, `examined` and `changed`. Flip only once `running` is false,
+`score_version` equals `target_version`, the bridge's `lag` is near zero and
+a latency round is clean. A restart resumes the pass where it stopped.
+
 ## Flip the route
 
 A flip is one conditional write to the route record. No Worker is deployed and

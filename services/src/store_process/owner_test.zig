@@ -317,3 +317,73 @@ test "a restarted owner commits at once and scans nothing until startup_seconds 
     try testing.expectEqual(f.now(), counted.taken_at);
     try testing.expect(counted.disk == null);
 }
+
+const rescore_created = "2023-04-27T00:00:00.000Z";
+const rescore_dids = [_][]const u8{ "did:plc:a1", "did:plc:a2", "did:plc:a3", "did:plc:a4", "did:plc:a5" };
+
+/// Five accounts holding a score under the old formula, the last one never
+/// answered for (score 0).
+fn seedOldScores(f: *Fixture) !void {
+    var seeds: std.ArrayList(store_mod.Change) = .empty;
+    const a = f.arena.allocator();
+    for (rescore_dids, 0..) |did, i| {
+        try seeds.append(a, .{ .profile = .{ .did = did, .handle = try std.fmt.allocPrint(a, "a{d}.test", .{i}) } });
+        try seeds.append(a, .{ .enrichment = .{ .did = did, .source = .bsky, .created_at = rescore_created, .followers_count = 1000 * (i + 1), .follows_count = 10, .posts_count = 50_000, .quality_score = if (i == 4) 0 else 999 } });
+    }
+    _ = try f.commit(seeds.items, .{ .bridge = 1 });
+}
+
+fn newScore(f: *Fixture, i: usize) u32 {
+    const authority = @import("authority_score.zig");
+    const profile = @import("profile.zig");
+    return @bitCast(authority.stored(authority.score(.{
+        .followers = @floatFromInt(1000 * (i + 1)),
+        .follows = 10,
+        .created_ms = profile.dateMs(rescore_created),
+        .now_ms = @intCast(f.now() * 1000),
+    })));
+}
+
+test "the rescore pass waits for the bridge, then recomputes every stored score from its counts once" {
+    const authority = @import("authority_score.zig");
+    const f = try Fixture.create(.{ .rescore = true, .rescore_scan = 2, .rescore_max_lag = 0 });
+    defer f.destroy();
+    try seedOldScores(f);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(f32, 999), (try f.actor(rescore_dids[0])).?.quality_score);
+    try testing.expectEqual(@as(u64, 0), f.owner.counters.rescore_examined.load(.monotonic));
+
+    f.owner.options.rescore_max_lag = 1_000_000;
+    // two actors a step, so the pass is part-way after one turn
+    _ = f.owner.turn(0);
+    try testing.expect((try f.cursors()).rescore_next != null);
+    for (0..5) |_| _ = f.owner.turn(0);
+    const done = try f.cursors();
+    try testing.expectEqual(@as(?u64, authority.version), done.score_version);
+    try testing.expectEqual(@as(?[]const u8, null), done.rescore_next);
+    for (rescore_dids[0..4], 0..) |did, i| try testing.expectEqual(newScore(f, i), @as(u32, @bitCast((try f.actor(did)).?.quality_score)));
+    try testing.expectEqual(@as(f32, 0), (try f.actor(rescore_dids[4])).?.quality_score);
+    try testing.expectEqual(@as(u64, 4), f.owner.counters.rescore_changed.load(.monotonic));
+
+    try f.restart();
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(u64, 0), f.owner.counters.rescore_examined.load(.monotonic));
+}
+
+test "a restarted rescore pass resumes from its stored position" {
+    const authority = @import("authority_score.zig");
+    const f = try Fixture.create(.{ .rescore = true, .rescore_scan = 2, .rescore_max_lag = 0 });
+    defer f.destroy();
+    try seedOldScores(f);
+    var buf: store_mod.keys.Buf = undefined;
+    const next = try store_mod.keys.actor(&buf, rescore_dids[2]);
+    _ = try f.commit(&.{}, .{ .rescore = .{ .version = authority.version, .next = next } });
+    try f.restart();
+    f.owner.options.rescore_max_lag = 1_000_000;
+    for (0..5) |_| _ = f.owner.turn(0);
+    try testing.expectEqual(@as(f32, 999), (try f.actor(rescore_dids[0])).?.quality_score);
+    try testing.expectEqual(@as(f32, 999), (try f.actor(rescore_dids[1])).?.quality_score);
+    try testing.expectEqual(newScore(f, 2), @as(u32, @bitCast((try f.actor(rescore_dids[2])).?.quality_score)));
+    try testing.expectEqual(newScore(f, 3), @as(u32, @bitCast((try f.actor(rescore_dids[3])).?.quality_score)));
+    try testing.expectEqual(@as(?u64, authority.version), (try f.cursors()).score_version);
+}
