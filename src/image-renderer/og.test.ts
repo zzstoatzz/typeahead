@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { compact, overview, overviewFigures } from "./og";
+import { compact, firstCard, firstTiles, overview, overviewFigures } from "./og";
 import type { StatsKvData } from "../types";
 
 test("compact: millions to one decimal, thousands rounded, small numbers exact", () => {
@@ -54,4 +54,26 @@ test("the default card carries the compact figures and does not define itself by
   expect(html).toContain("answered, all time");
   expect(html).not.toContain("hidden");
   expect(html.toLowerCase()).not.toContain("bluesky");
+});
+
+test("firstTiles: single letters and Bluesky CDN avatars only", () => {
+  const avatar = "https://cdn.bsky.app/img/avatar_thumbnail/plain/did:plc:x/abc@jpeg";
+  expect(firstTiles(JSON.stringify([["a", avatar], ["b", ""]]))).toEqual([{ letter: "a", avatar }, { letter: "b", avatar: "" }]);
+  for (const bad of [
+    [["a", "https://example.com/a.jpg"]], [["a", "http://cdn.bsky.app/x"]], [["ab", avatar]], [["A", avatar]],
+    [], Array.from({ length: 27 }, () => ["a", ""]), [["a"]], { a: avatar },
+  ]) expect(firstTiles(JSON.stringify(bad))).toBeNull();
+  expect(firstTiles("not json")).toBeNull();
+  expect(firstTiles(null)).toBeNull();
+});
+
+test("firstCard: every letter in order, a blank tile without an avatar, and the title", () => {
+  const tiles = [..."abcdefghijklmnopqrstuvwxyz"].map((letter) => ({ letter, avatar: "" }));
+  const images = tiles.map((_, i) => (i === 3 ? "" : "data:image/jpeg;base64,AAAA"));
+  const card = firstCard(tiles, images);
+  const letters = [...card.matchAll(/color:#fff;font-size:22px">([a-z])</g)].map((m) => m[1]).join("");
+  expect(letters).toBe("abcdefghijklmnopqrstuvwxyz");
+  expect(card.match(/<img /g)).toHaveLength(25);
+  expect(card).toContain("who comes up first, a to z");
+  expect(card).toContain("typeahead.waow.tech/first");
 });

@@ -48,6 +48,7 @@ test("/first renders live, keeps today's first places once, and keeps nothing fo
     expect(index.headers.get("Cache-Control")).toBe("public, max-age=60, s-maxage=600");
     const page = await index.text();
     expect(page.match(/class="tile"/g)).toHaveLength(26);
+    expect(page).toContain('<meta property="og:image" content="https://typeahead.waow.tech/og-image/first">');
     expect(page).toContain("a 1");
     expect(page).toContain("@fallback.test");
     expect(page).toContain("1 day");

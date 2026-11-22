@@ -108,10 +108,11 @@ export const TAGLINE = "Fast handle and display-name search across the whole atp
 
 /** Static link-preview tags for the pages whose content doesn't vary.
  *  /stats builds its own, because its preview describes the selected view. */
-export function ogTags(o: { title: string; description: string; path: string }): string {
+export function ogTags(o: { title: string; description: string; path: string; image?: { path: string; alt: string } }): string {
   const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const base = "https://typeahead.waow.tech";
-  const img = base + "/og-image?v=" + CARD_VERSION;
+  const img = base + (o.image?.path ?? "/og-image?v=" + CARD_VERSION);
+  const alt = o.image?.alt ?? CARD_ALT;
   return [
     `<title>${esc(o.title)}</title>`,
     `<meta name="description" content="${esc(o.description)}">`,
@@ -123,11 +124,11 @@ export function ogTags(o: { title: string; description: string; path: string }):
     `<meta property="og:image" content="${img}">`,
     `<meta property="og:image:width" content="1200">`,
     `<meta property="og:image:height" content="630">`,
-    `<meta property="og:image:alt" content="${esc(CARD_ALT)}">`,
+    `<meta property="og:image:alt" content="${esc(alt)}">`,
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta name="twitter:title" content="${esc(o.title)}">`,
     `<meta name="twitter:description" content="${esc(o.description)}">`,
     `<meta name="twitter:image" content="${img}">`,
-    `<meta name="twitter:image:alt" content="${esc(CARD_ALT)}">`,
+    `<meta name="twitter:image:alt" content="${esc(alt)}">`,
   ].join("\n  ");
 }

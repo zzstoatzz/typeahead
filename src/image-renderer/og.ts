@@ -1,4 +1,5 @@
 import { ImageResponse } from "workers-og";
+import * as z from "zod/mini";
 import type { StatsKvData } from "../types";
 import { FAVICON_SVG } from "../types";
 import { escHtml as esc } from "../utils";
@@ -263,3 +264,93 @@ export function handleAppleTouchIcon(): Response {
   });
 }
 
+
+/** One letter on the /first card: its avatar, or none. */
+export interface FirstTile {
+  letter: string;
+  avatar: string;
+}
+
+const AVATAR_HOST = "cdn.bsky.app";
+const tilesSchema = z.array(z.tuple([z.string().check(z.regex(/^[a-z]$/)), z.string()])).check(z.minLength(1), z.maxLength(26));
+
+/** The tiles a request names in `d`: JSON `[[letter, avatarUrl], …]`, at
+ *  most 26, a letter one character, and an avatar only from Bluesky's CDN.
+ *  The renderer fetches each avatar, so nothing else may be named. */
+export function firstTiles(raw: string | null): FirstTile[] | null {
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw ?? ""); } catch { return null; }
+  const entries = tilesSchema.safeParse(parsed);
+  if (!entries.success) return null;
+  const tiles: FirstTile[] = [];
+  for (const [letter, avatar] of entries.data) {
+    if (avatar) {
+      let url: URL;
+      try { url = new URL(avatar); } catch { return null; }
+      if (url.protocol !== "https:" || url.hostname !== AVATAR_HOST) return null;
+    }
+    tiles.push({ letter, avatar });
+  }
+  return tiles;
+}
+
+/** An avatar as a data URI satori can embed, or "" when it cannot be had. */
+async function embedded(url: string): Promise<string> {
+  if (!url) return "";
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    const type = response.headers.get("Content-Type") ?? "";
+    if (!response.ok || !/^image\/(jpeg|png)$/.test(type)) { await response.body?.cancel(); return ""; }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return `data:${type};base64,${btoa(binary)}`;
+  } catch { return ""; }
+}
+
+const PAD = 20, GAP = 8, COLS = 8;
+const CELL_W = Math.floor((W - 2 * PAD - (COLS - 1) * GAP) / COLS);
+const CELL_H = Math.floor((H - 2 * PAD - 3 * GAP) / 4);
+
+/** The /first card: the alphabet as a wall of avatars, a–p on two full rows,
+ *  q–z on the left of the next two, the title in the block they leave. */
+export function firstCard(tiles: readonly FirstTile[], images: readonly string[]): string {
+  const cell = (i: number) => {
+    const tile = tiles[i];
+    if (!tile) return `<div style="display:flex;width:${CELL_W}px;height:${CELL_H}px"></div>`;
+    const src = images[i];
+    const art = src
+      ? `<img src="${src}" width="${CELL_W}" height="${CELL_H}" style="width:${CELL_W}px;height:${CELL_H}px;border-radius:16px;object-fit:cover" />`
+      : `<div style="display:flex;width:${CELL_W}px;height:${CELL_H}px;border-radius:16px;background:${PANEL}"></div>`;
+    return `<div style="display:flex;position:relative;width:${CELL_W}px;height:${CELL_H}px">${art}
+      <div style="display:flex;position:absolute;top:6px;left:6px;padding:0 8px;height:30px;align-items:center;border-radius:9px;background:rgba(0,0,0,0.66);color:#fff;font-size:22px">${esc(tile.letter)}</div></div>`;
+  };
+  const row = (from: number, to: number) =>
+    `<div style="display:flex;gap:${GAP}px">${Array.from({ length: to - from }, (_, k) => cell(from + k)).join("")}</div>`;
+  const textW = 3 * CELL_W + 2 * GAP, textH = 2 * CELL_H + GAP;
+  // no whitespace between tags: satori lays a blank text node out as a
+  // child, and the gap either side of it moved whole rows by 8px
+  return `<div style="display:flex;flex-direction:column;gap:${GAP}px;width:${W}px;height:${H}px;padding:${PAD}px;background:${BG};font-family:'JetBrains Mono'">
+    ${row(0, 8)}${row(8, 16)}
+    <div style="display:flex;gap:${GAP}px">
+      <div style="display:flex;flex-direction:column;gap:${GAP}px">${row(16, 21)}${row(21, 26)}</div>
+      <div style="display:flex;flex-direction:column;justify-content:space-between;width:${textW}px;height:${textH}px;padding:14px 10px 8px 22px">
+        <div style="display:flex;align-items:center;color:${BRIGHT};font-size:30px">typeahead<div style="display:flex;width:15px;height:30px;margin-left:4px;background:${ACCENT}"></div></div>
+        <div style="display:flex;color:${BRIGHT};font-size:44px;line-height:1.12">who comes up first, a to z</div>
+        <div style="display:flex;color:${ACCENT};font-size:21px">typeahead.waow.tech/first</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+export async function handleFirstImage(request: Request): Promise<Response> {
+  const tiles = firstTiles(new URL(request.url).searchParams.get("d"));
+  if (!tiles) return new Response("Bad request", { status: 400 });
+  const images = await Promise.all(tiles.map((tile) => embedded(tile.avatar)));
+  return new ImageResponse(firstCard(tiles, images).replace(/>\s+</g, "><"), {
+    width: W,
+    height: H,
+    fonts: [{ name: "JetBrains Mono", data: await jetbrainsMono(), style: "normal" }],
+    headers: { "Cache-Control": "public, max-age=3600" },
+  });
+}

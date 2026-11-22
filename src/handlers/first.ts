@@ -60,3 +60,29 @@ export async function handleFirst(request: Request, env: Env, ctx: ExecutionCont
   if (lives.every((live) => live.ok)) ctx.waitUntil(cache.put(key, response.clone()));
   return response;
 }
+
+/** How long the /first link-preview image is kept at the edge. */
+export const IMAGE_TTL_S = 3600;
+
+/** A smaller copy of a Bluesky avatar, enough for a 138px tile, as JPEG:
+ *  without a suffix the CDN answers WebP, which the renderer cannot draw. */
+const thumbnail = (avatar: string) => avatar
+  ? avatar.replace("/img/avatar/plain/", "/img/avatar_thumbnail/plain/").replace(/@[a-z]+$/, "") + "@jpeg"
+  : "";
+
+/** `/og-image/first`: the link-preview card for /first, each letter's live
+ *  first place drawn by the private image renderer, cached for an hour. */
+export async function handleFirstImage(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const url = new URL(request.url);
+  const version = env.CF_VERSION_METADATA?.id ?? "local";
+  const key = new Request(`${url.origin}/first-cache/${searchCacheGeneration(env.SEARCH_CACHE_GENERATION)}/${version}/og-image`);
+  const cached = await caches.default.match(key);
+  if (cached) return cached;
+  const lives = await searchLive(env, ctx, TRACKED, KEPT);
+  const tiles = lives.map((live) => [live.query, live.ok ? thumbnail(live.actors[0]?.avatar ?? "") : ""]);
+  const rendered = await env.IMAGE_RENDERER.fetch(new Request(`https://image-renderer.internal/og-image/first?d=${encodeURIComponent(JSON.stringify(tiles))}`));
+  if (!rendered.ok) return new Response("image unavailable", { status: 503 });
+  const response = new Response(rendered.body, { headers: { "Content-Type": "image/png", "Cache-Control": `public, max-age=${IMAGE_TTL_S}` } });
+  if (lives.every((live) => live.ok)) ctx.waitUntil(caches.default.put(key, response.clone()));
+  return response;
+}

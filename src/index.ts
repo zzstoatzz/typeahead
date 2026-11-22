@@ -24,7 +24,7 @@ import { reputationPage } from "./pages/reputation";
 import { RequestTiming } from "./request-timing";
 import { trace } from "./worker-tracing";
 import { handleEval } from "./handlers/eval";
-import { handleFirst } from "./handlers/first";
+import { handleFirst, handleFirstImage } from "./handlers/first";
 import { robotsTxt, sitemapXml } from "./pages/sitemap";
 import { keepToday } from "./first";
 
@@ -197,6 +197,9 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
   if (pathname === "/health/control" && request.method === "GET") {
     return handleControlHealth(env);
+  }
+  if (pathname === "/og-image/first" && request.method === "GET") {
+    return handleFirstImage(request, env, ctx);
   }
   if (pathname === "/og-image" && request.method === "GET") {
     return env.IMAGE_RENDERER.fetch(request);

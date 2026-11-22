@@ -99,13 +99,15 @@ const STYLE = `${THEME_CSS}
     .note { color: var(--muted); margin-top: 1rem; font-size: 0.85rem; }
     .back { display: inline-block; margin-top: 1.5rem; color: var(--blue); }`;
 
+const FIRST_IMAGE = { path: "/og-image/first", alt: "the account that comes up first for each letter, a to z, as a grid of avatars" };
+
 function page(title: string, description: string, path: string, body: string): string {
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  ${ogTags({ title, description, path })}
+  ${ogTags({ title, description, path, image: FIRST_IMAGE })}
   ${FAVICON}
   ${THEME_HEAD}
   <style>${STYLE}</style>

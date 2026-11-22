@@ -101,7 +101,7 @@ export function endpointLabel(pathname: string): string {
   if (pathname.startsWith("/debug/")) return "debug";
   if (pathname === "/" || pathname === "/stats" || pathname === "/docs" ||
       pathname === "/reputation" || pathname === "/llms.txt" || pathname === "/eval" || pathname === "/eval/data.json" ||
-      pathname === "/og-image" || pathname === "/.well-known/atproto-did" ||
+      pathname === "/og-image" || pathname === "/og-image/first" || pathname === "/.well-known/atproto-did" ||
       pathname === "/favicon.svg" || pathname === "/apple-touch-icon.png" ||
       pathname === "/site.webmanifest" || pathname === "/first" || pathname.startsWith("/first/") ||
       pathname === "/sitemap.xml" || pathname === "/robots.txt") return "page";
