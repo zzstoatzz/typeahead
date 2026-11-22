@@ -209,7 +209,7 @@ test("/stats, /source-icon and the cron's materialization read the statistics da
   }
 });
 
-test("without the statistics binding /stats and the two statistics cron steps fail, and the cron still finishes", async () => {
+test("without the statistics binding /stats and the statistics cron steps fail, and the cron still finishes", async () => {
   const kv = new Map<string, string>();
   const KV = { get: async (key: string) => kv.get(key) ?? null, put: async (key: string, value: string) => { kv.set(key, value); } };
   const env = fakeEnv({ KV });
@@ -226,9 +226,9 @@ test("without the statistics binding /stats and the two statistics cron steps fa
   }
   const events = lines.map((line) => JSON.parse(line));
   expect(events.filter((event) => event.event === "cron_step_failed" && /no STATS_DB binding/.test(event.error)).map((event) => event.step))
-    .toEqual(["materializeStats", "recordProfile"]);
+    .toEqual(["materializeStats", "recordProfile", "keepFirsts"]);
   expect(Object.keys(events.find((event) => event.event === "cron_done").phases)).toEqual(
-    ["freshness", "recordSnapshot", "recordExclusions", "materializeStats", "recordProfile", "controlHealth", "pruneIndexRequests"]);
+    ["freshness", "recordSnapshot", "recordExclusions", "materializeStats", "recordProfile", "controlHealth", "keepFirsts", "pruneIndexRequests"]);
   expect(kv.has("stats_data")).toBe(false);
 });
 

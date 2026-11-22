@@ -24,6 +24,8 @@ import { reputationPage } from "./pages/reputation";
 import { RequestTiming } from "./request-timing";
 import { trace } from "./worker-tracing";
 import { handleEval } from "./handlers/eval";
+import { handleFirst } from "./handlers/first";
+import { keepToday } from "./first";
 
 /** Cloudflare kills a scheduled invocation at 15 minutes of wall time, with
  *  no exception and no log. A step is only started while this much of the
@@ -88,6 +90,12 @@ export default {
         if (health.ok) return;
         console.log(JSON.stringify({ event: "control_unhealthy", error: health.error }));
         await postWebhook(env, `**typeahead: the control database is not answering** — ${health.error}. Admin policy changes fail and indexing requests are not reaching store slots. See docs/operating.md.`);
+      }],
+      // first place per tracked query, once a day: a no-op read when a
+      // visit to /first already kept today
+      ["keepFirsts", async () => {
+        const kept = await keepToday(env, _ctx, statsDb(env));
+        if (kept) console.log(JSON.stringify({ event: "firsts_kept", rows: kept }));
       }],
       ["pruneIndexRequests", async () => {
         const pruned = await pruneIndexRequests(controlDb(env), Math.floor(Date.now() / 1000));
@@ -202,6 +210,11 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
   if ((pathname === "/eval" || pathname === "/eval/data.json") && request.method === "GET") {
     return handleEval(request, env);
+  }
+  if ((pathname === "/first" || pathname.startsWith("/first/")) && request.method === "GET") {
+    const { success } = await timing.limit(env.RATE_LIMITER, clientIP(request));
+    if (!success) return json({ error: "rate limited" }, 429);
+    return handleFirst(request, env, ctx);
   }
   if (pathname === "/reputation" && request.method === "GET") {
     return html(reputationPage());
