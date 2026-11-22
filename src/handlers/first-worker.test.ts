@@ -6,9 +6,12 @@ import { join } from "node:path";
 
 const MIGRATIONS = new URL("../../migrations/stats-d1/", import.meta.url).pathname;
 
-// The engine answers each letter with three accounts named after it; "z" is
+// The engine answers each letter with three accounts named after it, and reports
+// the most searches it held open at once as "peak"; "z" is
 // down, so the Worker answers it from the Bluesky fallback.
-const ENGINE = `export default {fetch(r){const q=new URL(r.url).searchParams.get('q');
+const ENGINE = `let open=0,peak=0;export default {async fetch(r){const q=new URL(r.url).searchParams.get('q');
+  if(q==='peak')return Response.json({actors:[{did:'did:plc:peak',handle:'peak.test',displayName:'peak '+peak}]});
+  open++;peak=Math.max(peak,open);await new Promise(resolve=>setTimeout(resolve,20));open--;
   if(q==='z')return Response.json({error:'down'},{status:503});
   if(q==='nobody')return Response.json({actors:[]});
   return Response.json({actors:[1,2,3].map(n=>({did:'did:plc:'+q.replace(/[^a-z]/g,'')+n,handle:q.replace(/[^a-z]/g,'')+n+'.test',displayName:q+' '+n}))});}}`;
@@ -66,6 +69,7 @@ test("/first renders live, keeps today's first places once, and keeps nothing fo
     expect(name).toContain("only single letters keep a history");
     expect(name).toContain("nate 1");
     expect(await (await get("/first/nobody")).text()).toContain("nobody comes up for this");
+    expect(await (await get("/first/peak")).text()).toMatch(/peak [1-6]</);
     await settle();
     expect(await rows("WHERE query NOT IN ('a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z')")).toEqual([]);
 

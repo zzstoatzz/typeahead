@@ -58,10 +58,17 @@ const answerSchema = z.object({
   })),
 });
 
+/** Searches one render or cron run has open at once. A Worker invocation
+ *  holds six outbound connections; more queue behind them while their
+ *  timeouts run, and a search that times out is answered by the Bluesky
+ *  fallback, which is not kept. */
+export const SEARCHES_AT_ONCE = 6;
+
 /** Ask the Worker's own search for each query, as the API would answer it:
- *  same moderation, cache and fallback, counted under `FIRST_CLIENT`. */
+ *  same moderation, cache and fallback, counted under `FIRST_CLIENT`. Answers
+ *  are in the order of `queries`. */
 export async function searchLive(env: Env, ctx: ExecutionContext, queries: readonly string[], limit: number): Promise<Live[]> {
-  return Promise.all(queries.map(async (query): Promise<Live> => {
+  const one = async (query: string): Promise<Live> => {
     const url = `${ORIGIN}/xrpc/tech.waow.typeahead.searchActors?q=${encodeURIComponent(query)}&limit=${limit}`;
     try {
       const response = await handleSearch(new Request(url, { headers: { "X-Client": FIRST_CLIENT } }), env, ctx);
@@ -72,7 +79,18 @@ export async function searchLive(env: Env, ctx: ExecutionContext, queries: reado
     } catch {
       return { query, ok: false };
     }
-  }));
+  };
+  const lives: Live[] = [];
+  let next = 0;
+  const worker = async () => {
+    while (next < queries.length) {
+      const i = next++;
+      // SAFETY: `i` is below `queries.length`, checked on the line above
+      lives[i] = await one(queries[i]!);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(SEARCHES_AT_ONCE, queries.length) }, worker));
+  return lives;
 }
 
 /** Tracked queries with no row for `day`. One read. */
@@ -90,6 +108,9 @@ export async function keep(db: SqlDb, day: number, lives: readonly Live[]): Prom
       "INSERT OR IGNORE INTO first_daily (day, query, rank, did, handle, display_name, avatar) VALUES (?, ?, ?, ?, ?, ?, ?)",
     ).bind(day, live.query, i + 1, actor.did, actor.handle, actor.displayName, actor.avatar))
     : []);
+  const unkept = lives.filter((live) => tracked(live.query) && !(live.ok && live.ours))
+    .map((live) => ({ query: live.query, reason: live.ok ? "fallback" : "failed" }));
+  if (unkept.length) console.log(JSON.stringify({ event: "first_not_kept", day, unkept }));
   if (!rows.length) return 0;
   await db.batch(rows, "write");
   return rows.length;
