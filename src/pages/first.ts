@@ -49,21 +49,35 @@ const STYLE = `${THEME_CSS}
     .tile { display: grid; grid-template-columns: 1.75rem 40px minmax(0, 1fr); align-items: center; column-gap: 0.65rem; padding: 0.65rem 0.75rem; min-height: 64px; height: 100%;
       color: inherit; text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
     .tile:hover { background: var(--hover); border-color: var(--line-2); }
-    .letter { font-size: 1.5rem; font-weight: 700; color: var(--accent); text-align: center; }
+    .art { display: contents; }
+    .tile .blank { width: 40px; height: 40px; }
+    .tile > .art > img, .tile > .art > .blank { grid-column: 2; grid-row: 1; }
+    .letter { grid-column: 1; grid-row: 1; font-size: 1.5rem; font-weight: 700; color: var(--accent); text-align: center; }
+    .tile .who { grid-column: 3; grid-row: 1; }
+    .days { display: none; }
     .streak { color: var(--dim); font-size: 0.7rem; }
     .none { color: var(--dim); }
     @media (max-width: 560px) {
-      body { padding-left: 10px; padding-right: 10px; }
-      .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-      .tile { grid-template-columns: 1fr; align-content: start; justify-items: center; row-gap: 6px; position: relative;
-        padding: 10px 4px 8px; min-height: 0; text-align: center; border-radius: 10px; }
-      .tile img, .tile .blank { width: 48px; height: 48px; }
-      .letter { position: absolute; top: 4px; left: 7px; font-size: 1.1rem; line-height: 1; }
-      .tile .who { align-items: center; width: 100%; }
-      .tile .name { font-size: 11.5px; line-height: 1.2; overflow-wrap: anywhere; }
-      .tile .handle { display: none; }
-      .tile .streak { font-size: 10px; margin-top: 2px; }
+      body { padding: calc(0.75rem + env(safe-area-inset-top)) 8px calc(2rem + env(safe-area-inset-bottom)); }
+      header { margin-bottom: 0.75rem; }
+      h1 { font-size: 1rem; }
+      .lede { display: none; }
+      form { margin: 0.6rem 0 0.5rem; }
+      form input, form button { min-height: 40px; }
+      .most { gap: 0.4rem; padding: 0; margin: 0 0 0.75rem; background: none; border: 0; font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+      .most img { width: 22px; height: 22px; }
+      .most > span:not(.letters) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
       .most .letters { letter-spacing: 0.1em; }
+      .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 4px; }
+      .tile { display: flex; flex-direction: column; gap: 4px; padding: 0; min-height: 0; text-align: center; background: none; border: 0; border-radius: 0; }
+      .tile:hover { background: none; }
+      .art { display: block; position: relative; }
+      .art img, .art .blank { width: 100%; height: auto; aspect-ratio: 1; border-radius: 12px; }
+      .art .letter, .art .days { position: absolute; height: 19px; line-height: 19px; padding: 0 5px; border-radius: 6px; background: rgba(0, 0, 0, 0.62); color: #fff; font-size: 0.75rem; font-weight: 700; }
+      .art .letter { top: 3px; left: 3px; min-width: 19px; }
+      .art .days { display: block; bottom: 3px; right: 3px; font-size: 10px; font-weight: 400; }
+      .tile .name { font-size: 10.5px; line-height: 1.2; overflow-wrap: anywhere; }
+      .tile .handle, .tile .streak { display: none; }
     }
     .query { font-size: 3rem; line-height: 1; color: var(--accent); font-weight: 700; word-break: break-all; margin-bottom: 1rem; }
     .places { list-style: none; display: grid; gap: 0.6rem; padding: 1rem; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
@@ -125,11 +139,12 @@ function mostLetters(tiles: readonly Tile[]): string {
 }
 
 function tile(entry: Tile): string {
-  const streak = entry.first ? `<span class="streak">${daysLabel(entry.days)}</span>` : "";
+  const art = entry.first ? avatar(entry.first, 40) : `<span class="blank"></span>`;
+  const badge = entry.first ? `<span class="days">${entry.days}d</span>` : "";
   const who = entry.first
-    ? `<span class="who"><span class="name">${name(entry.first)}</span><span class="handle">@${escHtml(entry.first.handle)}</span>${streak}</span>`
+    ? `<span class="who"><span class="name">${name(entry.first)}</span><span class="handle">@${escHtml(entry.first.handle)}</span><span class="streak">${daysLabel(entry.days)}</span></span>`
     : `<span class="who"><span class="none">unavailable</span></span>`;
-  return `<li><a class="tile" href="${href(entry.query)}"><span class="letter">${escHtml(entry.query)}</span>${entry.first ? avatar(entry.first, 40) : `<span class="blank" style="width:40px;height:40px"></span>`}${who}</a></li>`;
+  return `<li><a class="tile" href="${href(entry.query)}"><span class="art">${art}<span class="letter">${escHtml(entry.query)}</span>${badge}</span>${who}</a></li>`;
 }
 
 export function firstIndexPage(tiles: readonly Tile[]): string {
