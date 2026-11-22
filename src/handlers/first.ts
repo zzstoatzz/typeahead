@@ -7,6 +7,8 @@ import { searchCacheGeneration } from "./search-contract";
 
 /** How long a rendered page is served from the edge before it is searched again. */
 export const PAGE_TTL_S = 600;
+/** How long a browser keeps it: short, so a refresh after a deploy shows the new page. */
+export const BROWSER_TTL_S = 60;
 
 /** `/first`, `/first?q=…` and `/first/<query>`: rendered from live searches,
  *  cached at the edge for `PAGE_TTL_S`. A render is also what keeps today's
@@ -54,7 +56,7 @@ export async function handleFirst(request: Request, env: Env, ctx: ExecutionCont
     const slots = tracked(query) ? strip(live.ok ? live.actors[0] ?? null : null, today, past.get(query) ?? []) : null;
     body = firstQueryPage({ query, live, slots, reigns: slots ? reigns(slots) : [] });
   }
-  const response = html(body, { "Cache-Control": `public, max-age=${PAGE_TTL_S}` });
+  const response = html(body, { "Cache-Control": `public, max-age=${BROWSER_TTL_S}, s-maxage=${PAGE_TTL_S}` });
   if (lives.every((live) => live.ok)) ctx.waitUntil(cache.put(key, response.clone()));
   return response;
 }

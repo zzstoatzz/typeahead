@@ -540,8 +540,8 @@ time.
 `/first` shows who comes up first for each letter, and `/first/<query>` the
 top five for any query. Both are rendered from live searches through the
 Worker's own search, counted on `/stats` under the app `typeahead-first`, and
-cached at the edge for 10 minutes; a page is not cached when any of its
-searches failed.
+cached at the edge for 10 minutes and in browsers for one; a page is not
+cached when any of its searches failed, and each deploy starts a fresh cache.
 
 Each UTC day the first three places of every letter are kept in the
 `first_daily` table, once: by the first page render of the day, or else by
