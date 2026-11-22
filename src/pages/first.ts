@@ -1,6 +1,6 @@
 import { FAVICON } from "../types";
 import { escHtml } from "../utils";
-import { type Live, type Placed, type Reign, type Slot, HISTORY_DAYS } from "../first";
+import { type Live, type Placed, type Reign, type Slot, HISTORY_DAYS, MAX_SHOWN, SHOWN } from "../first";
 import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, ogTags } from "./theme";
 
 /** One letter on the index: its live first place and how long it has held it. */
@@ -13,6 +13,8 @@ export interface Tile {
 /** One query's page. `slots` is null for a query nobody keeps. */
 export interface QueryView {
   query: string;
+  /** Places asked for: a "show more" row appears when this many came back. */
+  shown: number;
   live: Live;
   slots: Slot[] | null;
   reigns: Reign[];
@@ -97,17 +99,25 @@ const STYLE = `${THEME_CSS}
     .reigns .swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
     .reigns b { color: var(--text); font-weight: 400; }
     .note { color: var(--muted); margin-top: 1rem; font-size: 0.85rem; }
-    .back { display: inline-block; margin-top: 1.5rem; color: var(--blue); }`;
+    .crumb { display: inline-block; color: var(--muted); text-decoration: none; font-size: 0.85rem; margin-bottom: 0.4rem; }
+    .qrow { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    .qrow .query { margin-bottom: 0; }
+    .share { flex: none; min-height: 36px; padding: 0 0.8rem; font-size: 0.8rem; }
+    .places .more { display: block; border-top: 1px solid var(--line); padding-top: 0.6rem; }
+    .places .more a { display: flex; justify-content: center; align-items: center; min-height: 40px; color: var(--muted); text-decoration: none; font-size: 0.85rem; }`;
 
 const FIRST_IMAGE = { path: "/og-image/first", alt: "the account that comes up first for each letter, a to z, as a grid of avatars" };
 
-function page(title: string, description: string, path: string, body: string): string {
+// copies the page's own address; the label says so for two seconds
+const SHARE_SCRIPT = `(function(){var b=document.getElementById('share');if(!b)return;b.addEventListener('click',function(){var done=function(){b.textContent='copied';setTimeout(function(){b.textContent='copy link'},2000)};if(navigator.clipboard)navigator.clipboard.writeText(location.href).then(done,function(){});})})()`;
+
+function page(title: string, description: string, path: string, body: string, image = FIRST_IMAGE): string {
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  ${ogTags({ title, description, path, image: FIRST_IMAGE })}
+  ${ogTags({ title, description, path, image })}
   ${FAVICON}
   ${THEME_HEAD}
   <style>${STYLE}</style>
@@ -183,19 +193,22 @@ function historyBlock(slots: readonly Slot[], reigns: readonly Reign[]): string 
 }
 
 export function firstQueryPage(view: QueryView): string {
-  const { query, live } = view;
+  const { query, live, shown } = view;
+  const more = live.ok && live.actors.length >= shown && shown < MAX_SHOWN
+    ? `<li class="more"><a href="${href(query)}?n=${shown + SHOWN}">show ${SHOWN} more</a></li>`
+    : "";
   const places = !live.ok
     ? `<p class="note">search is unavailable right now.</p>`
     : live.actors.length === 0
       ? `<p class="note">nobody comes up for this.</p>`
-      : `<ol class="places">${live.actors.map((actor, i) => `<li><span class="rank">${i + 1}</span>${avatar(actor, 36)}<a class="who" href="https://aturi.to/${escHtml(actor.did)}" target="_blank" rel="noopener"><span class="name">${name(actor)}</span><span class="handle">@${escHtml(actor.handle)}</span></a></li>`).join("")}</ol>`;
-  const kept = view.slots
-    ? historyBlock(view.slots, view.reigns)
-    : `<p class="note">only single letters keep a history; this is the live answer.</p>`;
-  return page(`typeahead — first for ${query}`, `Who comes up first when you type "${query}".`, href(query), `
+      : `<ol class="places">${live.actors.map((actor, i) => `<li><span class="rank">${i + 1}</span>${avatar(actor, 36)}<a class="who" href="https://aturi.to/${escHtml(actor.did)}" target="_blank" rel="noopener"><span class="name">${name(actor)}</span><span class="handle">@${escHtml(actor.handle)}</span></a></li>`).join("")}${more}</ol>`;
+  const kept = view.slots ? historyBlock(view.slots, view.reigns) : "";
+  const image = query.length === 1 ? FIRST_IMAGE : { path: `/og-image/first?q=${encodeURIComponent(query)}`, alt: `the accounts typeahead puts first for "${query}"` };
+  return page(`typeahead — the ${query}s`, `The accounts typeahead puts first for "${query}".`, href(query), `
   ${searchForm(query)}
-  <p class="query">${escHtml(query)}</p>
+  <a class="crumb" href="/first">← the a-list</a>
+  <div class="qrow"><p class="query">${escHtml(query)}</p><button class="theme-btn share" id="share" type="button">copy link</button></div>
   ${places}
   ${kept}
-  <a class="back" href="/first">all letters</a>`);
+  <script>${SHARE_SCRIPT}</script>`, image);
 }

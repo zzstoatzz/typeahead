@@ -75,5 +75,14 @@ test("firstCard: every letter in order, a blank tile without an avatar, and the 
   expect(letters).toBe("abcdefghijklmnopqrstuvwxyz");
   expect(card.match(/<img /g)).toHaveLength(25);
   expect(card).toContain("who comes up first, a to z");
-  expect(card).toContain("typeahead.waow.tech/first");
+  expect(card).toContain("typeahead.waow.tech");
+});
+
+test("firstCard: a query's card has no letter badges and its own title", () => {
+  const tiles = Array.from({ length: 12 }, () => ({ letter: "", avatar: "" }));
+  const card = firstCard(tiles, tiles.map(() => "data:image/jpeg;base64,AAAA"), "the nathaniels");
+  expect(card).not.toContain("font-size:22px");
+  expect(card).toContain(">the nathaniels<");
+  expect(card).not.toContain("who comes up first, a to z");
+  expect(firstTiles(JSON.stringify([["", "https://cdn.bsky.app/img/x@jpeg"]]))).toEqual([{ letter: "", avatar: "https://cdn.bsky.app/img/x@jpeg" }]);
 });

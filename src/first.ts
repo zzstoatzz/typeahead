@@ -11,8 +11,17 @@ export const LETTERS = [..."abcdefghijklmnopqrstuvwxyz"] as const;
 export const TRACKED: readonly string[] = [...LETTERS];
 /** Places kept per query per day. */
 export const KEPT = 3;
-/** Places shown for one query. */
-export const SHOWN = 5;
+/** Places shown for one query, and how many more each "show more" adds. */
+export const SHOWN = 10;
+/** The most places a query page shows. */
+export const MAX_SHOWN = 100;
+
+/** `?n=` as a count of places: a multiple of `SHOWN` up to `MAX_SHOWN`,
+ *  `SHOWN` when absent or anything else. */
+export function shownCount(raw: string | null): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= SHOWN && n <= MAX_SHOWN && n % SHOWN === 0 ? n : SHOWN;
+}
 export const HISTORY_DAYS = 30;
 export const MAX_QUERY = 64;
 const DAY_MS = 86_400_000;

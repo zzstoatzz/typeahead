@@ -265,14 +265,17 @@ export function handleAppleTouchIcon(): Response {
 }
 
 
-/** One letter on the /first card: its avatar, or none. */
+/** One tile on a /first card: its letter badge (empty for a query's card)
+ *  and its avatar, or none. */
 export interface FirstTile {
   letter: string;
   avatar: string;
 }
 
 const AVATAR_HOST = "cdn.bsky.app";
-const tilesSchema = z.array(z.tuple([z.string().check(z.regex(/^[a-z]$/)), z.string()])).check(z.minLength(1), z.maxLength(26));
+const tilesSchema = z.array(z.tuple([z.string().check(z.regex(/^[a-z]?$/)), z.string()])).check(z.minLength(1), z.maxLength(26));
+const DEFAULT_TITLE = "who comes up first, a to z";
+const MAX_TITLE = 72;
 
 /** The tiles a request names in `d`: JSON `[[letter, avatarUrl], …]`, at
  *  most 26, a letter one character, and an avatar only from Bluesky's CDN.
@@ -309,12 +312,14 @@ async function embedded(url: string): Promise<string> {
 }
 
 const PAD = 20, GAP = 8, COLS = 8;
+/** Smaller type for a longer title, so it stays inside its block. */
+const titleSize = (title: string) => (title.length <= 26 ? 44 : title.length <= 40 ? 34 : 26);
 const CELL_W = Math.floor((W - 2 * PAD - (COLS - 1) * GAP) / COLS);
 const CELL_H = Math.floor((H - 2 * PAD - 3 * GAP) / 4);
 
 /** The /first card: the alphabet as a wall of avatars, a–p on two full rows,
  *  q–z on the left of the next two, the title in the block they leave. */
-export function firstCard(tiles: readonly FirstTile[], images: readonly string[]): string {
+export function firstCard(tiles: readonly FirstTile[], images: readonly string[], title = DEFAULT_TITLE): string {
   const cell = (i: number) => {
     const tile = tiles[i];
     if (!tile) return `<div style="display:flex;width:${CELL_W}px;height:${CELL_H}px"></div>`;
@@ -322,8 +327,10 @@ export function firstCard(tiles: readonly FirstTile[], images: readonly string[]
     const art = src
       ? `<img src="${src}" width="${CELL_W}" height="${CELL_H}" style="width:${CELL_W}px;height:${CELL_H}px;border-radius:16px;object-fit:cover" />`
       : `<div style="display:flex;width:${CELL_W}px;height:${CELL_H}px;border-radius:16px;background:${PANEL}"></div>`;
-    return `<div style="display:flex;position:relative;width:${CELL_W}px;height:${CELL_H}px">${art}
-      <div style="display:flex;position:absolute;top:6px;left:6px;padding:0 8px;height:30px;align-items:center;border-radius:9px;background:rgba(0,0,0,0.66);color:#fff;font-size:22px">${esc(tile.letter)}</div></div>`;
+    const badge = tile.letter
+      ? `<div style="display:flex;position:absolute;top:6px;left:6px;padding:0 8px;height:30px;align-items:center;border-radius:9px;background:rgba(0,0,0,0.66);color:#fff;font-size:22px">${esc(tile.letter)}</div>`
+      : "";
+    return `<div style="display:flex;position:relative;width:${CELL_W}px;height:${CELL_H}px">${art}${badge}</div>`;
   };
   const row = (from: number, to: number) =>
     `<div style="display:flex;gap:${GAP}px">${Array.from({ length: to - from }, (_, k) => cell(from + k)).join("")}</div>`;
@@ -336,18 +343,20 @@ export function firstCard(tiles: readonly FirstTile[], images: readonly string[]
       <div style="display:flex;flex-direction:column;gap:${GAP}px">${row(16, 21)}${row(21, 26)}</div>
       <div style="display:flex;flex-direction:column;justify-content:space-between;width:${textW}px;height:${textH}px;padding:14px 10px 8px 22px">
         <div style="display:flex;align-items:center;color:${BRIGHT};font-size:30px">typeahead<div style="display:flex;width:15px;height:30px;margin-left:4px;background:${ACCENT}"></div></div>
-        <div style="display:flex;color:${BRIGHT};font-size:44px;line-height:1.12">who comes up first, a to z</div>
-        <div style="display:flex;color:${ACCENT};font-size:21px">typeahead.waow.tech/first</div>
+        <div style="display:flex;color:${BRIGHT};font-size:${titleSize(title)}px;line-height:1.12">${esc(title)}</div>
+        <div style="display:flex;color:${ACCENT};font-size:21px">typeahead.waow.tech</div>
       </div>
     </div>
   </div>`;
 }
 
 export async function handleFirstImage(request: Request): Promise<Response> {
-  const tiles = firstTiles(new URL(request.url).searchParams.get("d"));
-  if (!tiles) return new Response("Bad request", { status: 400 });
+  const params = new URL(request.url).searchParams;
+  const tiles = firstTiles(params.get("d"));
+  const title = params.get("t") ?? DEFAULT_TITLE;
+  if (!tiles || !title || title.length > MAX_TITLE) return new Response("Bad request", { status: 400 });
   const images = await Promise.all(tiles.map((tile) => embedded(tile.avatar)));
-  return new ImageResponse(firstCard(tiles, images).replace(/>\s+</g, "><"), {
+  return new ImageResponse(firstCard(tiles, images, title).replace(/>\s+</g, "><"), {
     width: W,
     height: H,
     fonts: [{ name: "JetBrains Mono", data: await jetbrainsMono(), style: "normal" }],

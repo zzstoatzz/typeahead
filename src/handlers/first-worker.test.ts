@@ -14,6 +14,7 @@ const ENGINE = `let open=0,peak=0;export default {async fetch(r){const q=new URL
   open++;peak=Math.max(peak,open);await new Promise(resolve=>setTimeout(resolve,20));open--;
   if(q==='z')return Response.json({error:'down'},{status:503});
   if(q==='nobody')return Response.json({actors:[]});
+  if(q==='many'){const n=Math.min(Number(new URL(r.url).searchParams.get('limit')),25);return Response.json({actors:Array.from({length:n},(_,i)=>({did:'did:plc:many'+i,handle:'many'+i+'.test'}))});}
   return Response.json({actors:[1,2,3].map(n=>({did:'did:plc:'+q.replace(/[^a-z]/g,'')+n,handle:q.replace(/[^a-z]/g,'')+n+'.test',displayName:q+' '+n}))});}}`;
 const BLUESKY = `export default {fetch(r){return Response.json({actors:[{did:'did:plc:fallback',handle:'fallback.test'}]});}}`;
 
@@ -67,12 +68,26 @@ test("/first renders live, keeps today's first places once, and keeps nothing fo
     expect(letter.match(/class="unkept"/g)).toHaveLength(29);
 
     const name = await (await get("/first/nate")).text();
-    expect(name).toContain("only single letters keep a history");
+    expect(name).toContain('<a class="crumb" href="/first">');
+    expect(name).toContain('id="share"');
+    expect(name).not.toContain("show 10 more");
+    expect(name).toContain('content="https://typeahead.waow.tech/og-image/first?q=nate"');
     expect(name).toContain("nate 1");
     // the reader picks their own client, as on the homepage
     expect(name).toContain('href="https://aturi.to/did:plc:nate1"');
     expect(name).not.toContain("bsky.app/profile");
     expect(await (await get("/first/nobody")).text()).toContain("nobody comes up for this");
+    const places = (page: string) => (page.match(/<span class="rank">/g) ?? []).length;
+    const many = await (await get("/first/many")).text();
+    expect(places(many)).toBe(10);
+    expect(many).toContain('href="/first/many?n=20">show 10 more</a>');
+    const more = await (await get("/first/many?n=20")).text();
+    expect(places(more)).toBe(20);
+    expect(more).toContain('href="/first/many?n=30"');
+    expect(places(await (await get("/first/many?n=25")).text())).toBe(10);
+    const last = await (await get("/first/many?n=30")).text();
+    expect(places(last)).toBe(25);
+    expect(last).not.toContain("show 10 more");
     expect(await (await get("/first/peak")).text()).toMatch(/peak [1-6]</);
     await settle();
     expect(await rows("WHERE query NOT IN ('a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z')")).toEqual([]);
