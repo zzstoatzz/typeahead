@@ -36,7 +36,7 @@ const STYLE = `${THEME_CSS}
     h1 { font-size: 1.25rem; color: var(--bright); }
     .lede { color: var(--muted); margin: 0.25rem 0 1.25rem; }
     form { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
-    form input { flex: 1; min-width: 0; min-height: 44px; padding: 0 0.75rem; font: inherit; color: var(--bright); background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; }
+    form input { flex: 1; min-width: 0; min-height: 44px; padding: 0 0.75rem; font: inherit; font-size: 16px; color: var(--bright); background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; }
     form button { min-height: 44px; padding: 0 1rem; font: inherit; color: var(--bg); background: var(--accent); border: 0; border-radius: 8px; cursor: pointer; }
     .most { display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem 0.9rem; margin-bottom: 1.25rem; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
     .most b { color: var(--bright); }
@@ -53,16 +53,18 @@ const STYLE = `${THEME_CSS}
     .streak { color: var(--dim); font-size: 0.7rem; }
     .none { color: var(--dim); }
     @media (max-width: 560px) {
-      .tiles { grid-template-columns: 1fr; gap: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
-      .tiles li + li { border-top: 1px solid var(--line); }
-      .tile { grid-template-columns: 1.1rem 32px minmax(0, 1fr) auto; min-height: 52px; padding: 0.5rem 0.75rem; background: none; border: 0; border-radius: 0; }
-      .tile img, .tile .blank { width: 32px; height: 32px; }
-      .letter { font-size: 1.1rem; }
-      .tile .streak { grid-column: 4; grid-row: 1; }
-      .tile .who .streak { display: none; }
+      body { padding-left: 10px; padding-right: 10px; }
+      .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+      .tile { grid-template-columns: 1fr; align-content: start; justify-items: center; row-gap: 6px; position: relative;
+        padding: 10px 4px 8px; min-height: 0; text-align: center; border-radius: 10px; }
+      .tile img, .tile .blank { width: 48px; height: 48px; }
+      .letter { position: absolute; top: 4px; left: 7px; font-size: 1.1rem; line-height: 1; }
+      .tile .who { align-items: center; width: 100%; }
+      .tile .name { font-size: 11.5px; line-height: 1.2; overflow-wrap: anywhere; }
+      .tile .handle { display: none; }
+      .tile .streak { font-size: 10px; margin-top: 2px; }
       .most .letters { letter-spacing: 0.1em; }
     }
-    @media (min-width: 561px) { .tile > .streak { display: none; } }
     .query { font-size: 3rem; line-height: 1; color: var(--accent); font-weight: 700; word-break: break-all; margin-bottom: 1rem; }
     .places { list-style: none; display: grid; gap: 0.6rem; padding: 1rem; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
     .places li { display: grid; grid-template-columns: 1.2rem 36px minmax(0, 1fr); gap: 0.65rem; align-items: center; }
@@ -127,7 +129,7 @@ function tile(entry: Tile): string {
   const who = entry.first
     ? `<span class="who"><span class="name">${name(entry.first)}</span><span class="handle">@${escHtml(entry.first.handle)}</span>${streak}</span>`
     : `<span class="who"><span class="none">unavailable</span></span>`;
-  return `<li><a class="tile" href="${href(entry.query)}"><span class="letter">${escHtml(entry.query)}</span>${entry.first ? avatar(entry.first, 40) : `<span class="blank" style="width:40px;height:40px"></span>`}${who}${streak}</a></li>`;
+  return `<li><a class="tile" href="${href(entry.query)}"><span class="letter">${escHtml(entry.query)}</span>${entry.first ? avatar(entry.first, 40) : `<span class="blank" style="width:40px;height:40px"></span>`}${who}</a></li>`;
 }
 
 export function firstIndexPage(tiles: readonly Tile[]): string {
