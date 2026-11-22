@@ -69,7 +69,7 @@ const STYLE = `${THEME_CSS}
       .most > span:not(.letters) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
       .most .letters { letter-spacing: 0.1em; }
       .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 4px; }
-      .tile { display: flex; flex-direction: column; gap: 4px; padding: 0; min-height: 0; text-align: center; background: none; border: 0; border-radius: 0; }
+      .tile { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 0; min-height: 0; text-align: center; background: none; border: 0; border-radius: 0; }
       .tile:hover { background: none; }
       .art { display: block; position: relative; }
       .art img, .art .blank { width: 100%; height: auto; aspect-ratio: 1; border-radius: 12px; }
