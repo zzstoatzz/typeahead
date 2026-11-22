@@ -1,14 +1,13 @@
 //! The quality score, a port of `computeAuthorityScore` in `src/utils.ts`:
 //!
 //!     log10(followers + 1) * 100
-//!   + log10(posts + 1) * 20
 //!   + 50 when followers > 100, follows > 0 and followers / follows > 10
 //!   + 100 more when that ratio is over 100
 //!   + 30 when the account is over 365 days old, 30 more over 1095 days
 //!   - 100 when it is under one day old, else - 50 under three days
 //!
 //! floored at zero and rounded to two decimals the way `Math.round` does.
-//! The inputs are the three counts, the profile's `createdAt` and the time
+//! The inputs are the follower and follow counts, the profile's `createdAt` and the time
 //! of the computation. The index stores the result as an f32.
 //!
 //! `Math.log10` is not correctly rounded and implementations differ in the
@@ -127,7 +126,6 @@ pub fn jsRound(x: f64) f64 {
 pub const Inputs = struct {
     followers: f64,
     follows: f64,
-    posts: f64,
     /// Milliseconds since the epoch of the profile's `createdAt`; null when
     /// it is absent or does not parse.
     created_ms: ?i64 = null,
@@ -137,9 +135,7 @@ pub const Inputs = struct {
 pub fn score(in: Inputs) f64 {
     const f = @max(0, in.followers);
     const fw = @max(0, in.follows);
-    const pc = @max(0, in.posts);
     const followers_influence = log10(f + 1) * 100;
-    const posts_influence = log10(pc + 1) * 20;
     var ratio_bonus: f64 = 0;
     var mature_bonus: f64 = 0;
     var freshness_penalty: f64 = 0;
@@ -158,7 +154,7 @@ pub fn score(in: Inputs) f64 {
         if (age_days > 365) mature_bonus += 30;
         if (age_days > 365 * 3) mature_bonus += 30;
     }
-    const total = @max(0, followers_influence + posts_influence + ratio_bonus + mature_bonus + freshness_penalty);
+    const total = @max(0, followers_influence + ratio_bonus + mature_bonus + freshness_penalty);
     return jsRound(total * 100) / 100;
 }
 

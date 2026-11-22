@@ -130,7 +130,6 @@ export interface ProfileFields {
 export interface AuthorityScoreBreakdown {
   score: number;
   followersInfluence: number;
-  postsInfluence: number;
   followerFollowRatioBonus: number;
   matureAccountBonus: number;
   freshness: {
@@ -153,7 +152,6 @@ export interface AuthorityScoreBreakdown {
  * spam without requiring graph-derived rank.
  *
  *   log10(followers+1) * 100   base influence (saturating)
- *   log10(posts+1) * 20        productivity (saturating)
  *   +50 / +100                 follower:follow ratio (real accounts follow fewer than follow them)
  *   +30 / +60                  age bonuses for 1y+ / 3y+ accounts
  *
@@ -172,7 +170,6 @@ export function computeAuthorityScoreBreakdown(p: {
   const pc = Math.max(0, Number(p.postsCount) || 0);
 
   const followersInfluence = Math.log10(f + 1) * 100;
-  const postsInfluence = Math.log10(pc + 1) * 20;
   let followerFollowRatioBonus = 0;
   let matureAccountBonus = 0;
   let freshnessPenalty = 0;
@@ -203,7 +200,7 @@ export function computeAuthorityScoreBreakdown(p: {
     }
   }
 
-  const score = Math.max(0, followersInfluence + postsInfluence + followerFollowRatioBonus + matureAccountBonus + freshnessPenalty);
+  const score = Math.max(0, followersInfluence + followerFollowRatioBonus + matureAccountBonus + freshnessPenalty);
   const inputs: AuthorityScoreBreakdown["inputs"] = {
     followersCount: f,
     followsCount: fw,
@@ -214,7 +211,6 @@ export function computeAuthorityScoreBreakdown(p: {
   return {
     score: Math.round(score * 100) / 100,
     followersInfluence: Math.round(followersInfluence * 100) / 100,
-    postsInfluence: Math.round(postsInfluence * 100) / 100,
     followerFollowRatioBonus,
     matureAccountBonus,
     freshness: {

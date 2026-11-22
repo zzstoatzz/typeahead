@@ -259,7 +259,6 @@ pub fn extract(arena: Allocator, profile: Value, now_ms: i64) !Fields {
         .quality_score = if (has_aggregates) authority.score(.{
             .followers = followers,
             .follows = follows,
-            .posts = posts,
             .created_ms = dateMs(created_at),
             .now_ms = now_ms,
         }) else 0,

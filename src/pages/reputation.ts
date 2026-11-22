@@ -427,7 +427,7 @@ export function reputationPage(): string {
       const exact = d.sampleQueryPositions.exactHandle;
       const display = d.sampleQueryPositions.displayName;
       const prefix = d.sampleQueryPositions.handlePrefix;
-      const maxPart = Math.max(b.followersInfluence, b.postsInfluence, b.followerFollowRatioBonus, b.matureAccountBonus, 1);
+      const maxPart = Math.max(b.followersInfluence, b.followerFollowRatioBonus, b.matureAccountBonus, 1);
       const pct = d.score.percentile || {};
       const applied = m.labelers.filter(l => l.labels.length);
       const appliedCount = applied.reduce((n, l) => n + l.labels.length, 0);
@@ -452,12 +452,11 @@ export function reputationPage(): string {
         '</div>' +
         '<div class="verdicts">' + verdictRank + verdictSearch + verdictMod + '</div>' +
         '<div class="secs">' +
-          sec('sec-rank', 'score breakdown', stale ? 'Recalculation: ' + signed(d.score.staleDelta) : 'Followers, posts, ratio, age',
+          sec('sec-rank', 'score breakdown', stale ? 'Recalculation: ' + signed(d.score.staleDelta) : 'Followers, ratio, age',
             statusBadge(stale ? 'warn' : 'good', stale ? 'pending write' : 'current'), true,
             '<div class="card-sub">Stored score: ' + num(d.score.stored) + '. Recalculated: ' + num(d.score.computedNow) + '. ' + (stale ? 'Search uses the stored value.' : '') + '</div>' +
             '<div class="bars" style="margin-top:0.9rem">' +
               bar('followers', b.followersInfluence, maxPart) +
-              bar('posts', b.postsInfluence, maxPart) +
               bar('follow ratio', b.followerFollowRatioBonus, maxPart) +
               bar('account age bonus', b.matureAccountBonus, maxPart) +
               bar('new-account penalty', Math.abs(b.freshness.penalty), maxPart, b.freshness.penalty < 0 ? 'penalty' : '') +

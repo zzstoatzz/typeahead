@@ -644,7 +644,12 @@ test "an enrichment moves the actor's quality key, logs one change, and reaches 
     try testing.expect(old_key == null);
 
     const indexed = (try server.field(a, subject, "quality_score")).?;
-    try testing.expectEqual(@as(f64, high.quality_score), indexed.float);
+    const indexed_score: f64 = switch (indexed) {
+        .float => |f| f,
+        .integer => |i| @floatFromInt(i),
+        else => return error.TestUnexpectedResult,
+    };
+    try testing.expectEqual(@as(f64, high.quality_score), indexed_score);
     try testing.expectEqual(@as(i64, 99999), (try server.field(a, subject, "followers_count")).?.integer);
 }
 

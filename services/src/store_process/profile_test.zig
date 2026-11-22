@@ -106,7 +106,6 @@ test "the score matches the Worker's to the bit, as an f64 and as the stored f32
         const got = authority.score(.{
             .followers = float(cells[0]),
             .follows = float(cells[1]),
-            .posts = float(cells[2]),
             .created_ms = switch (cells[3]) {
                 .null => null,
                 .integer => |ms| ms,
