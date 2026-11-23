@@ -24,6 +24,26 @@ dependencies:
   - rustc
   - cargo
   - gcc
+  - zstd
+
+# the compiler, cargo's registry and the release target dir persist between
+# runs, so only the workspace crate recompiles and crates.io is not refetched.
+environment:
+  CARGO_HOME: /workspace/repo/.ci-cache/cargo-home
+  CARGO_TARGET_DIR: /workspace/repo/.ci-cache/cargo-target
+
+cache:
+  - key: tantivy-build
+    hash:
+      - services/tantivy/Cargo.lock
+      - scripts/ci-zig.sh
+    fallback: true
+    compression-level: 1
+    when: always
+    paths:
+      - .zig
+      - .ci-cache
+
 steps:
   - name: tantivy-local-verification
     command: |
