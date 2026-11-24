@@ -35,6 +35,7 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
 /** KV `stats_data`, written hourly by materializeStats */
 export interface StatsKvData {
   metrics: { hour: number; searches: number; total_ms: number; cache_hits: number; cache_ms: number }[];
+  /** The stored total excludes hidden actors. Handle and avatar counts include them. */
   snapshots: { hour: number; total: number; with_handles: number; with_avatars: number; hidden: number }[];
   deltas: { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[];
   traffic_series?: { hour: number; domain: string; hits: number }[];

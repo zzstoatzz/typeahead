@@ -571,6 +571,9 @@ bunx wrangler d1 execute typeahead-stats --remote --command "SELECT date(day * 8
 Corpus counts describe indexed live actors and are maintained in the same
 Tantivy commit as actor changes. Legacy store snapshots also included live
 actors without handles (about 850 at cutover); history is retained.
+Hourly snapshots store the visible total and the hidden count separately.
+The `/stats` chart and link preview add them for the indexed total and use
+that same population for handle and avatar coverage.
 `/corpus` reads only that metadata; it never queries postings or scans documents.
 Missing or malformed counters are unknown, and the Worker retains published history.
 The `scanned_at` compatibility field now means the index commit timestamp.

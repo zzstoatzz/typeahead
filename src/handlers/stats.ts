@@ -21,7 +21,7 @@ export async function handleStats(request: Request, db: SqlDb, env: Env, ctx: Ex
   const range = ["1h", "24h", "7d", "30d", "all"].includes(reqUrl.searchParams.get("range") ?? "")
     ? reqUrl.searchParams.get("range")! : "7d";
   const norm = new URL("/stats", request.url);
-  norm.searchParams.set("metric", "expected-range-v7");
+  norm.searchParams.set("metric", "expected-range-v8");
   if (apps.length) norm.searchParams.set("apps", apps.join(","));
   if (range !== "7d") norm.searchParams.set("range", range);
   const cacheKey = new Request(norm.href);
@@ -89,7 +89,7 @@ export async function statsBody(
   // build snapshot points with timestamps
   const snapshots: SnapshotPoint[] = dbSnapshots.map((s) => ({
     ts: s.hour * 3_600_000,
-    total: s.total,
+    total: s.total + s.hidden,
     with_handles: s.with_handles,
     with_avatars: s.with_avatars,
   }));

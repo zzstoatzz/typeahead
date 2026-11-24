@@ -168,7 +168,7 @@ export function overviewFigures(kv: StatsKvData | null): OverviewFigures {
   const last = kv?.snapshots?.[kv.snapshots.length - 1];
   const searches = (kv?.metrics ?? []).reduce((s, r) => s + r.searches + (r.cache_hits ?? 0), 0);
   return {
-    total: last?.total ?? 0,
+    total: last ? last.total + last.hidden : 0,
     withHandles: last?.with_handles ?? 0,
     withAvatars: last?.with_avatars ?? 0,
     // until the first cron after 2026-09-20 has materialized the count, the

@@ -27,6 +27,25 @@ const kv = {
 };
 const storedJson = (key: string) => JSON.parse(stored.get(key) ?? "null");
 
+test("the stats page includes hidden actors in the trend and coverage denominators", async () => {
+  const kv = memoryKv();
+  await kv.put("stats_data", JSON.stringify({
+    metrics: [],
+    snapshots: [
+      { hour: 1, total: 80, with_handles: 95, with_avatars: 60, hidden: 20 },
+      { hour: 2, total: 90, with_handles: 100, with_avatars: 75, hidden: 10 },
+    ],
+    deltas: [],
+    materialized_at: Date.now(),
+  }));
+
+  const { body } = await statsBody(db, { KV: kv }, VIEWS[0]!);
+  expect(body).toMatch(/handle coverage<\/div>\s*<div class="value">100\.0%<\/div>/);
+  expect(body).toMatch(/avatar coverage<\/div>\s*<div class="value">75\.0%<\/div>/);
+  expect(body).toContain('"ts":3600000,"total":100,"with_handles":95');
+  expect(body).toContain('"ts":7200000,"total":100,"with_handles":100');
+});
+
 test("the migrations define the statistics tables and seed the actor counter", async () => {
   const { results } = await db.prepare(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name != 'd1_migrations' ORDER BY name",

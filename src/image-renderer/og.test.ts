@@ -21,7 +21,7 @@ const kv: StatsKvData = {
   ],
   snapshots: [
     { hour: 1, total: 1, with_handles: 1, with_avatars: 0, hidden: 0 },
-    { hour: 2, total: 11_901_310, with_handles: 11_901_310, with_avatars: 8_224_000, hidden: 2_310 },
+    { hour: 2, total: 11_898_000, with_handles: 11_901_310, with_avatars: 8_224_000, hidden: 3_310 },
   ],
   deltas: [],
   traffic_sources_total: 219,
