@@ -32,7 +32,7 @@ import { keepToday } from "./first";
  *  no exception and no log. A step is only started while this much of the
  *  run is left, so every run ends with a `cron_done` line — or a
  *  `cron_budget_exhausted` one naming what was skipped. */
-export const CRON_BUDGET_MS = 12 * 60 * 1000;
+const CRON_BUDGET_MS = 12 * 60 * 1000;
 
 /** What the old ingester, the bulk scripts and operators called to write the
  *  retired actor tables. A caller that is still running is told so, in the
@@ -164,7 +164,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
     return html(indexPage(env.PDS_UI_ENABLED === "1" && env.PDS_SEARCH_DISABLED !== "1"));
   }
   // atproto handle verification for the service's own account
-  // (SERVICE_DID is a wrangler var; set once the account exists)
+  // (SERVICE_DID is a Worker binding; set once the account exists)
   if (pathname === "/.well-known/atproto-did" && request.method === "GET") {
     if (!env.SERVICE_DID) return new Response("not found", { status: 404 });
     return new Response(env.SERVICE_DID, {

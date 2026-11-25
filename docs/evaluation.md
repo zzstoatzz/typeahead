@@ -133,8 +133,8 @@ just eval-upload-remote
 just deploy-worker
 ```
 
-The uploader uses the existing `KV` binding in `wrangler.jsonc` and the installed
-[Wrangler KV commands](https://developers.cloudflare.com/kv/reference/kv-commands/).
+The uploader uses the same KV namespace as [cloudflare.config.ts](../cloudflare.config.ts)
+and the installed `cf` KV commands.
 It writes each content-addressed `evaluation:run:<sha256>` snapshot, reads it
 back, then updates `evaluation:index:v1`. It merges existing run entries rather
 than replacing history with just the local files. Re-importing identical runs

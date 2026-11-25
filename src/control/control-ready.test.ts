@@ -1,25 +1,23 @@
-import { afterAll, expect, test } from "bun:test";
-import { controlStore } from "./control-d1-fixture";
-import { META_QUERY, metaRow, parseWranglerRows, schemaProblem } from "./control-ready";
+import { expect, test } from "bun:test";
+import { schemaProblem } from "./control-ready";
 
-const { control, dispose } = await controlStore();
-afterAll(dispose);
+const rows = (values: unknown[][]) => JSON.stringify([{
+  success: true,
+  results: { columns: ["name", "value"], rows: values },
+}]);
 
-test("wrangler's JSON output is read as one statement's rows", () => {
-  const output = JSON.stringify([{ results: [{ name: "policy_revision", value: 5 }], success: true, meta: { duration: 0 } }]);
-  expect(parseWranglerRows(output, metaRow)).toEqual([{ name: "policy_revision", value: 5 }]);
-  expect(() => parseWranglerRows("[]", metaRow)).toThrow();
-  expect(() => parseWranglerRows(JSON.stringify([{ results: [{ name: 5 }] }]), metaRow)).toThrow();
+test("cf raw query confirms both control metadata counters", () => {
+  expect(schemaProblem(rows([["generation", 1], ["policy_revision", 3]]))).toBeNull();
+  expect(schemaProblem(rows([["policy_revision", 3]]))).toContain("no generation");
+  expect(schemaProblem(rows([["generation", 1], ["policy_revision", 0]]))).toContain("no policy_revision");
 });
 
-test("the deploy gate's schema probe tells a migrated database from one that is not", async () => {
-  const rows = (await control.prepare(META_QUERY).all()).results;
-  expect(schemaProblem(JSON.stringify([{ results: rows, success: true }]))).toBeNull();
-  // only the first migration applied
-  expect(schemaProblem(JSON.stringify([{ results: [{ name: "policy_revision", value: 1 }] }]))).toBe("control_meta has no generation; apply migrations/control-d1");
-  expect(schemaProblem(JSON.stringify([{ results: [] }]))).toContain("control_meta has no generation");
-  // no schema at all: wrangler fails the statement and prints an error
-  for (const output of ["", "✘ [ERROR] no such table: control_meta: SQLITE_ERROR", "wrangler d1 execute exited 1: Couldn't find a D1 DB"]) {
-    expect(schemaProblem(output)).toContain("apply migrations/control-d1");
+test("a failed query or another response shape cannot admit a Worker deploy", () => {
+  for (const output of [
+    "", "cf d1 raw exited 1: no such table: control_meta", rows([["generation", "1"]]),
+    '[{"success": false, "results": {"columns": ["name", "value"], "rows": [["generation", 1], ["policy_revision", 1]]}}]',
+    '[{"success": true, "results": {"columns": ["value", "name"], "rows": []}}]',
+  ]) {
+    expect(schemaProblem(output)).toContain("the control database did not answer");
   }
 });

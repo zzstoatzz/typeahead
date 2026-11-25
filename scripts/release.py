@@ -19,9 +19,12 @@ usage:
 """
 
 import argparse
+import fcntl
+import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -31,8 +34,8 @@ from pathlib import Path
 
 RELEASE = re.compile(r'\d{4}\.\d{4}\.\d{6}')
 
-# Every Worker bundles from these, whatever its entry imports.
-SHARED_INPUTS = frozenset({'package.json', 'bun.lock'})
+DIGEST_LINE = re.compile(r'worker-build-v1 ([a-z-]+) ([0-9a-f]{64})')
+BUILD_OUTPUT = Path('.cloudflare/output/v1')
 
 SLOT_DOCKERIGNORE = 'deploy/slot/Dockerfile.dockerignore'
 SLOT_BUILD_FILES = frozenset({'deploy/slot/Dockerfile', SLOT_DOCKERIGNORE, 'deploy/slot/fly.toml'})
@@ -41,17 +44,17 @@ SLOT_BUILD_FILES = frozenset({'deploy/slot/Dockerfile', SLOT_DOCKERIGNORE, 'depl
 @dataclass(frozen=True)
 class Worker:
     name: str
-    config: str
+    mode: str | None
     recipe: str
 
 
 # Deploy order: the transport and the renderer go before the public Worker
 # that binds them.
 WORKERS = (
-    Worker('typeahead-search-transport', 'deploy/search-transport/wrangler.jsonc', 'deploy-search-transport'),
-    Worker('typeahead-image-renderer', 'deploy/image-renderer/wrangler.jsonc', 'deploy-image-renderer'),
-    Worker('typeahead-eval-collector', 'deploy/eval/wrangler.jsonc', 'deploy-eval-collector'),
-    Worker('typeahead', 'wrangler.jsonc', 'deploy-worker'),
+    Worker('typeahead-search-transport', 'transport', 'deploy-search-transport'),
+    Worker('typeahead-image-renderer', 'renderer', 'deploy-image-renderer'),
+    Worker('typeahead-eval-collector', 'collector', 'deploy-eval-collector'),
+    Worker('typeahead', None, 'deploy-worker'),
 )
 
 
@@ -61,6 +64,7 @@ class Plan:
     previous: str | None
     commits: tuple[str, ...]
     workers: tuple[Worker, ...]
+    digests: dict[str, str]
     slot_paths: tuple[str, ...]
 
     @property
@@ -95,36 +99,58 @@ def previous_release(root: Path) -> str | None:
     return latest_release(git(root, 'tag', '--merged', 'HEAD').splitlines())
 
 
-def repo_inputs(root: Path, config: str, bundled: list[str]) -> frozenset[str]:
-    """The files in this repository a Worker is built from.
-
-    esbuild names each bundled file relative to the directory of the Worker's
-    configuration. Dependencies resolve outside the tracked tree and are
-    covered by the lockfile instead.
-    """
-    base = (root / config).parent
-    inputs = {config}
-    for name in bundled:
-        path = Path(os.path.normpath(base / name))
-        if not path.is_relative_to(root):
-            continue
-        relative = path.relative_to(root).as_posix()
-        if 'node_modules' not in relative.split('/'):
-            inputs.add(relative)
-    return frozenset(inputs | SHARED_INPUTS)
+def artifact_digest(output: Path) -> str:
+    if not (output / 'config.json').is_file() or not (output / 'workers/default/worker.config.json').is_file():
+        raise Refused('cf build did not produce a complete Worker artifact')
+    files: dict[str, str] = {}
+    for path in sorted(output.rglob('*')):
+        mode = path.lstat().st_mode
+        if stat.S_ISREG(mode):
+            with path.open('rb') as file:
+                files[path.relative_to(output).as_posix()] = hashlib.file_digest(file, 'sha256').hexdigest()
+        elif not stat.S_ISDIR(mode):
+            raise Refused(f'unexpected file in cf Build Output: {path.relative_to(output)}')
+    return hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
 
 
-def bundle_inputs(root: Path, worker: Worker) -> frozenset[str]:
-    with tempfile.TemporaryDirectory(prefix='typeahead-release-') as out:
-        subprocess.run(
-            ['bunx', 'wrangler', 'deploy', '-c', worker.config, '--dry-run', '--outdir', out, '--metafile'],
-            cwd=root,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        bundled = json.loads((Path(out) / 'bundle-meta.json').read_text())['inputs']
-    return repo_inputs(root, worker.config, list(bundled))
+def prepare_build(root: Path, head: str, project: Path) -> None:
+    archive = project.parent / 'source.tar'
+    git(root, 'archive', f'--output={archive}', head)
+    subprocess.run(['tar', '-xf', archive, '-C', project], check=True, capture_output=True, text=True)
+    archive.unlink()
+    subprocess.run(['bun', 'install', '--frozen-lockfile'], cwd=project, check=True, capture_output=True, text=True)
+
+
+def build_workers(project: Path, artifacts: Path) -> dict[str, str]:
+    digests = {}
+    for worker in WORKERS:
+        print(f'building {worker.name}')
+        cmd = [str(project / 'node_modules/.bin/cf'), 'build']
+        if worker.mode:
+            cmd += ['--mode', worker.mode]
+        subprocess.run(cmd, cwd=project, check=True, capture_output=True, text=True)
+        output = project / BUILD_OUTPUT
+        digests[worker.name] = artifact_digest(output)
+        output.rename(artifacts / worker.name)
+    return digests
+
+
+def released_digests(root: Path, previous: str | None) -> dict[str, str]:
+    if previous is None:
+        return {}
+    message = git(root, 'for-each-ref', '--format=%(contents)', f'refs/tags/{previous}')
+    lines = [line for line in message.splitlines() if line.startswith('worker-build-')]
+    if not lines:
+        return {}
+    digests = {}
+    for line in lines:
+        match = DIGEST_LINE.fullmatch(line)
+        if match is None or match[1] in digests:
+            raise Refused(f'invalid Worker build digests on release tag {previous}')
+        digests[match[1]] = match[2]
+    if set(digests) != {worker.name for worker in WORKERS}:
+        raise Refused(f'incomplete Worker build digests on release tag {previous}')
+    return digests
 
 
 def slot_inputs(dockerignore: str) -> frozenset[str]:
@@ -137,17 +163,34 @@ def touched(changed: frozenset[str], inputs: frozenset[str]) -> tuple[str, ...]:
     return tuple(sorted(path for path in changed if any(path == item or path.startswith(item + '/') for item in inputs)))
 
 
-def make_plan(root: Path, head: str, *, every_worker: bool) -> Plan:
-    previous = previous_release(root)
-    if previous is None:
-        return Plan(head, None, (), WORKERS, ())
-    commits = tuple(git(root, 'log', '--oneline', f'{previous}..HEAD').splitlines())
-    changed = frozenset(git(root, 'diff', '--name-only', previous, 'HEAD').splitlines())
-    workers = WORKERS if every_worker else tuple(
-        worker for worker in WORKERS if touched(changed, bundle_inputs(root, worker))
+def make_plan(
+    root: Path, head: str, previous: str | None, digests: dict[str, str],
+    pending: set[str], *, every_worker: bool,
+) -> Plan:
+    released = released_digests(root, previous)
+    workers = tuple(
+        worker for worker in WORKERS
+        if every_worker or worker.name in pending or digests[worker.name] != released.get(worker.name)
     )
-    slot_paths = touched(changed, slot_inputs((root / SLOT_DOCKERIGNORE).read_text()))
-    return Plan(head, previous, commits, workers, slot_paths)
+    if previous is None:
+        return Plan(head, None, (), workers, digests, ())
+    commits = tuple(git(root, 'log', '--oneline', f'{previous}..{head}').splitlines())
+    changed = frozenset(git(root, 'diff', '--name-only', '--no-renames', previous, head).splitlines())
+    slot_paths = touched(changed, slot_inputs(git(root, 'show', f'{head}:{SLOT_DOCKERIGNORE}')))
+    return Plan(head, previous, commits, workers, digests, slot_paths)
+
+
+def pending_workers(path: Path, previous: str | None) -> set[str]:
+    if not path.exists():
+        return set()
+    pending = json.loads(path.read_text())
+    return set(pending['workers']) if pending['previous'] == previous else set()
+
+
+def record_attempt(path: Path, previous: str | None, pending: set[str]) -> None:
+    temporary = path.with_suffix('.tmp')
+    temporary.write_text(json.dumps({'previous': previous, 'workers': sorted(pending)}) + '\n')
+    temporary.replace(path)
 
 
 def describe(plan: Plan) -> str:
@@ -169,16 +212,67 @@ def tag_message(version: str, plan: Plan) -> str:
     lines += ['workers: ' + (', '.join(worker.name for worker in plan.workers) or 'none')]
     if plan.slot_paths:
         lines += ['slot image inputs changed']
+    lines += ['', *(f'worker-build-v1 {name} {digest}' for name, digest in sorted(plan.digests.items()))]
     return '\n'.join(lines) + '\n'
 
 
 def tag_and_push(root: Path, version: str, plan: Plan) -> None:
+    ref = f'refs/tags/{version}'
     git(root, 'tag', '--annotate', version, plan.head, '--message', tag_message(version, plan))
-    git(root, 'push', 'origin', f'refs/tags/{version}')
+    tag = git(root, 'rev-parse', ref)
+    try:
+        git(root, 'push', 'origin', ref)
+    except subprocess.CalledProcessError:
+        git(root, 'update-ref', '-d', ref, tag)
+        raise
 
 
-def deploy(root: Path, worker: Worker) -> bool:
-    return subprocess.run(['just', worker.recipe], cwd=root, check=False).returncode == 0
+def deploy(root: Path, worker: Worker, project: Path, head: str) -> bool:
+    env = {**os.environ, 'TYPEAHEAD_RELEASE_PROJECT': str(project), 'TYPEAHEAD_RELEASE_HEAD': head}
+    return subprocess.run(['just', worker.recipe], cwd=root, env=env, check=False).returncode == 0
+
+
+def release(root: Path, args: argparse.Namespace, state: Path, scratch: Path) -> int:
+    head = require_published(root)
+    previous = previous_release(root)
+    pending = pending_workers(state, previous)
+    project = scratch / 'project'
+    artifacts = scratch / 'artifacts'
+    project.mkdir()
+    artifacts.mkdir()
+    prepare_build(root, head, project)
+    digests = build_workers(project, artifacts)
+    plan = make_plan(root, head, previous, digests, pending, every_worker=args.all)
+    print(describe(plan))
+    if plan.empty:
+        print('nothing to release: no Worker and no slot image input changed', file=sys.stderr)
+        return 1
+    if args.plan:
+        return 0
+    if not args.yes and input('deploy and tag? [y/N] ').strip().lower() != 'y':
+        return 1
+
+    if require_published(root) != head or previous_release(root) != previous:
+        raise Refused('the published commit or release tag changed during planning; rerun the release')
+    for worker in plan.workers:
+        print(f'--- {worker.name} ---')
+        pending.add(worker.name)
+        record_attempt(state, previous, pending)
+        (artifacts / worker.name).rename(project / BUILD_OUTPUT)
+        if not deploy(root, worker, project, head):
+            print(f'{worker.name} failed; nothing is tagged. Fix it and run the release again.', file=sys.stderr)
+            return 1
+        (project / BUILD_OUTPUT).rename(artifacts / worker.name)
+
+    if require_published(root) != head or previous_release(root) != previous:
+        raise Refused('the published commit or release tag changed during deployment; rerun the release')
+    version = datetime.now(UTC).strftime('%Y.%m%d.%H%M%S')
+    tag_and_push(root, version, plan)
+    state.unlink(missing_ok=True)
+    print(f'released {version}')
+    if plan.slot_paths:
+        print('slot image inputs changed and no slot was deployed: docs/operating.md#upgrade-the-slots')
+    return 0
 
 
 def main() -> int:
@@ -189,36 +283,21 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(git(Path.cwd(), 'rev-parse', '--show-toplevel'))
+    common = Path(git(root, 'rev-parse', '--path-format=absolute', '--git-common-dir'))
     try:
-        head = require_published(root)
-        plan = make_plan(root, head, every_worker=args.all)
-    except Refused as refusal:
-        print(refusal, file=sys.stderr)
+        with (common / 'typeahead-release.lock').open('a') as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as error:
+                raise Refused('a release is already running in this repository') from error
+            with tempfile.TemporaryDirectory(prefix='typeahead-release-') as scratch:
+                return release(root, args, common / 'typeahead-release-pending.json', Path(scratch))
+    except (Refused, OSError, ValueError) as failure:
+        print(failure, file=sys.stderr)
         return 1
     except subprocess.CalledProcessError as failure:
         print(f'{" ".join(failure.cmd)} failed:\n{failure.stderr}', file=sys.stderr)
         return 1
-    print(describe(plan))
-    if plan.empty:
-        print('nothing to release: no Worker and no slot image input changed', file=sys.stderr)
-        return 1
-    if args.plan:
-        return 0
-    if not args.yes and input('deploy and tag? [y/N] ').strip().lower() != 'y':
-        return 1
-
-    for worker in plan.workers:
-        print(f'--- {worker.name} ---')
-        if not deploy(root, worker):
-            print(f'{worker.name} failed; nothing is tagged. Fix it and run the release again.', file=sys.stderr)
-            return 1
-
-    version = datetime.now(UTC).strftime('%Y.%m%d.%H%M%S')
-    tag_and_push(root, version, plan)
-    print(f'released {version}')
-    if plan.slot_paths:
-        print('slot image inputs changed and no slot was deployed: docs/operating.md#upgrade-the-slots')
-    return 0
 
 
 if __name__ == '__main__':

@@ -434,7 +434,8 @@ over by themselves. If it is restored to an earlier time with D1 Time Travel,
 it comes back with its old generation, so give it a new one straight away:
 
 ```sh
-bunx wrangler d1 execute typeahead-control --remote --command \
+CONTROL_DB_ID=$(bun -e 'import { CONTROL_DB_ID } from "./cloudflare.config"; console.log(CONTROL_DB_ID)')
+bunx cf d1 query "$CONTROL_DB_ID" --sql \
   "UPDATE control_meta SET value = abs(random() % 9007199254740991) + 1 WHERE name = 'generation'"
 ```
 
@@ -442,39 +443,46 @@ Until that runs, slots refuse the restored policy as older than theirs and
 miss requests logged under positions they have passed.
 
 Migrations are in `migrations/control-d1`:
-`bunx wrangler d1 migrations apply typeahead-control --remote`.
+`bunx cf d1 migrations apply "$CONTROL_DB_ID" --dir migrations/control-d1`.
 
 ## Release
 
 A release tag is `YYYY.MMDD.HHMMSS` in UTC. It names a commit of `origin/main`
-whose Workers are deployed and passed their smoke suites; the newest one is
-what the Workers run.
+whose Worker artifacts are deployed and have passed the applicable smoke gates.
+Its annotation records a Build Output digest for every Worker. To deploy, sign
+in with `bunx cf auth login` or use an existing `CLOUDFLARE_API_TOKEN`.
 
 ```sh
-just release --plan   # what would deploy, and nothing else
+just release --plan   # build locally and show what would deploy
 just release          # the plan, a prompt, the deploys, the tag
 just changelog        # commits since the last release
 ```
 
 `just release` refuses anything but a clean checkout of `origin/main`. It
-deploys only the Workers whose bundle inputs changed since the last release
-tag, read from each Worker's esbuild metafile along with its configuration,
-`package.json` and `bun.lock`. `--all` deploys every Worker. The order is
-transport, renderer, eval collector, public Worker, each through its own
-recipe below. A release with no earlier tag deploys all four.
+builds all four Worker modes from that commit and the frozen lockfile in a
+temporary project. It compares each complete Build Output with the latest
+release tag's digest, then deploys only the changed artifacts using
+`cf deploy --prebuilt`. The order is transport, renderer, eval collector,
+public Worker. The first release from a tag without digests deploys all four
+to establish the baseline. `--all` forces all four through the same gates.
 
-The tag is created and pushed only after every deploy passes. When one fails,
-the Workers before it are already deployed and nothing is tagged: fix it and
-release again.
+The tag is pushed after all selected deploys and their gates pass. If a
+deploy or smoke gate fails, production may have changed and no new tag is
+pushed. Rerun the release from the same checkout after fixing the failure.
+A local record of attempted Workers also puts them back in the plan if
+their source was reverted in the meantime. Use `just release --all` when
+recovering from a partial release on a different machine.
 
 Slots are never deployed from here. When files in the slot image's build
 context changed, the plan lists them and the release still tags the commit;
 [upgrade the slots](#upgrade-the-slots) from that tag if the image differs.
-Changes to nothing but documentation, tests or scripts are not a release.
+Changes that leave every Worker artifact and the slot inputs identical need no release.
 
 ## Deploy the Workers
 
-A release runs these. Run one by hand to deploy a single Worker without a tag.
+A release runs these. A direct deploy can build and deploy one Worker without
+a release tag. Use `just release --all` to reconcile the tagged baseline after
+out-of-band production changes.
 
 ```sh
 just deploy-worker            # public Worker, then the API and image smoke suites
@@ -485,21 +493,20 @@ just deploy-eval-collector    # eval collector; it has no HTTP surface to smoke
 
 Every deploy recipe runs `just published` first, which refuses anything but a
 clean checkout of `origin/main`, then lints and type-checks. Each labels the
-Worker version with the commit it was built from; `bunx wrangler deployments
-list` (with `-c` for a Worker other than the public one) shows it.
+Worker Version with the commit it was built from. Inspect it with
+`bunx cf workers versions list --worker <worker-name>`.
 `just deploy-worker-only` skips the smoke suites.
 
 `just deploy-worker` and `just deploy-worker-only` run `just control-ready`
-first. It refuses to deploy while `wrangler.jsonc` has the placeholder
-`database_id` for `CONTROL_DB`, or while the control database lacks its
-schema, which it reads through wrangler. Without the schema every admin
+first. It refuses to deploy while `CONTROL_DB_ID` is a placeholder or
+`cf d1 raw` cannot confirm the control database schema. Without it every admin
 policy change fails and no indexing request is logged.
 
 Deploy the renderer before a public Worker that changes how it calls it. The
 transport accepts only the slot origins listed in `src/transport/search-route.ts`; a
 new slot's origin has to be deployed there before a record can name it.
 
-The public Worker's settings are in `wrangler.jsonc`. Profiles, the
+The public Worker's settings are in `cloudflare.config.ts`. Profiles, the
 reputation page and the account counts on `/stats` are read from the serving
 slot through the transport. Policy and index requests are in the
 `typeahead-control` D1 database and statistics in `typeahead-stats`. The
@@ -533,11 +540,12 @@ wrong.
   out of the app list.
 
 ```sh
-bunx wrangler d1 execute typeahead-stats --remote --command "SELECT datetime(bucket * 300, 'unixepoch') AS bucket_utc, sum(hits) AS answers FROM request_buckets GROUP BY bucket ORDER BY bucket DESC LIMIT 6"
+STATS_DB_ID=$(bun -e 'import { STATS_DB_ID } from "./cloudflare.config"; console.log(STATS_DB_ID)')
+bunx cf d1 query "$STATS_DB_ID" --sql "SELECT datetime(bucket * 300, 'unixepoch') AS bucket_utc, sum(hits) AS answers FROM request_buckets GROUP BY bucket ORDER BY bucket DESC LIMIT 6"
 ```
 
 Migrations are in `migrations/stats-d1`; apply a new one with
-`bunx wrangler d1 migrations apply typeahead-stats --remote` before deploying
+`bunx cf d1 migrations apply "$STATS_DB_ID" --dir migrations/stats-d1` before deploying
 the Worker that reads it. Worker logs are in Cloudflare's
 Workers Logs for `typeahead`: `worker_request_timing` per request,
 `cron_done` and `cron_step_failed` per cron run.
@@ -563,7 +571,8 @@ not this service's ranking; the next cron run tries again. Only letters are
 kept, so a visitor's queries cannot grow the table.
 
 ```sh
-bunx wrangler d1 execute typeahead-stats --remote --command "SELECT date(day * 86400, 'unixepoch') AS day, query, handle FROM first_daily WHERE rank = 1 ORDER BY day DESC, query LIMIT 26"
+STATS_DB_ID=$(bun -e 'import { STATS_DB_ID } from "./cloudflare.config"; console.log(STATS_DB_ID)')
+bunx cf d1 query "$STATS_DB_ID" --sql "SELECT date(day * 86400, 'unixepoch') AS day, query, handle FROM first_daily WHERE rank = 1 ORDER BY day DESC, query LIMIT 26"
 ```
 
 ### Statistics isolation
@@ -670,8 +679,8 @@ filter.
 To send every unscoped search to Bluesky by hand:
 
 ```sh
-bunx wrangler secret put EMERGENCY_PROXY_BSKY      # any value; on
-bunx wrangler secret delete EMERGENCY_PROXY_BSKY   # off
+bunx cf workers secrets update EMERGENCY_PROXY_BSKY --worker typeahead --type secret_text --text 1
+bunx cf workers secrets delete EMERGENCY_PROXY_BSKY --worker typeahead
 ```
 
 Restore search first, with a [failover](#fail-over) or this switch, and

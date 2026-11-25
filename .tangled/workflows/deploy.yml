@@ -6,16 +6,14 @@ when:
       - "src/**"
       - "scripts/**/*.ts"
       - "scripts/ci-workerd.sh"
-      - "deploy/search-transport/**"
-      - "deploy/image-renderer/**"
-      - "deploy/eval/**"
       - "migrations/**"
       - "lexicons/**"
       - "tools/**"
       - "package.json"
       - "bun.lock"
       - "tsconfig.json"
-      - "wrangler.jsonc"
+      - "cloudflare.config.ts"
+      - "wrangler.config.ts"
       - ".oxlintrc.json"
       - ".tangled/workflows/deploy.yml"
 
@@ -28,29 +26,28 @@ image: nixos
 # can leave `bun test` hanging. 1.3.14 does the same; 1.4.0 and 1.4.4 do not.
 dependencies:
   - "github:nixos/nixpkgs/d4f25a3e562008648d45bcf2d70bcc7422cad84e#bun"
-  - nodejs
+  - nodejs_22
   - gcc
   - patchelf
   - coreutils
 
 # Deploy is intentionally NOT done from tangled CI — the secrets path has been
 # unreliable (rolled values don't propagate, see commits 0ff3acb/eacaf7f). The
-# worker is deployed manually with `bunx wrangler deploy` using CF_NEW from
-# .env. CI just verifies the bundle builds and tests pass. Revisit when the
-# tangled secret store is fixed.
+# Workers are deployed manually with `just release`. CI builds and tests.
 
 steps:
   - name: verify
     command: |
       set -euo pipefail
       bun --version
-      bun install
-      scripts/ci-workerd.sh
+      node --version
+      bun install --frozen-lockfile
+      find node_modules -path '*/workerd-linux-64/bin/workerd' -exec scripts/ci-workerd.sh {} +
       bunx tsc --noEmit
       bunx oxlint --deny-warnings src
       # a hung test run fails here, not at the spindle's 4-hour limit
       timeout 900 bun test
-      bunx wrangler deploy --dry-run
-      bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
-      bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run
-      bunx wrangler deploy -c deploy/eval/wrangler.jsonc --dry-run
+      node_modules/.bin/cf deploy --dry-run --no-provision
+      node_modules/.bin/cf deploy --dry-run --no-provision --mode transport
+      node_modules/.bin/cf deploy --dry-run --no-provision --mode renderer
+      node_modules/.bin/cf deploy --dry-run --no-provision --mode collector

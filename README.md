@@ -24,11 +24,12 @@ profile lookups and the Bluesky-compatible search endpoint.
 
 ## develop
 
-install [Bun](https://bun.sh/) and [just](https://just.systems/), then:
+install [Bun](https://bun.sh/), [Node.js](https://nodejs.org/) 22.18 or newer,
+and [just](https://just.systems/), then:
 
 ```sh
 bun install          # install dependencies
-bunx wrangler dev    # start the local API and website
+bun run dev          # start the local API and website with cf
 just check           # check types, lint, tests and deployment builds
 ```
 

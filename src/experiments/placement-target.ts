@@ -1,3 +1,4 @@
+import type { SearchTransportEnv } from "../transport/search-transport-env";
 import transport from "../transport/search-transport";
 
 const payload = JSON.stringify({ actors: [], padding: "x".repeat(3072) });

@@ -53,15 +53,18 @@ test-smoke:
 [doc('the release script')]
 [group('check')]
 test-release:
-    python3 -W error -m unittest scripts.test_release
+    uv run --no-project python -W error -m unittest scripts.test_release
 
 # what CI runs, locally
 [group('check')]
-check: typecheck lint test test-route test-supervise test-smoke test-release
-    bunx wrangler deploy --dry-run
-    bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
-    bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run
-    bunx wrangler deploy -c deploy/eval/wrangler.jsonc --dry-run
+check: typecheck lint test test-route test-supervise test-smoke test-release check-worker-builds
+
+[group('check')]
+check-worker-builds:
+    node_modules/.bin/cf deploy --dry-run --no-provision
+    node_modules/.bin/cf deploy --dry-run --no-provision --mode transport
+    node_modules/.bin/cf deploy --dry-run --no-provision --mode renderer
+    node_modules/.bin/cf deploy --dry-run --no-provision --mode collector
 
 # zig unit tests for the store process and the shared normalizer sources
 [group('check')]
@@ -136,11 +139,10 @@ test-bridge:
 
 # Fails while the binding is still the placeholder or the schema is not
 # applied. Without the schema every admin policy change fails and no indexing
-# request is logged. Reads the remote database through wrangler; writes nothing.
+# request is logged. Reads the remote database through cf; writes nothing.
 [doc('refuse to deploy a Worker whose control database is not ready for it')]
 [group('deploy')]
 control-ready:
-    @! grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' wrangler.jsonc || { echo "wrangler.jsonc: CONTROL_DB has the placeholder database_id; put the typeahead-control database's id there" >&2; exit 1; }
     bun scripts/control-ready.ts --remote
 
 # Fails on uncommitted changes to tracked files, or when HEAD is not
@@ -154,14 +156,34 @@ published:
     if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
       echo "uncommitted changes: commit and push before deploying" >&2; exit 1
     fi
-    if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+    head=$(git rev-parse HEAD)
+    if [ "$head" != "$(git rev-parse origin/main)" ]; then
       echo "HEAD is not origin/main: push, or check out origin/main, before deploying" >&2; exit 1
     fi
+    if [ -n "${TYPEAHEAD_RELEASE_HEAD:-}" ] && [ "$head" != "$TYPEAHEAD_RELEASE_HEAD" ]; then
+      echo "HEAD changed after the release was planned" >&2; exit 1
+    fi
+
+[private]
+cf-deploy mode:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    head=$(git rev-parse HEAD)
+    args=(deploy --no-provision --message "${head:0:12}")
+    if [ "{{mode}}" != public ]; then args+=(--mode "{{mode}}"); fi
+    if [ -n "${TYPEAHEAD_RELEASE_PROJECT:-}" ]; then
+      if [ "$head" != "$TYPEAHEAD_RELEASE_HEAD" ]; then
+        echo "HEAD changed after the release was planned" >&2; exit 1
+      fi
+      cd "$TYPEAHEAD_RELEASE_PROJECT"
+      args+=(--prebuilt)
+    fi
+    exec node_modules/.bin/cf "${args[@]}"
 
 # the public Worker, then the API and image smoke suites as the gate
 [group('deploy')]
 deploy-worker url=WORKER_URL: published control-ready lint typecheck
-    bunx wrangler deploy --message "$(git rev-parse --short=12 HEAD)"
+    just cf-deploy public
     @echo "--- waiting for edge propagation before smoke ---"
     sleep 5
     just smoke {{url}}
@@ -170,31 +192,31 @@ deploy-worker url=WORKER_URL: published control-ready lint typecheck
 # the private PNG renderer, then the image smoke suite
 [group('deploy')]
 deploy-image-renderer url=WORKER_URL: published lint typecheck
-    bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --message "$(git rev-parse --short=12 HEAD)"
+    just cf-deploy renderer
     just smoke-images {{url}}
 
 # Deploy it before a public Worker that adds or changes its binding.
 [doc('the search transport, then the API smoke suite')]
 [group('deploy')]
 deploy-search-transport url=WORKER_URL: published lint typecheck
-    bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --message "$(git rev-parse --short=12 HEAD)"
+    just cf-deploy transport
     just smoke {{url}}
 
 # It has no HTTP surface, so nothing can smoke it; read its next cron tick.
 [doc('the eval collector')]
 [group('deploy')]
 deploy-eval-collector: published lint typecheck
-    bunx wrangler deploy -c deploy/eval/wrangler.jsonc --message "$(git rev-parse --short=12 HEAD)"
+    just cf-deploy collector
 
 # the public Worker WITHOUT the smoke gate (escape hatch)
 [group('deploy')]
 deploy-worker-only: published control-ready lint typecheck
-    bunx wrangler deploy --message "$(git rev-parse --short=12 HEAD)"
+    just cf-deploy public
 
 # fresh public images through the renderer
 [group('production')]
 smoke-images url=WORKER_URL:
-    python3 scripts/smoke-images.py --url {{url}}
+    uv run --no-project python scripts/smoke-images.py --url {{url}}
 
 # A release tag (YYYY.MMDD.HHMMSS, UTC) names a commit of origin/main whose
 # Workers are deployed and passed smoke. `--plan` prints what would deploy and

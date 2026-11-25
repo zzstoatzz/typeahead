@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { publishReports } from "../../src/eval/archive";
 import { ROOT, readRuns } from "./archive";
-import { wranglerStore } from "./kv";
+import { cfStore } from "./kv";
 
 export async function upload(remote: boolean) {
   await mkdir(ROOT, { recursive: true });
@@ -12,8 +12,8 @@ export async function upload(remote: boolean) {
     await writeFile(join(lock, "owner.json"), JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
     const reports = await readRuns();
     if (!reports.length) throw new Error("refusing to publish empty evaluation history");
-    const runs = await publishReports(wranglerStore(remote), reports);
-    console.log(`verified ${runs.length} evaluation runs in ${remote ? "production" : "local Wrangler"} KV`);
+    const runs = await publishReports(cfStore(remote), reports);
+    console.log(`verified ${runs.length} evaluation runs in ${remote ? "production" : "local"} KV`);
   } finally { await rm(lock, { recursive: true }); }
 }
 

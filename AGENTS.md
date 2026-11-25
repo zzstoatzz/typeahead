@@ -164,13 +164,14 @@ regression is pinned). Extend it, don't prune it.
 
 ## deploys (smoke-gated)
 
-- `just release` deploys the Workers whose bundle inputs changed since the last release
-  tag, through the recipes below, then tags the commit `YYYY.MMDD.HHMMSS` (UTC) and pushes
-  the tag. A release tag means that commit's Workers are deployed and passed smoke; it never
-  deploys a slot. Every deploy recipe refuses anything but a clean checkout of `origin/main`.
+- `just release` compares each Worker's `cf` Build Output with the last release tag and
+  deploys the changed artifacts through the recipes below. It tags the commit
+  `YYYY.MMDD.HHMMSS` (UTC) with all four digests and pushes the tag after the gates pass.
+  A Worker release never deploys a slot. Every deploy recipe requires a clean checkout
+  of `origin/main`.
   [Release](docs/operating.md#release) has the details.
 - `just deploy-worker` — `control-ready` (the control database has its schema), lint and type-check, then
-  `wrangler deploy` **then** the smoke suite. A deploy that breaks shape, ranking, or the admin API fails loudly
+  `cf deploy` **then** the smoke suite. A deploy that breaks shape, ranking, or the admin API fails loudly
   here. `deploy-worker-only` skips smoke but still requires `control-ready`, lint and the type-check.
 - `just deploy-search-transport` deploys the transport, then runs the smoke suite. A slot's
   origin must be in `src/transport/search-route.ts` and deployed before a route record can name it.
@@ -181,7 +182,7 @@ regression is pinned). Extend it, don't prune it.
   standby first, then a route flip, then the other slot:
   [operating](docs/operating.md#upgrade-the-slots).
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
-  `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
+  `cf deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
 - The system before the store slots (a separate ingester, Turso, a twice-daily index
   refresh) is gone: apps, data, code and recipes. What was removed is listed in
   [teardown](docs/history/teardown.md).

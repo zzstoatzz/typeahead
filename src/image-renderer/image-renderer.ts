@@ -1,7 +1,8 @@
+import type { ImageRendererEnv } from "./image-renderer-env";
 import { handleOgImage, handleAppleTouchIcon, handleFirstImage } from "./og";
 
 export default {
-  async fetch(request: Request, env: Pick<ImageRendererEnv, "KV">): Promise<Response> {
+  async fetch(request: Request, env: ImageRendererEnv): Promise<Response> {
     if (request.method !== "GET") return new Response("Not found", { status: 404 });
     const { pathname } = new URL(request.url);
     if (pathname === "/og-image") return handleOgImage(request, env);

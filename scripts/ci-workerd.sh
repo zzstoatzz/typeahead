@@ -6,8 +6,10 @@
 # Point the binary at the glibc that the gcc wrapper is built against.
 set -eu
 
-bin="${1:-node_modules/@cloudflare/workerd-linux-64/bin/workerd}"
+if [ "$#" -eq 0 ]; then set -- node_modules/@cloudflare/workerd-linux-64/bin/workerd; fi
 loader="$(cat "$(dirname "$(readlink -f "$(command -v gcc)")")/../nix-support/dynamic-linker")"
 
-patchelf --set-interpreter "$loader" --set-rpath "$(dirname "$loader")" "$bin"
-"$bin" --version
+for bin do
+  patchelf --set-interpreter "$loader" --set-rpath "$(dirname "$loader")" "$bin"
+  "$bin" --version
+done

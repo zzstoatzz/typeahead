@@ -1,3 +1,4 @@
+import type { SearchTransportEnv } from "./search-transport-env";
 import { allowedRoute, readRoute, routeHintRecord, sharedHintsAllowed, speculativeRoute, responseMatchesRoute } from "./search-route";
 import { HINT_CACHE, readSharedHint, rememberSharedHint, forgetSharedHint } from "./shared-route-hint";
 import { validatedSearch } from "./validated-search";

@@ -1,3 +1,4 @@
+import type { ImageRendererEnv } from "./image-renderer-env";
 import { ImageResponse } from "workers-og";
 import * as z from "zod/mini";
 import type { StatsKvData } from "../types";
@@ -217,7 +218,7 @@ async function jetbrainsMono(): Promise<ArrayBuffer> {
   return await (await fetch(m[1]!)).arrayBuffer();
 }
 
-export async function handleOgImage(request: Request, env: Pick<ImageRendererEnv, "KV">): Promise<Response> {
+export async function handleOgImage(request: Request, env: ImageRendererEnv): Promise<Response> {
   const url = new URL(request.url);
   const range = url.searchParams.get("range") ?? "7d";
   const apps = (url.searchParams.get("apps") ?? "")

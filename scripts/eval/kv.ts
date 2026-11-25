@@ -1,15 +1,17 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath, URL } from "node:url";
 import { z } from "zod";
 import type { SnapshotStore } from "../../src/eval/archive";
+import { KV_ID } from "../../cloudflare.config";
 
-export function wranglerStore(remote: boolean): SnapshotStore {
-  const config = new URL("../../wrangler.jsonc", import.meta.url).pathname;
+export function cfStore(remote: boolean): SnapshotStore {
+  const root = fileURLToPath(new URL("../..", import.meta.url));
   const command = async (args: string[]) => {
-    const child = Bun.spawn(["bun", "x", "wrangler", "kv", "key", ...args, "--binding=KV", `--config=${config}`, remote ? "--remote" : "--local"], { stdout: "pipe", stderr: "pipe" });
+    const child = Bun.spawn([join(root, "node_modules/.bin/cf"), "kv", "keys", ...args, "--namespace-id", KV_ID, ...(remote ? [] : ["--local"])], { cwd: root, stdout: "pipe", stderr: "pipe" });
     const [stdout, stderr, exit] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]);
-    if (exit !== 0) throw new Error(`Wrangler failed (${exit}): ${stderr}`);
+    if (exit !== 0) throw new Error(`cf kv failed (${exit}): ${stderr}`);
     return stdout;
   };
   return {
@@ -23,7 +25,7 @@ export function wranglerStore(remote: boolean): SnapshotStore {
       try {
         const path = join(root, "value.json");
         await writeFile(path, value);
-        await command(["put", key, `--path=${path}`]);
+        await command(["put", key, "--file", path]);
       } finally { await rm(root, { recursive: true }); }
     },
   };

@@ -1,3 +1,4 @@
+import type { SearchTransportEnv } from "./search-transport-env";
 import { DurableObject } from "cloudflare:workers";
 import { REFRESH_EVERY_MS, RouteCache, type ValidatedRoute } from "./route-cache";
 

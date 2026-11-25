@@ -1,10 +1,13 @@
-export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_DB">, Partial<Pick<PublicWorkerEnv, "STATS_DB" | "CF_VERSION_METADATA">> {
+export interface Env {
+  IMAGE_RENDERER: Fetcher;
+  CONTROL_DB: D1Database;
+  STATS_DB?: D1Database;
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
   KV: KVNamespace;
   ADMIN_SECRET: string;
   /// Bearer secret the store slots present to `/slot/control/*`, and nothing
   /// else: it reads the control record and can change nothing. Never the
-  /// admin secret; while unset those endpoints answer 503. Set via:
-  ///   bunx wrangler secret put SLOT_CONTROL_SECRET
+  /// admin secret; while unset those endpoints answer 503.
   SLOT_CONTROL_SECRET?: string;
   RATE_LIMITER: RateLimit;
   RATE_LIMITER_STRICT: RateLimit;
@@ -19,14 +22,10 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   SERVICE_DID?: string;
   /// Emergency kill switch: when set (any non-empty value), the search
   /// handler bypasses the engine and the cache and proxies directly to
-  /// Bluesky's public typeahead API. Flip via:
-  ///   bunx wrangler secret put EMERGENCY_PROXY_BSKY
-  /// Turn off with:
-  ///   bunx wrangler secret delete EMERGENCY_PROXY_BSKY
+  /// Bluesky's public typeahead API. See docs/operating.md.
   EMERGENCY_PROXY_BSKY?: string;
   /// Discord-compatible webhook. When set, the hourly cron posts here on a
-  /// freshness STATE CHANGE (ok -> stale, stale -> ok). Set via:
-  ///   bunx wrangler secret put ALERT_WEBHOOK_URL
+  /// freshness STATE CHANGE (ok -> stale, stale -> ok).
   /// Independent of Logfire on purpose: the 48h wedge on 2026-07-28 went
   /// unnoticed partly because the search service exported no telemetry at all.
   ALERT_WEBHOOK_URL?: string;

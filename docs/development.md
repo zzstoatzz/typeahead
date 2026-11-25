@@ -4,35 +4,45 @@
 
 The public API and website, the search transport, the image renderer and the
 eval collector are Cloudflare Workers in `src/`. Install [Bun](https://bun.sh/)
+[Node.js](https://nodejs.org/) 22.18 or newer, [uv](https://docs.astral.sh/uv/)
 and [just](https://just.systems/):
 
 ```sh
 bun install
-bunx wrangler dev
+bun run dev
 just check
 ```
 
 `just check` is what CI runs: type-check, lint, `bun test`, the route tool's
 tests, the slot supervisor's tests, the smoke suite's and the release script's
 own tests, and a dry-run
-build of the four production Workers. It needs `python3`, `jq` and bash 5.2 or newer
+build of the four production Workers. The checks also need `jq` and bash 5.2 or newer
 (on macOS, `brew install bash`). It contacts nothing remote.
 
 For preview cards and PNG icons locally, run the renderer in another terminal.
-Wrangler connects the public Worker's `IMAGE_RENDERER` binding to it.
+The public Worker connects to it through its local service binding.
 
 ```sh
-bunx wrangler dev -c deploy/image-renderer/wrangler.jsonc --port 8788
+bun run dev --mode renderer --port 8788
 ```
+
+`cf dev` and `cf` resource commands use `.cloudflare/state` for local data.
+To bring over data from the previous Wrangler setup, stop the dev servers
+and copy `.wrangler/state/v3` into `.cloudflare/state/` before that directory
+contains any new state.
 
 ## Where Worker code lives
 
+The four production Worker modes share [cloudflare.config.ts](../cloudflare.config.ts).
+`cf` drives development, builds and deploys. Wrangler supplies the bundler
+and reads [wrangler.config.ts](../wrangler.config.ts) for build settings.
+
 | path | what it holds | deployed by |
 | --- | --- | --- |
-| `src/index.ts`, `src/handlers/`, `src/pages/` | the public Worker: routes, the cron, endpoint handlers and HTML pages | `wrangler.jsonc` |
-| `src/transport/` | the search transport: route record, route cache and Durable Object, validated search | `deploy/search-transport/` |
-| `src/image-renderer/` | the PNG renderer, the only code that imports `workers-og` | `deploy/image-renderer/` |
-| `src/eval/` | the eval collector and the report model the `/eval` page and `scripts/eval/` share | `deploy/eval/` |
+| `src/index.ts`, `src/handlers/`, `src/pages/` | the public Worker: routes, the cron, endpoint handlers and HTML pages | default mode |
+| `src/transport/` | the search transport: route record, route cache and Durable Object, validated search | `transport` mode |
+| `src/image-renderer/` | the PNG renderer, the only code that imports `workers-og` | `renderer` mode |
+| `src/eval/` | the eval collector and the report model the `/eval` page and `scripts/eval/` share | `collector` mode |
 | `src/stats/` | everything that reads or writes the `typeahead-stats` database | part of the public Worker |
 | `src/control/` | everything that reads or writes the `typeahead-control` database | part of the public Worker |
 | `src/experiments/` | the Worker placement probes | `deploy/placement-probe/` |

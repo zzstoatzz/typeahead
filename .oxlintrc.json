@@ -4,6 +4,7 @@
     ".claude/**",
     "dist/**",
     ".wrangler/**",
+    ".cloudflare/**",
     "tools/oxlint/anti-slop/**"
   ],
   "jsPlugins": [
